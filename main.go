@@ -17,9 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+  "fmt"
 )
 
 func main() {
-	fmt.Println("Hello Flink Operator!")
+  fmt.Println("Hello Flink Operator!")
 }
