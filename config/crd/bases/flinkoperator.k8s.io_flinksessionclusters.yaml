@@ -385,9 +385,88 @@ spec:
               type: string
           type: object
         spec:
+          properties:
+            imageSpec:
+              description: Flink image spec.
+              properties:
+                pullPolicy:
+                  description: Flink image pull policy.
+                  type: string
+                uri:
+                  description: Flink image URI.
+                  type: string
+              type: object
+            jobManagerSpec:
+              description: Flink JobManager spec.
+              properties:
+                ports:
+                  description: Ports.
+                  properties:
+                    blob:
+                      description: Blob port.
+                      format: int32
+                      type: integer
+                    query:
+                      description: Query port.
+                      format: int32
+                      type: integer
+                    rpc:
+                      description: RPC port.
+                      format: int32
+                      type: integer
+                    ui:
+                      description: UI port.
+                      format: int32
+                      type: integer
+                  type: object
+                replicas:
+                  description: The number of replicas.
+                  format: int32
+                  type: integer
+              type: object
+            name:
+              description: The name of the Flink cluster.
+              type: string
+            taskManagerSpec:
+              description: Flink TaskManager spec.
+              properties:
+                ports:
+                  description: Ports.
+                  properties:
+                    data:
+                      description: Data port.
+                      format: int32
+                      type: integer
+                    query:
+                      description: Query port.
+                      format: int32
+                      type: integer
+                    rpc:
+                      description: RPC port.
+                      format: int32
+                      type: integer
+                  type: object
+                replicas:
+                  description: The number of replicas.
+                  format: int32
+                  type: integer
+              type: object
+          required:
+          - name
+          - imageSpec
+          - jobManagerSpec
+          - taskManagerSpec
           type: object
         status:
+          properties:
+            status:
+              description: The status of the Flink cluster.
+              type: string
+          required:
+          - status
           type: object
+      required:
+      - spec
       type: object
   versions:
   - name: v1alpha1

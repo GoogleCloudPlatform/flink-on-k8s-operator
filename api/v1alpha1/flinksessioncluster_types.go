@@ -20,6 +20,60 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ImageSpec defines Flink image of JobManager and TaskManager containers.
+type ImageSpec struct {
+	// Flink image URI.
+	URI *string `json:"uri,omitempty"`
+
+	// Flink image pull policy.
+	PullPolicy *string `json:"pullPolicy,omitempty"`
+}
+
+// JobManagerPorts defines ports of JobManager.
+type JobManagerPorts struct {
+	// RPC port.
+	RPC *int32 `json:"rpc,omitempty"`
+
+	// Blob port.
+	Blob *int32 `json:"blob,omitempty"`
+
+	// Query port.
+	QueryPort *int32 `json:"query,omitempty"`
+
+	// UI port.
+	UI *int32 `json:"ui,omitempty"`
+}
+
+// JobManagerSpec defines properties of JobManager.
+type JobManagerSpec struct {
+	// The number of replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Ports.
+	Ports JobManagerPorts `json:"ports,omitempty"`
+}
+
+// TaskManagerPorts defines ports of TaskManager.
+type TaskManagerPorts struct {
+	// Data port.
+	Data *int32 `json:"data,omitempty"`
+
+	// RPC port.
+	RPC *int32 `json:"rpc,omitempty"`
+
+	// Query port.
+	Query *int32 `json:"query,omitempty"`
+}
+
+// TaskManagerSpec defines properties of TaskManager.
+type TaskManagerSpec struct {
+	// The number of replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Ports.
+	Ports TaskManagerPorts `json:"ports,omitempty"`
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -27,12 +81,27 @@ import (
 type FlinkSessionClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The name of the Flink cluster.
+	Name string `json:"name"`
+
+	// Flink image spec.
+	ImageSpec ImageSpec `json:"imageSpec"`
+
+	// Flink JobManager spec.
+	JobManagerSpec JobManagerSpec `json:"jobManagerSpec"`
+
+	// Flink TaskManager spec.
+	TaskManagerSpec TaskManagerSpec `json:"taskManagerSpec"`
 }
 
 // FlinkSessionClusterStatus defines the observed state of FlinkSessionCluster
 type FlinkSessionClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// The status of the Flink cluster.
+	Status string `json:"status"`
 }
 
 // +kubebuilder:object:root=true
@@ -42,7 +111,7 @@ type FlinkSessionCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FlinkSessionClusterSpec   `json:"spec,omitempty"`
+	Spec   FlinkSessionClusterSpec   `json:"spec"`
 	Status FlinkSessionClusterStatus `json:"status,omitempty"`
 }
 

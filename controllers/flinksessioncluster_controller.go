@@ -37,9 +37,22 @@ type FlinkSessionClusterReconciler struct {
 
 func (r *FlinkSessionClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("flinksessioncluster", req.NamespacedName)
+	var log = r.Log.WithValues("flinksessioncluster", req.NamespacedName)
 
-	// your logic here
+	// Read the FlinkSessionCluster.
+	var flinkSessionCluster = &flinkoperatorv1alpha1.FlinkSessionCluster{}
+	var err = r.Get(context.TODO(), req.NamespacedName, flinkSessionCluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	log.Info("Reconciling", "desired state", flinkSessionCluster)
+
+	// Update status.
+	flinkSessionCluster.Status = flinkoperatorv1alpha1.FlinkSessionClusterStatus{Status: "Pending"}
+	err = r.Update(context.TODO(), flinkSessionCluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
