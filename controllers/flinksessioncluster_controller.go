@@ -35,65 +35,83 @@ type FlinkSessionClusterReconciler struct {
 	Log logr.Logger
 }
 
+// FlinkSessionClusterReconcileState holds the context and state for a
+// reconcile request.
+type _FlinkSessionClusterReconcileState struct {
+	request             ctrl.Request
+	context             context.Context
+	log                 logr.Logger
+	flinkSessionCluster flinkoperatorv1alpha1.FlinkSessionCluster
+}
+
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinksessionclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinksessionclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
 
-func (r *FlinkSessionClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	var context = context.Background()
-	var log = r.Log.WithValues("flinksessioncluster", req.NamespacedName)
+	var log = reconciler.Log.WithValues("flinksessioncluster", request.NamespacedName)
+	var state = _FlinkSessionClusterReconcileState{
+		request:             request,
+		context:             context,
+		log:                 log,
+		flinkSessionCluster: flinkoperatorv1alpha1.FlinkSessionCluster{},
+	}
+	var flinkSessionCluster = &state.flinkSessionCluster
 
 	// Get the FlinkSessionCluster resource.
-	var flinkSessionCluster = flinkoperatorv1alpha1.FlinkSessionCluster{}
-	var err = r.Get(context, req.NamespacedName, &flinkSessionCluster)
+	var err = reconciler.Get(context, request.NamespacedName, flinkSessionCluster)
 	if err != nil {
 		log.Error(err, "Failed to get flinksessioncluster")
 		return ctrl.Result{}, err
 	}
-	log.Info("Reconciling", "desired state", flinkSessionCluster)
+	log.Info("Reconciling", "resource", flinkSessionCluster)
 
 	// Create JobManager deployment.
-	err = r.createJobManagerDeployment(req, context, log, &flinkSessionCluster)
+	err = reconciler.createJobManagerDeployment(&state)
 	if err != nil {
 		log.Info("Failed to create JobManager deployment", "error", err)
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
+	log.Info("JobManager deployment created")
 
 	return ctrl.Result{}, nil
 }
 
-func (r *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&flinkoperatorv1alpha1.FlinkSessionCluster{}).
-		Complete(r)
+		Complete(reconciler)
 }
 
-func (r *FlinkSessionClusterReconciler) createJobManagerDeployment(
-	req ctrl.Request,
-	context context.Context,
-	log logr.Logger,
-	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) error {
+func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState) error {
+	var request = reconcileState.request
+	var log = reconcileState.log
+	var flinkSessionCluster = reconcileState.flinkSessionCluster
 	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.QueryPort}
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
-	var podLabel = "flink-jobmanager"
-	var jobManagerDeploymentName = req.Name + "-jobmanager"
+	var jobManagerDeploymentName = request.Name + "-jobmanager"
+	var labels = map[string]string{
+		"flink-cluster":   request.Name,
+		"flink-component": "jobmanager",
+	}
 	var jobManagerDeployment = appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: req.Namespace,
+			Namespace: request.Namespace,
 			Name:      jobManagerDeploymentName,
+			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: jobManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": podLabel}},
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": podLabel,
-					},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -109,15 +127,15 @@ func (r *FlinkSessionClusterReconciler) createJobManagerDeployment(
 			},
 		},
 	}
-
 	log.Info("Creating JobManager deployment", "deployment", jobManagerDeployment)
-	return r.Create(context, &jobManagerDeployment)
+	return reconciler.Create(reconcileState.context, &jobManagerDeployment)
 }
 
-func (r *FlinkSessionClusterReconciler) updateStatus(
-	context context.Context,
-	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster,
+func (reconciler *FlinkSessionClusterReconciler) updateStatus(
+	reconcileState *_FlinkSessionClusterReconcileState,
 	status string) error {
+	var flinkSessionCluster = flinkoperatorv1alpha1.FlinkSessionCluster{}
+	reconcileState.flinkSessionCluster.DeepCopyInto(&flinkSessionCluster)
 	flinkSessionCluster.Status = flinkoperatorv1alpha1.FlinkSessionClusterStatus{Status: status}
-	return r.Update(context, flinkSessionCluster)
+	return reconciler.Update(reconcileState.context, &flinkSessionCluster)
 }
