@@ -63,8 +63,8 @@ func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request)
 	// Get the FlinkSessionCluster resource.
 	var err = reconciler.Get(context, request.NamespacedName, flinkSessionCluster)
 	if err != nil {
-		log.Error(err, "Failed to get flinksessioncluster")
-		return ctrl.Result{}, err
+		log.Info("Failed to get FlinkSessionCluster, it might have been deleted by the user", "error", err)
+		return ctrl.Result{}, nil
 	}
 	log.Info("Reconciling", "resource", flinkSessionCluster)
 
@@ -85,6 +85,17 @@ func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manag
 		Complete(reconciler)
 }
 
+func toOwnerReference(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         flinkSessionCluster.APIVersion,
+		Kind:               flinkSessionCluster.Kind,
+		Name:               flinkSessionCluster.Name,
+		UID:                flinkSessionCluster.UID,
+		Controller:         &[]bool{true}[0],
+		BlockOwnerDeletion: &[]bool{false}[0],
+	}
+}
+
 func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
 	reconcileState *_FlinkSessionClusterReconcileState) error {
 	var request = reconcileState.request
@@ -102,9 +113,10 @@ func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
 	}
 	var jobManagerDeployment = appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: request.Namespace,
-			Name:      jobManagerDeploymentName,
-			Labels:    labels,
+			Namespace:       request.Namespace,
+			Name:            jobManagerDeploymentName,
+			OwnerReferences: []metav1.OwnerReference{toOwnerReference(&flinkSessionCluster)},
+			Labels:          labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: jobManagerSpec.Replicas,
