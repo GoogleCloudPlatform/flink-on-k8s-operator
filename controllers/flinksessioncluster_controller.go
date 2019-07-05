@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -63,7 +64,7 @@ func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request)
 	}
 	var flinkSessionCluster = &state.flinkSessionCluster
 
-	log.Info("-------- Start reconciling --------")
+	log.Info("========== Start reconciling ==========")
 
 	// Get the FlinkSessionCluster resource.
 	var err = reconciler.Get(context, request.NamespacedName, flinkSessionCluster)
@@ -74,8 +75,22 @@ func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request)
 	log.Info("Found FlinkSessionCluster", "resource", flinkSessionCluster)
 
 	// Create or update JobManager deployment.
-	var jobManagerDeployment appsv1.Deployment = reconciler.getDesiredJobManagerDeployment(&state)
+	var jobManagerDeployment = reconciler.getDesiredJobManagerDeployment(&state)
 	err = reconciler.createOrUpdateDeployment(&state, &jobManagerDeployment, "JobManager")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Create or update JobManager service.
+	var jobManagerService = reconciler.getDesiredJobManagerService(&state)
+	err = reconciler.createOrUpdateService(&state, &jobManagerService, "JobManager")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Create or update TaskManager deployment.
+	var taskManagerDeployment = reconciler.getDesiredTaskManagerDeployment(&state)
+	err = reconciler.createOrUpdateDeployment(&state, &taskManagerDeployment, "TaskManager")
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -145,6 +160,46 @@ func (reconciler *FlinkSessionClusterReconciler) updateManagerDeployment(
 	return err
 }
 
+func (reconciler *FlinkSessionClusterReconciler) createOrUpdateService(
+	reconcileState *_FlinkSessionClusterReconcileState,
+	service *corev1.Service,
+	component string) error {
+	var context = reconcileState.context
+	var log = reconcileState.log.WithValues("component", component)
+	var currentService = corev1.Service{}
+	// Check if service already exists.
+	var err = reconciler.Get(
+		context,
+		types.NamespacedName{
+			Namespace: service.ObjectMeta.Namespace,
+			Name:      service.Name,
+		},
+		&currentService)
+	if err != nil {
+		err = reconciler.createService(reconcileState, service, component)
+	} else {
+		log.Info("Service already exists", "resource", currentService)
+		// TODO(dagang): compare and update if needed.
+	}
+	return err
+}
+
+func (reconciler *FlinkSessionClusterReconciler) createService(
+	reconcileState *_FlinkSessionClusterReconcileState,
+	service *corev1.Service,
+	component string) error {
+	var context = reconcileState.context
+	var log = reconcileState.log.WithValues("component", component)
+	log.Info("Creating service", "resource", *service)
+	var err = reconciler.Create(context, service)
+	if err != nil {
+		log.Info("Failed to create service", "error", err)
+	} else {
+		log.Info("Service created")
+	}
+	return err
+}
+
 func toOwnerReference(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         flinkSessionCluster.APIVersion,
@@ -168,8 +223,9 @@ func (reconciler *FlinkSessionClusterReconciler) getDesiredJobManagerDeployment(
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
 	var jobManagerDeploymentName = request.Name + "-jobmanager"
 	var labels = map[string]string{
-		"flink-cluster":   request.Name,
-		"flink-component": "jobmanager",
+		"cluster":   request.Name,
+		"app":       "flink",
+		"component": "jobmanager",
 	}
 	var jobManagerDeployment = appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -200,6 +256,95 @@ func (reconciler *FlinkSessionClusterReconciler) getDesiredJobManagerDeployment(
 		},
 	}
 	return jobManagerDeployment
+}
+
+func (reconciler *FlinkSessionClusterReconciler) getDesiredJobManagerService(
+	reconcileState *_FlinkSessionClusterReconcileState) corev1.Service {
+	var request = reconcileState.request
+	var flinkSessionCluster = reconcileState.flinkSessionCluster
+	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
+	var rpcPort = corev1.ServicePort{
+		Name:       "rpc",
+		Port:       *jobManagerSpec.Ports.RPC,
+		TargetPort: intstr.FromString("rpc")}
+	var blobPort = corev1.ServicePort{
+		Name:       "blob",
+		Port:       *jobManagerSpec.Ports.Blob,
+		TargetPort: intstr.FromString("blob")}
+	var queryPort = corev1.ServicePort{
+		Name:       "query",
+		Port:       *jobManagerSpec.Ports.QueryPort,
+		TargetPort: intstr.FromString("query")}
+	var uiPort = corev1.ServicePort{
+		Name:       "ui",
+		Port:       *jobManagerSpec.Ports.UI,
+		TargetPort: intstr.FromString("ui")}
+	var jobManagerServiceName = request.Name + "-jobmanager"
+	var labels = map[string]string{
+		"cluster":   request.Name,
+		"app":       "flink",
+		"component": "jobmanager",
+	}
+	var jobManagerService = corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       request.Namespace,
+			Name:            jobManagerServiceName,
+			OwnerReferences: []metav1.OwnerReference{toOwnerReference(&flinkSessionCluster)},
+			Labels:          labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: labels,
+			Ports:    []corev1.ServicePort{rpcPort, blobPort, queryPort, uiPort},
+		},
+	}
+	return jobManagerService
+}
+
+func (reconciler *FlinkSessionClusterReconciler) getDesiredTaskManagerDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState) appsv1.Deployment {
+	var request = reconcileState.request
+	var flinkSessionCluster = reconcileState.flinkSessionCluster
+	var imageSpec = flinkSessionCluster.Spec.ImageSpec
+	var taskManagerSpec = flinkSessionCluster.Spec.TaskManagerSpec
+	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
+	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
+	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
+	var taskManagerDeploymentName = request.Name + "-taskmanager"
+	var jobManagerDeploymentName = request.Name + "-jobmanager"
+	var labels = map[string]string{
+		"cluster":   request.Name,
+		"app":       "flink",
+		"component": "taskmanager",
+	}
+	var taskManagerDeployment = appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       request.Namespace,
+			Name:            taskManagerDeploymentName,
+			OwnerReferences: []metav1.OwnerReference{toOwnerReference(&flinkSessionCluster)},
+			Labels:          labels,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: taskManagerSpec.Replicas,
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:  "taskmanager",
+							Image: *imageSpec.URI,
+							Args:  []string{"taskmanager"},
+							Ports: []corev1.ContainerPort{dataPort, rpcPort, queryPort},
+							Env:   []corev1.EnvVar{corev1.EnvVar{Name: "JOB_MANAGER_RPC_ADDRESS", Value: jobManagerDeploymentName}},
+						},
+					},
+				},
+			},
+		},
+	}
+	return taskManagerDeployment
 }
 
 func (reconciler *FlinkSessionClusterReconciler) updateStatus(
