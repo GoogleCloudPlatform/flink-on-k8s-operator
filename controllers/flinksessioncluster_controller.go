@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -48,6 +49,8 @@ type _FlinkSessionClusterReconcileState struct {
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinksessionclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services/status,verbs=get
 
 func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	var context = context.Background()
@@ -60,21 +63,22 @@ func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request)
 	}
 	var flinkSessionCluster = &state.flinkSessionCluster
 
+	log.Info("-------- Start reconciling --------")
+
 	// Get the FlinkSessionCluster resource.
 	var err = reconciler.Get(context, request.NamespacedName, flinkSessionCluster)
 	if err != nil {
 		log.Info("Failed to get FlinkSessionCluster, it might have been deleted by the user", "error", err)
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	log.Info("Reconciling", "resource", flinkSessionCluster)
+	log.Info("Found FlinkSessionCluster", "resource", flinkSessionCluster)
 
-	// Create JobManager deployment.
-	err = reconciler.createJobManagerDeployment(&state)
+	// Create or update JobManager deployment.
+	var jobManagerDeployment appsv1.Deployment = reconciler.getDesiredJobManagerDeployment(&state)
+	err = reconciler.createOrUpdateDeployment(&state, &jobManagerDeployment, "JobManager")
 	if err != nil {
-		log.Info("Failed to create JobManager deployment", "error", err)
 		return ctrl.Result{}, err
 	}
-	log.Info("JobManager deployment created")
 
 	return ctrl.Result{}, nil
 }
@@ -82,7 +86,63 @@ func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request)
 func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&flinkoperatorv1alpha1.FlinkSessionCluster{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
 		Complete(reconciler)
+}
+
+func (reconciler *FlinkSessionClusterReconciler) createOrUpdateDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState,
+	deployment *appsv1.Deployment,
+	component string) error {
+	var context = reconcileState.context
+	var log = reconcileState.log.WithValues("component", component)
+	var currentDeployment = appsv1.Deployment{}
+	// Check if deployment already exists.
+	var err = reconciler.Get(
+		context,
+		types.NamespacedName{
+			Namespace: deployment.ObjectMeta.Namespace,
+			Name:      deployment.Name,
+		},
+		&currentDeployment)
+	if err != nil {
+		err = reconciler.createDeployment(reconcileState, deployment, component)
+	} else {
+		log.Info("Deployment already exists", "deployment", currentDeployment)
+		// TODO(dagang): compare and update if needed.
+	}
+	return err
+}
+
+func (reconciler *FlinkSessionClusterReconciler) createDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState,
+	deployment *appsv1.Deployment,
+	component string) error {
+	var context = reconcileState.context
+	var log = reconcileState.log.WithValues("component", component)
+	log.Info("Creating deployment", "deployment", *deployment)
+	var err = reconciler.Create(context, deployment)
+	if err != nil {
+		log.Info("Failed to create deployment", "error", err)
+	} else {
+		log.Info("Deployment created")
+	}
+	return err
+}
+
+func (reconciler *FlinkSessionClusterReconciler) updateManagerDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState,
+	deployment *appsv1.Deployment,
+	component string) error {
+	var context = reconcileState.context
+	var log = reconcileState.log.WithValues("component", component)
+	log.Info("Updating deployment", "deployment", deployment)
+	var err = reconciler.Update(context, deployment)
+	if err != nil {
+		log.Info("Failed to update deployment", "error", err)
+	}
+	return err
 }
 
 func toOwnerReference(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) metav1.OwnerReference {
@@ -96,11 +156,11 @@ func toOwnerReference(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionClu
 	}
 }
 
-func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
-	reconcileState *_FlinkSessionClusterReconcileState) error {
+func (reconciler *FlinkSessionClusterReconciler) getDesiredJobManagerDeployment(
+	reconcileState *_FlinkSessionClusterReconcileState) appsv1.Deployment {
 	var request = reconcileState.request
-	var log = reconcileState.log
 	var flinkSessionCluster = reconcileState.flinkSessionCluster
+	var imageSpec = flinkSessionCluster.Spec.ImageSpec
 	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
@@ -129,7 +189,7 @@ func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "jobmanager",
-							Image: "flink:latest",
+							Image: *imageSpec.URI,
 							Args:  []string{"jobmanager"},
 							Ports: []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort},
 							Env:   []corev1.EnvVar{corev1.EnvVar{Name: "JOB_MANAGER_RPC_ADDRESS", Value: jobManagerDeploymentName}},
@@ -139,8 +199,7 @@ func (reconciler *FlinkSessionClusterReconciler) createJobManagerDeployment(
 			},
 		},
 	}
-	log.Info("Creating JobManager deployment", "deployment", jobManagerDeployment)
-	return reconciler.Create(reconcileState.context, &jobManagerDeployment)
+	return jobManagerDeployment
 }
 
 func (reconciler *FlinkSessionClusterReconciler) updateStatus(
