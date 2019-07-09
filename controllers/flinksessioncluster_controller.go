@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,14 +68,18 @@ func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manag
 // _FlinkSessionClusterHandler holds the context and state for a
 // reconcile request.
 type _FlinkSessionClusterHandler struct {
-	reconciler          *FlinkSessionClusterReconciler
-	request             ctrl.Request
-	context             context.Context
-	log                 logr.Logger
-	flinkSessionCluster flinkoperatorv1alpha1.FlinkSessionCluster
+	reconciler                    *FlinkSessionClusterReconciler
+	request                       ctrl.Request
+	context                       context.Context
+	log                           logr.Logger
+	flinkSessionCluster           flinkoperatorv1alpha1.FlinkSessionCluster
+	observedJobManagerDeployment  *appsv1.Deployment
+	observedJobManagerService     *corev1.Service
+	observedTaskManagerDeployment *appsv1.Deployment
 }
 
-func (handler *_FlinkSessionClusterHandler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+func (handler *_FlinkSessionClusterHandler) Reconcile(
+	request ctrl.Request) (ctrl.Result, error) {
 	var reconciler = handler.reconciler
 	var log = handler.log
 	var context = handler.context
@@ -85,40 +90,48 @@ func (handler *_FlinkSessionClusterHandler) Reconcile(request ctrl.Request) (ctr
 	// Get the FlinkSessionCluster resource.
 	var err = reconciler.Get(context, request.NamespacedName, flinkSessionCluster)
 	if err != nil {
-		log.Info("Failed to get FlinkSessionCluster, it might have been deleted by the user", "error", err)
+		log.Info("Failed to get FlinkSessionCluster, it might have been deleted", "error", err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	log.Info("Found FlinkSessionCluster", "resource", flinkSessionCluster)
 
 	// Create or update JobManager deployment.
-	var jobManagerDeployment = getDesiredJobManagerDeployment(flinkSessionCluster)
-	err = handler.createOrUpdateDeployment(&jobManagerDeployment, "JobManager")
+	var jmDeployment = getDesiredJobManagerDeployment(flinkSessionCluster)
+	err = handler.createOrUpdateDeployment(&jmDeployment, "JobManager")
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create or update JobManager service.
-	var jobManagerService = getDesiredJobManagerService(flinkSessionCluster)
-	err = handler.createOrUpdateService(&jobManagerService, "JobManager")
+	var jmService = getDesiredJobManagerService(flinkSessionCluster)
+	err = handler.createOrUpdateService(&jmService, "JobManager")
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create or update TaskManager deployment.
-	var taskManagerDeployment = getDesiredTaskManagerDeployment(flinkSessionCluster)
-	err = handler.createOrUpdateDeployment(&taskManagerDeployment, "TaskManager")
+	var tmDeployment = getDesiredTaskManagerDeployment(flinkSessionCluster)
+	err = handler.createOrUpdateDeployment(&tmDeployment, "TaskManager")
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update cluster status if needed.
+	err = handler.updateClusterStatusIfNeeded()
+	if err != nil {
+		log.Error(err, "Failed to update cluster status")
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (handler *_FlinkSessionClusterHandler) createOrUpdateDeployment(deployment *appsv1.Deployment, component string) error {
+func (handler *_FlinkSessionClusterHandler) createOrUpdateDeployment(
+	deployment *appsv1.Deployment, component string) error {
 	var context = handler.context
 	var log = handler.log.WithValues("component", component)
 	var reconciler = handler.reconciler
-	var currentDeployment = appsv1.Deployment{}
+	var observedDeployment = appsv1.Deployment{}
 
 	// Check if deployment already exists.
 	var err = reconciler.Get(
@@ -127,17 +140,24 @@ func (handler *_FlinkSessionClusterHandler) createOrUpdateDeployment(deployment 
 			Namespace: deployment.ObjectMeta.Namespace,
 			Name:      deployment.Name,
 		},
-		&currentDeployment)
+		&observedDeployment)
 	if err != nil {
 		err = handler.createDeployment(deployment, component)
+		log.Error(err, "Failed to create deployment", "deployment", deployment)
 	} else {
-		log.Info("Deployment already exists", "deployment", currentDeployment)
+		log.Info("Deployment already exists", "deployment", observedDeployment)
+		if component == "JobManager" {
+			handler.observedJobManagerDeployment = &observedDeployment
+		} else if component == "TaskManager" {
+			handler.observedTaskManagerDeployment = &observedDeployment
+		}
 		// TODO(dagang): compare and update if needed.
 	}
 	return err
 }
 
-func (handler *_FlinkSessionClusterHandler) createDeployment(deployment *appsv1.Deployment, component string) error {
+func (handler *_FlinkSessionClusterHandler) createDeployment(
+	deployment *appsv1.Deployment, component string) error {
 	var context = handler.context
 	var log = handler.log.WithValues("component", component)
 	var reconciler = handler.reconciler
@@ -145,14 +165,15 @@ func (handler *_FlinkSessionClusterHandler) createDeployment(deployment *appsv1.
 	log.Info("Creating deployment", "deployment", *deployment)
 	var err = reconciler.Create(context, deployment)
 	if err != nil {
-		log.Info("Failed to create deployment", "error", err)
+		log.Error(err, "Failed to create deployment")
 	} else {
 		log.Info("Deployment created")
 	}
 	return err
 }
 
-func (handler *_FlinkSessionClusterHandler) updateManagerDeployment(deployment *appsv1.Deployment, component string) error {
+func (handler *_FlinkSessionClusterHandler) updateManagerDeployment(
+	deployment *appsv1.Deployment, component string) error {
 	var context = handler.context
 	var log = handler.log.WithValues("component", component)
 	var reconciler = handler.reconciler
@@ -160,12 +181,15 @@ func (handler *_FlinkSessionClusterHandler) updateManagerDeployment(deployment *
 	log.Info("Updating deployment", "deployment", deployment)
 	var err = reconciler.Update(context, deployment)
 	if err != nil {
-		log.Info("Failed to update deployment", "error", err)
+		log.Error(err, "Failed to update deployment")
+	} else {
+		log.Info("Deployment updated")
 	}
 	return err
 }
 
-func (handler *_FlinkSessionClusterHandler) createOrUpdateService(service *corev1.Service, component string) error {
+func (handler *_FlinkSessionClusterHandler) createOrUpdateService(
+	service *corev1.Service, component string) error {
 	var context = handler.context
 	var log = handler.log.WithValues("component", component)
 	var reconciler = handler.reconciler
@@ -183,12 +207,14 @@ func (handler *_FlinkSessionClusterHandler) createOrUpdateService(service *corev
 		err = handler.createService(service, component)
 	} else {
 		log.Info("Service already exists", "resource", currentService)
+		handler.observedJobManagerService = &currentService
 		// TODO(dagang): compare and update if needed.
 	}
 	return err
 }
 
-func (handler *_FlinkSessionClusterHandler) createService(service *corev1.Service, component string) error {
+func (handler *_FlinkSessionClusterHandler) createService(
+	service *corev1.Service, component string) error {
 	var context = handler.context
 	var log = handler.log.WithValues("component", component)
 	var reconciler = handler.reconciler
@@ -203,9 +229,87 @@ func (handler *_FlinkSessionClusterHandler) createService(service *corev1.Servic
 	return err
 }
 
-func (handler *_FlinkSessionClusterHandler) updateStatus(status string) error {
+func (handler *_FlinkSessionClusterHandler) updateClusterStatusIfNeeded() error {
+	var currentStatus = flinkoperatorv1alpha1.FlinkSessionClusterStatus{}
+	handler.flinkSessionCluster.Status.DeepCopyInto(&currentStatus)
+	// Reset timestamp
+	currentStatus.LastUpdateTime = ""
+
+	var newStatus = handler.getClusterStatus()
+	if newStatus != currentStatus {
+		handler.log.Info(
+			"Updating status",
+			"current",
+			handler.flinkSessionCluster.Status,
+			"new", newStatus)
+		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
+		return handler.updateClusterStatus(newStatus)
+	} else {
+		handler.log.Info("No status change")
+	}
+	return nil
+}
+
+func (handler *_FlinkSessionClusterHandler) getClusterStatus() flinkoperatorv1alpha1.FlinkSessionClusterStatus {
+	var status = flinkoperatorv1alpha1.FlinkSessionClusterStatus{}
+	var readyComponents = 0
+
+	// JobManager deployment.
+	if handler.observedJobManagerDeployment != nil {
+		status.Components.JobManagerDeployment.Name =
+			handler.observedJobManagerDeployment.ObjectMeta.Name
+		if handler.observedJobManagerDeployment.Status.AvailableReplicas <
+			handler.observedJobManagerDeployment.Status.Replicas ||
+			handler.observedJobManagerDeployment.Status.ReadyReplicas <
+				handler.observedJobManagerDeployment.Status.Replicas {
+			status.Components.JobManagerDeployment.State =
+				flinkoperatorv1alpha1.SessionClusterComponentStatusNotReady
+		} else {
+			status.Components.JobManagerDeployment.State =
+				flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+			readyComponents++
+		}
+	}
+
+	// JobManager service.
+	if handler.observedJobManagerService != nil {
+		status.Components.JobManagerService.Name =
+			handler.observedJobManagerService.ObjectMeta.Name
+		status.Components.JobManagerService.State =
+			flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+		readyComponents++
+	}
+
+	// TaskManager deployment.
+	if handler.observedTaskManagerDeployment != nil {
+		status.Components.TaskManagerDeployment.Name =
+			handler.observedTaskManagerDeployment.ObjectMeta.Name
+		if handler.observedTaskManagerDeployment.Status.AvailableReplicas <
+			handler.observedTaskManagerDeployment.Status.Replicas ||
+			handler.observedTaskManagerDeployment.Status.ReadyReplicas <
+				handler.observedTaskManagerDeployment.Status.Replicas {
+			status.Components.TaskManagerDeployment.State =
+				flinkoperatorv1alpha1.SessionClusterComponentStatusNotReady
+		} else {
+			status.Components.TaskManagerDeployment.State =
+				flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+			readyComponents++
+		}
+	}
+
+	if readyComponents < 3 {
+		status.State = flinkoperatorv1alpha1.SessionClusterStateReconciling
+	} else {
+		status.State = flinkoperatorv1alpha1.SessionClusterStateRunning
+	}
+
+	return status
+}
+
+func (handler *_FlinkSessionClusterHandler) updateClusterStatus(
+	status flinkoperatorv1alpha1.FlinkSessionClusterStatus) error {
 	var flinkSessionCluster = flinkoperatorv1alpha1.FlinkSessionCluster{}
 	handler.flinkSessionCluster.DeepCopyInto(&flinkSessionCluster)
-	flinkSessionCluster.Status = flinkoperatorv1alpha1.FlinkSessionClusterStatus{Status: status}
+	flinkSessionCluster.Status = status
 	return handler.reconciler.Update(handler.context, &flinkSessionCluster)
 }

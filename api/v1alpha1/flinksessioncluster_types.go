@@ -20,6 +20,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	SessionClusterStateReconciling = "Reconciling"
+	SessionClusterStateRunning     = "Running"
+)
+
+var (
+	SessionClusterComponentStatusNotReady = "Not Ready"
+	SessionClusterComponentStatusReady    = "Ready"
+)
+
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
 type ImageSpec struct {
 	// Flink image URI.
@@ -38,7 +48,7 @@ type JobManagerPorts struct {
 	Blob *int32 `json:"blob,omitempty"`
 
 	// Query port.
-	QueryPort *int32 `json:"query,omitempty"`
+	Query *int32 `json:"query,omitempty"`
 
 	// UI port.
 	UI *int32 `json:"ui,omitempty"`
@@ -95,13 +105,42 @@ type FlinkSessionClusterSpec struct {
 	TaskManagerSpec TaskManagerSpec `json:"taskManagerSpec"`
 }
 
+// FlinkSessionClusterComponentState defines the observed state of a component
+// of a FlinkSessionCluster.
+type FlinkSessionClusterComponentState struct {
+	// The resource name of the component.
+	Name string `json:"name"`
+
+	// The state of the component.
+	State string `json:"state"`
+}
+
+// FlinkSessionClusterComponentsStatus defines the observed status of the
+// components of a FlinkSessionCluster.
+type FlinkSessionClusterComponentsStatus struct {
+	// The state of JobManager deployment.
+	JobManagerDeployment FlinkSessionClusterComponentState `json:"jobManagerDeployment"`
+
+	// The state of JobManager service.
+	JobManagerService FlinkSessionClusterComponentState `json:"jobManagerService"`
+
+	// The state of TaskManager deployment.
+	TaskManagerDeployment FlinkSessionClusterComponentState `json:"taskManagerDeployment"`
+}
+
 // FlinkSessionClusterStatus defines the observed state of FlinkSessionCluster
 type FlinkSessionClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The status of the Flink cluster.
-	Status string `json:"status"`
+	// The overall state of the Flink cluster.
+	State string `json:"state"`
+
+	// The status of the components.
+	Components FlinkSessionClusterComponentsStatus `json:"components"`
+
+	// Last update timestamp for this status.
+	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true

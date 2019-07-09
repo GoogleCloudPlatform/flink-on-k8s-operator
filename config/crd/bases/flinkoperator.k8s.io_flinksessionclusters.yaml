@@ -459,11 +459,62 @@ spec:
           type: object
         status:
           properties:
-            status:
-              description: The status of the Flink cluster.
+            components:
+              description: The status of the components.
+              properties:
+                jobManagerDeployment:
+                  description: The state of JobManager deployment.
+                  properties:
+                    name:
+                      description: The resource name of the component.
+                      type: string
+                    state:
+                      description: The state of the component.
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
+                jobManagerService:
+                  description: The state of JobManager service.
+                  properties:
+                    name:
+                      description: The resource name of the component.
+                      type: string
+                    state:
+                      description: The state of the component.
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
+                taskManagerDeployment:
+                  description: The state of TaskManager deployment.
+                  properties:
+                    name:
+                      description: The resource name of the component.
+                      type: string
+                    state:
+                      description: The state of the component.
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
+              required:
+              - jobManagerDeployment
+              - jobManagerService
+              - taskManagerDeployment
+              type: object
+            lastUpdateTime:
+              description: Last update timestamp for this status.
+              type: string
+            state:
+              description: The overall state of the Flink cluster.
               type: string
           required:
-          - status
+          - state
+          - components
           type: object
       required:
       - spec

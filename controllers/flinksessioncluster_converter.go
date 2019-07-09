@@ -35,7 +35,7 @@ func getDesiredJobManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.F
 	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
-	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.QueryPort}
+	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
 	var jobManagerDeploymentName = clusterName + "-jobmanager"
 	var labels = map[string]string{
@@ -89,7 +89,7 @@ func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.Flin
 		TargetPort: intstr.FromString("blob")}
 	var queryPort = corev1.ServicePort{
 		Name:       "query",
-		Port:       *jobManagerSpec.Ports.QueryPort,
+		Port:       *jobManagerSpec.Ports.Query,
 		TargetPort: intstr.FromString("query")}
 	var uiPort = corev1.ServicePort{
 		Name:       "ui",
