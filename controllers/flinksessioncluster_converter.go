@@ -17,8 +17,11 @@ limitations under the License.
 package controllers
 
 import (
+	"fmt"
+
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -28,7 +31,8 @@ import (
 // underlying Kubernetes resource specs.
 
 // Gets the desired JobManager deployment spec from the FlinkSessionCluster spec.
-func getDesiredJobManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
+func getDesiredJobManagerDeployment(
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
 	var imageSpec = flinkSessionCluster.Spec.ImageSpec
@@ -60,11 +64,17 @@ func getDesiredJobManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.F
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						corev1.Container{
-							Name:  "jobmanager",
-							Image: *imageSpec.URI,
-							Args:  []string{"jobmanager"},
-							Ports: []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort},
-							Env:   []corev1.EnvVar{corev1.EnvVar{Name: "JOB_MANAGER_RPC_ADDRESS", Value: jobManagerDeploymentName}},
+							Name:            "jobmanager",
+							Image:           imageSpec.Name,
+							ImagePullPolicy: corev1.PullPolicy(*imageSpec.PullPolicy),
+							Args:            []string{"jobmanager"},
+							Ports:           []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "JOB_MANAGER_RPC_ADDRESS",
+									Value: jobManagerDeploymentName,
+								},
+							},
 						},
 					},
 				},
@@ -103,10 +113,11 @@ func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.Flin
 	}
 	var jobManagerService = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       clusterNamespace,
-			Name:            jobManagerServiceName,
-			OwnerReferences: []metav1.OwnerReference{toOwnerReference(flinkSessionCluster)},
-			Labels:          labels,
+			Namespace: clusterNamespace,
+			Name:      jobManagerServiceName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkSessionCluster)},
+			Labels: labels,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: labels,
@@ -117,7 +128,8 @@ func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.Flin
 }
 
 // Gets the desired TaskManager deployment spec from the FlinkSessionCluster spec.
-func getDesiredTaskManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
+func getDesiredTaskManagerDeployment(
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
 	var imageSpec = flinkSessionCluster.Spec.ImageSpec
@@ -134,13 +146,14 @@ func getDesiredTaskManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.
 	}
 	var taskManagerDeployment = appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       clusterNamespace,
-			Name:            taskManagerDeploymentName,
-			OwnerReferences: []metav1.OwnerReference{toOwnerReference(flinkSessionCluster)},
-			Labels:          labels,
+			Namespace: clusterNamespace,
+			Name:      taskManagerDeploymentName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkSessionCluster)},
+			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: taskManagerSpec.Replicas,
+			Replicas: &taskManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -149,11 +162,18 @@ func getDesiredTaskManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						corev1.Container{
-							Name:  "taskmanager",
-							Image: *imageSpec.URI,
-							Args:  []string{"taskmanager"},
-							Ports: []corev1.ContainerPort{dataPort, rpcPort, queryPort},
-							Env:   []corev1.EnvVar{corev1.EnvVar{Name: "JOB_MANAGER_RPC_ADDRESS", Value: jobManagerDeploymentName}},
+							Name:            "taskmanager",
+							Image:           imageSpec.Name,
+							ImagePullPolicy: corev1.PullPolicy(*imageSpec.PullPolicy),
+							Args:            []string{"taskmanager"},
+							Ports: []corev1.ContainerPort{
+								dataPort, rpcPort, queryPort},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "JOB_MANAGER_RPC_ADDRESS",
+									Value: jobManagerDeploymentName,
+								},
+							},
 						},
 					},
 				},
@@ -163,8 +183,77 @@ func getDesiredTaskManagerDeployment(flinkSessionCluster *flinkoperatorv1alpha1.
 	return taskManagerDeployment
 }
 
+// Gets the desired job spec from the FlinkSessionCluster spec.
+func getDesiredJob(
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) batchv1.Job {
+	var imageSpec = flinkSessionCluster.Spec.ImageSpec
+	var jobSpec = flinkSessionCluster.Spec.JobSpec
+	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
+	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
+	var clusterName = flinkSessionCluster.ObjectMeta.Name
+	var jobName = clusterName + "-job"
+	var jobManagerServiceName = clusterName + "-jobmanager"
+	var jobManagerAddress = fmt.Sprintf(
+		"%s:%d", jobManagerServiceName, *jobManagerSpec.Ports.UI)
+	var labels = map[string]string{
+		"cluster": clusterName,
+		"app":     "flink",
+	}
+	var jobArgs = []string{"./bin/flink", "run"}
+	jobArgs = append(jobArgs, "--jobmanager", jobManagerAddress)
+	if jobSpec.ClassName != nil {
+		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
+	}
+	if jobSpec.Savepoint != nil {
+		jobArgs = append(jobArgs, "--fromSavepoint", *jobSpec.Savepoint)
+	}
+	if jobSpec.AllowNonRestoredState != nil &&
+		*jobSpec.AllowNonRestoredState == true {
+		jobArgs = append(jobArgs, "--allowNonRestoredState")
+	}
+	if jobSpec.Parallelism != nil {
+		jobArgs = append(
+			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism))
+	}
+	if jobSpec.NoLoggingToStdout != nil &&
+		*jobSpec.NoLoggingToStdout == true {
+		jobArgs = append(jobArgs, "--sysoutLogging")
+	}
+	jobArgs = append(jobArgs, jobSpec.JarFile)
+	jobArgs = append(jobArgs, jobSpec.Args...)
+	var job = batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      jobName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkSessionCluster)},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:            "main",
+							Image:           imageSpec.Name,
+							ImagePullPolicy: corev1.PullPolicy(*imageSpec.PullPolicy),
+							Args:            jobArgs,
+						},
+					},
+					RestartPolicy: corev1.RestartPolicy(jobSpec.RestartPolicy),
+				},
+			},
+		},
+	}
+	return job
+}
+
 // Converts the FlinkSessionCluster as owner reference for its child resources.
-func toOwnerReference(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) metav1.OwnerReference {
+func toOwnerReference(
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         flinkSessionCluster.APIVersion,
 		Kind:               flinkSessionCluster.Kind,

@@ -82,3 +82,21 @@ rules:
   - services/status
   verbs:
   - get
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get

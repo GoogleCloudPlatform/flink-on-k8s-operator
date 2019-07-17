@@ -4,19 +4,28 @@ metadata:
   name: flinksessioncluster-sample
 spec:
   name: my-flink-cluster
-  imageSpec:
-    uri: flink:1.8.0
-    pullPlicy: Always
-  jobManagerSpec:
+  image:
+    name: flink:1.8.0
+    pullPolicy: Always
+  jobManager:
     replicas: 1
     ports:
       rpc: 6123
       blob: 6124
       query: 6125
       ui: 8081
-  taskManagerSpec:
+  taskManager:
     replicas: 2
     ports:
       data: 6121
       rpc: 6122
       query: 6125
+  job:
+    jarFile: ./examples/batch/WordCount.jar
+    className: org.apache.flink.examples.java.wordcount.WordCount
+    args: ["--input", "./README.txt"]
+    noLoggingToStdout: false
+    savepoint: gs://my-flink-savepoints/savepoint-1234
+    allowNonRestoredState: true
+    parallelism: 4
+    restartPolicy: OnFailure

@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,6 +43,8 @@ type FlinkSessionClusterReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 
 // Reconcile the observed state towards the desired state for a FlinkSessionCluster custom resource.
 func (reconciler *FlinkSessionClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
@@ -62,6 +65,7 @@ func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(mgr ctrl.Manag
 		For(&flinkoperatorv1alpha1.FlinkSessionCluster{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
+		Owns(&batchv1.Job{}).
 		Complete(reconciler)
 }
 
@@ -76,6 +80,7 @@ type _FlinkSessionClusterHandler struct {
 	observedJobManagerDeployment  *appsv1.Deployment
 	observedJobManagerService     *corev1.Service
 	observedTaskManagerDeployment *appsv1.Deployment
+	observedJob                   *batchv1.Job
 }
 
 func (handler *_FlinkSessionClusterHandler) Reconcile(
@@ -115,6 +120,19 @@ func (handler *_FlinkSessionClusterHandler) Reconcile(
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// (Optional) Submit job
+	if flinkSessionCluster.Status.State ==
+		flinkoperatorv1alpha1.ClusterState.Running {
+		var job = getDesiredJob(flinkSessionCluster)
+		err = handler.submitJobIfNeeded(&job)
+		if err != nil {
+			log.Error(err, "Failed to submit job.")
+			return ctrl.Result{}, err
+		}
+	}
+
+	// TODO(dagang): Stop the cluster after the job finishes.
 
 	// Update cluster status if needed.
 	err = handler.updateClusterStatusIfNeeded()
@@ -195,19 +213,19 @@ func (handler *_FlinkSessionClusterHandler) createOrUpdateService(
 	var reconciler = handler.reconciler
 
 	// Check if service already exists.
-	var currentService = corev1.Service{}
+	var observedService = corev1.Service{}
 	var err = reconciler.Get(
 		context,
 		types.NamespacedName{
 			Namespace: service.ObjectMeta.Namespace,
 			Name:      service.Name,
 		},
-		&currentService)
+		&observedService)
 	if err != nil {
 		err = handler.createService(service, component)
 	} else {
-		log.Info("Service already exists", "resource", currentService)
-		handler.observedJobManagerService = &currentService
+		log.Info("JobManager service already exists", "resource", observedService)
+		handler.observedJobManagerService = &observedService
 		// TODO(dagang): compare and update if needed.
 	}
 	return err
@@ -263,10 +281,10 @@ func (handler *_FlinkSessionClusterHandler) getClusterStatus() flinkoperatorv1al
 			handler.observedJobManagerDeployment.Status.ReadyReplicas <
 				handler.observedJobManagerDeployment.Status.Replicas {
 			status.Components.JobManagerDeployment.State =
-				flinkoperatorv1alpha1.SessionClusterComponentStatusNotReady
+				flinkoperatorv1alpha1.ClusterComponentState.NotReady
 		} else {
 			status.Components.JobManagerDeployment.State =
-				flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+				flinkoperatorv1alpha1.ClusterComponentState.Ready
 			readyComponents++
 		}
 	}
@@ -276,7 +294,7 @@ func (handler *_FlinkSessionClusterHandler) getClusterStatus() flinkoperatorv1al
 		status.Components.JobManagerService.Name =
 			handler.observedJobManagerService.ObjectMeta.Name
 		status.Components.JobManagerService.State =
-			flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+			flinkoperatorv1alpha1.ClusterComponentState.Ready
 		readyComponents++
 	}
 
@@ -289,18 +307,33 @@ func (handler *_FlinkSessionClusterHandler) getClusterStatus() flinkoperatorv1al
 			handler.observedTaskManagerDeployment.Status.ReadyReplicas <
 				handler.observedTaskManagerDeployment.Status.Replicas {
 			status.Components.TaskManagerDeployment.State =
-				flinkoperatorv1alpha1.SessionClusterComponentStatusNotReady
+				flinkoperatorv1alpha1.ClusterComponentState.NotReady
 		} else {
 			status.Components.TaskManagerDeployment.State =
-				flinkoperatorv1alpha1.SessionClusterComponentStatusReady
+				flinkoperatorv1alpha1.ClusterComponentState.Ready
 			readyComponents++
 		}
 	}
 
+	// (Optional) Job.
+	if handler.observedJob != nil {
+		status.Job = new(flinkoperatorv1alpha1.JobStatus)
+		status.Job.Name = handler.observedJob.ObjectMeta.Name
+		if handler.observedJob.Status.Active > 0 {
+			status.Job.State = flinkoperatorv1alpha1.JobState.Running
+		} else if handler.observedJob.Status.Failed > 0 {
+			status.Job.State = flinkoperatorv1alpha1.JobState.Failed
+		} else if handler.observedJob.Status.Succeeded > 0 {
+			status.Job.State = flinkoperatorv1alpha1.JobState.Succeeded
+		} else {
+			status.Job.State = flinkoperatorv1alpha1.JobState.Unknown
+		}
+	}
+
 	if readyComponents < 3 {
-		status.State = flinkoperatorv1alpha1.SessionClusterStateReconciling
+		status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
 	} else {
-		status.State = flinkoperatorv1alpha1.SessionClusterStateRunning
+		status.State = flinkoperatorv1alpha1.ClusterState.Running
 	}
 
 	return status
@@ -312,4 +345,42 @@ func (handler *_FlinkSessionClusterHandler) updateClusterStatus(
 	handler.flinkSessionCluster.DeepCopyInto(&flinkSessionCluster)
 	flinkSessionCluster.Status = status
 	return handler.reconciler.Update(handler.context, &flinkSessionCluster)
+}
+
+func (handler *_FlinkSessionClusterHandler) submitJobIfNeeded(job *batchv1.Job) error {
+	var context = handler.context
+	var reconciler = handler.reconciler
+	var log = handler.log
+
+	// Check if the job already exists.
+	var observedJob = batchv1.Job{}
+	var err = reconciler.Get(
+		context,
+		types.NamespacedName{
+			Namespace: job.ObjectMeta.Namespace,
+			Name:      job.Name,
+		},
+		&observedJob)
+	if err != nil {
+		err = handler.submitJob(job)
+	} else {
+		log.Info("Job already exists", "resource", observedJob)
+		handler.observedJob = &observedJob
+	}
+	return err
+}
+
+func (handler *_FlinkSessionClusterHandler) submitJob(job *batchv1.Job) error {
+	var context = handler.context
+	var log = handler.log
+	var reconciler = handler.reconciler
+
+	log.Info("Submitting job", "resource", *job)
+	var err = reconciler.Create(context, job)
+	if err != nil {
+		log.Info("Failed to submitted job", "error", err)
+	} else {
+		log.Info("Job submitted")
+	}
+	return err
 }

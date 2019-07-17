@@ -18,13 +18,15 @@ package main
 
 import (
 	"flag"
+	"os"
+
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	"github.com/googlecloudplatform/flink-operator/controllers"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
@@ -37,6 +39,7 @@ var (
 
 func init() {
 	appsv1.AddToScheme(scheme)
+	batchv1.AddToScheme(scheme)
 	corev1.AddToScheme(scheme)
 	flinkoperatorv1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
