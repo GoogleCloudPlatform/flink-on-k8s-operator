@@ -30,9 +30,33 @@ import (
 // Converter which converts the FlinkSessionCluster spec to the desired
 // underlying Kubernetes resource specs.
 
+// _DesiredClusterState holds desired state of a cluster.
+type _DesiredClusterState struct {
+	jmDeployment *appsv1.Deployment
+	jmService    *corev1.Service
+	tmDeployment *appsv1.Deployment
+	job          *batchv1.Job
+}
+
+// Gets the desired state of a cluster.
+func getDesiredClusterState(
+	cluster *flinkoperatorv1alpha1.FlinkSessionCluster) _DesiredClusterState {
+	// The cluster has been deleted, all resources should be cleaned up.
+	if cluster == nil {
+		return _DesiredClusterState{}
+	} else {
+		return _DesiredClusterState{
+			jmDeployment: getDesiredJobManagerDeployment(cluster),
+			jmService:    getDesiredJobManagerService(cluster),
+			tmDeployment: getDesiredTaskManagerDeployment(cluster),
+			job:          getDesiredJob(cluster),
+		}
+	}
+}
+
 // Gets the desired JobManager deployment spec from the FlinkSessionCluster spec.
 func getDesiredJobManagerDeployment(
-	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) *appsv1.Deployment {
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
 	var imageSpec = flinkSessionCluster.Spec.ImageSpec
@@ -41,13 +65,13 @@ func getDesiredJobManagerDeployment(
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
-	var jobManagerDeploymentName = clusterName + "-jobmanager"
+	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
 		"app":       "flink",
 		"component": "jobmanager",
 	}
-	var jobManagerDeployment = appsv1.Deployment{
+	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
 			Name:            jobManagerDeploymentName,
@@ -84,8 +108,9 @@ func getDesiredJobManagerDeployment(
 	return jobManagerDeployment
 }
 
-// Gets the desired JobManager service spec from the FlinkSessionCluster spec.
-func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) corev1.Service {
+// Gets the desired JobManager service spec from a cluster spec.
+func getDesiredJobManagerService(
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) *corev1.Service {
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
 	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
@@ -105,13 +130,13 @@ func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.Flin
 		Name:       "ui",
 		Port:       *jobManagerSpec.Ports.UI,
 		TargetPort: intstr.FromString("ui")}
-	var jobManagerServiceName = clusterName + "-jobmanager"
+	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
 		"app":       "flink",
 		"component": "jobmanager",
 	}
-	var jobManagerService = corev1.Service{
+	var jobManagerService = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
 			Name:      jobManagerServiceName,
@@ -127,9 +152,9 @@ func getDesiredJobManagerService(flinkSessionCluster *flinkoperatorv1alpha1.Flin
 	return jobManagerService
 }
 
-// Gets the desired TaskManager deployment spec from the FlinkSessionCluster spec.
+// Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
-	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) appsv1.Deployment {
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) *appsv1.Deployment {
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
 	var imageSpec = flinkSessionCluster.Spec.ImageSpec
@@ -137,14 +162,14 @@ func getDesiredTaskManagerDeployment(
 	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
-	var taskManagerDeploymentName = clusterName + "-taskmanager"
-	var jobManagerDeploymentName = clusterName + "-jobmanager"
+	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
+	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
 		"app":       "flink",
 		"component": "taskmanager",
 	}
-	var taskManagerDeployment = appsv1.Deployment{
+	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
 			Name:      taskManagerDeploymentName,
@@ -183,15 +208,19 @@ func getDesiredTaskManagerDeployment(
 	return taskManagerDeployment
 }
 
-// Gets the desired job spec from the FlinkSessionCluster spec.
+// Gets the desired job spec from a cluster spec.
 func getDesiredJob(
-	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) batchv1.Job {
-	var imageSpec = flinkSessionCluster.Spec.ImageSpec
+	flinkSessionCluster *flinkoperatorv1alpha1.FlinkSessionCluster) *batchv1.Job {
 	var jobSpec = flinkSessionCluster.Spec.JobSpec
+	if jobSpec == nil {
+		return nil
+	}
+
+	var imageSpec = flinkSessionCluster.Spec.ImageSpec
 	var jobManagerSpec = flinkSessionCluster.Spec.JobManagerSpec
 	var clusterNamespace = flinkSessionCluster.ObjectMeta.Namespace
 	var clusterName = flinkSessionCluster.ObjectMeta.Name
-	var jobName = clusterName + "-job"
+	var jobName = getJobName(clusterName)
 	var jobManagerServiceName = clusterName + "-jobmanager"
 	var jobManagerAddress = fmt.Sprintf(
 		"%s:%d", jobManagerServiceName, *jobManagerSpec.Ports.UI)
@@ -221,7 +250,7 @@ func getDesiredJob(
 	}
 	jobArgs = append(jobArgs, jobSpec.JarFile)
 	jobArgs = append(jobArgs, jobSpec.Args...)
-	var job = batchv1.Job{
+	var job = &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
 			Name:      jobName,
@@ -262,4 +291,24 @@ func toOwnerReference(
 		Controller:         &[]bool{true}[0],
 		BlockOwnerDeletion: &[]bool{false}[0],
 	}
+}
+
+// Gets JobManager deployment name
+func getJobManagerDeploymentName(clusterName string) string {
+	return clusterName + "-jobmanager"
+}
+
+// Gets JobManager service name
+func getJobManagerServiceName(clusterName string) string {
+	return clusterName + "-jobmanager"
+}
+
+// Gets TaskManager name
+func getTaskManagerDeploymentName(clusterName string) string {
+	return clusterName + "-taskmanager"
+}
+
+// Gets Job name
+func getJobName(clusterName string) string {
+	return clusterName + "-job"
 }

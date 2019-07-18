@@ -194,8 +194,12 @@ type FlinkSessionClusterComponentsStatus struct {
 
 	// The state of TaskManager deployment.
 	TaskManagerDeployment FlinkSessionClusterComponentState `json:"taskManagerDeployment"`
+
+	// The status of the job, available only when JobSpec is provided.
+	Job *JobStatus `json:"job,omitempty"`
 }
 
+// JobStatus defines the status of a job.
 type JobStatus struct {
 	// The name of the job resource.
 	Name string `json:"name"`
@@ -211,12 +215,8 @@ type FlinkSessionClusterStatus struct {
 
 	// The overall state of the Flink cluster.
 	State string `json:"state"`
-
 	// The status of the components.
 	Components FlinkSessionClusterComponentsStatus `json:"components"`
-
-	// The status of the (optional) job.
-	Job *JobStatus `json:"job,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`

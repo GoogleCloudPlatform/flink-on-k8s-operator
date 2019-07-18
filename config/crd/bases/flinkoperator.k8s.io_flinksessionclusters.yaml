@@ -502,6 +502,20 @@ spec:
             components:
               description: The status of the components.
               properties:
+                job:
+                  description: The status of the job, available only when JobSpec
+                    is provided.
+                  properties:
+                    name:
+                      description: The name of the job resource.
+                      type: string
+                    state:
+                      description: The state of the job.
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
                 jobManagerDeployment:
                   description: The state of JobManager deployment.
                   properties:
@@ -545,19 +559,6 @@ spec:
               - jobManagerDeployment
               - jobManagerService
               - taskManagerDeployment
-              type: object
-            job:
-              description: The status of the (optional) job.
-              properties:
-                name:
-                  description: The name of the job resource.
-                  type: string
-                state:
-                  description: The state of the job.
-                  type: string
-              required:
-              - name
-              - state
               type: object
             lastUpdateTime:
               description: Last update timestamp for this status.
