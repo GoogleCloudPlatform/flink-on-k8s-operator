@@ -12,23 +12,26 @@ metadata:
   namespace: system
   labels:
     control-plane: controller-manager
+    app: flink-operator
 spec:
   selector:
     matchLabels:
       control-plane: controller-manager
+      app: flink-operator
   replicas: 1
   template:
     metadata:
       labels:
         control-plane: controller-manager
+        app: flink-operator
     spec:
       containers:
-      - command:
-        - /manager
+      - name: flink-operator
+        image: flink-operator:latest
+        command:      
+        - /flink-operator
         args:
         - --enable-leader-election
-        image: controller:latest
-        name: manager
         resources:
           limits:
             cpu: 100m

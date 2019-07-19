@@ -1,18 +1,18 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-all: manager
+all: flink-operator
 
 # Run tests
 test: generate fmt vet manifests
 	go test ./api/... ./controllers/... -coverprofile cover.out
 
-# Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
+# Build flink-operator binary
+flink-operator: generate fmt vet
+	go build -o bin/flink-operator main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -22,10 +22,17 @@ run: generate fmt vet
 install: manifests
 	kubectl apply -f config/crd/bases
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+# Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests
 	kubectl apply -f config/crd/bases
 	kustomize build config/default | kubectl apply -f -
+
+undeploy:
+	kustomize build config/default | kubectl delete -f - || true
+
+# Deploy the sample Flink clusters in the Kubernetes cluster
+samples:
+	kubectl apply -f config/samples/
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -46,7 +53,7 @@ generate: controller-gen
 # Build the docker image
 docker-build: test
 	docker build . -t ${IMG}
-	@echo "updating kustomize image patch file for manager resource"
+	@echo "updating kustomize image patch file for Flink Operator resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
 
 # Push the docker image
