@@ -461,9 +461,6 @@ spec:
                   format: int32
                   type: integer
               type: object
-            name:
-              description: The name of the Flink cluster.
-              type: string
             taskManager:
               description: Flink TaskManager spec.
               properties:
@@ -491,7 +488,6 @@ spec:
               - replicas
               type: object
           required:
-          - name
           - image
           - jobManager
           - taskManager

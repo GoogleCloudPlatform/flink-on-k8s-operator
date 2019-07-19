@@ -29,6 +29,7 @@ deploy: manifests
 
 undeploy:
 	kustomize build config/default | kubectl delete -f - || true
+	kubectl delete -f config/crd/bases || true
 
 # Deploy the sample Flink clusters in the Kubernetes cluster
 samples:

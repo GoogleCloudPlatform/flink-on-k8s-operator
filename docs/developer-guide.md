@@ -3,7 +3,7 @@
 ## Project overview
 
 The Flink Operator is built on top of the Kubernetes [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)
-library, and the project structure and boilerplate files are generated with [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).
+library. The project structure and boilerplate files are generated with [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).
 Knowledge of controller-runtime and Kubebuilder is required to better understand this project.
 
 The Flink custom resources are defined in Go structs, e.g. [FlinkCluster](../api/v1alpha1/flinkcluster_types.go),
@@ -16,6 +16,16 @@ The [Dockerfile](../Dockerfile) defines the steps of building the Flink Operator
 
 The [Makefile](../Makefile) includes various actions you can take to generate code, build the Flink Operator binary, run
 unit tests, build and push docker image, deploy the Flink Operator to a Kubernetes cluster.
+
+## Dependencies
+
+The following dependencies are required on your local machine to generate, build and deploy the operator:
+
+* [Go v1.12+](https://golang.org/)
+* [Docker](https://www.docker.com/)
+* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* [Kustomize v2](https://github.com/kubernetes-sigs/kustomize) (v3 is not compatible)
+* [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
 
 ## Local build and test
 
@@ -50,7 +60,9 @@ registry with
 make docker-build docker-push IMG=<tag>
 ```
 
-Depending on which image registry you want to use, choose a tag accordingly, e.g., if you are using [Google Container Registry](https://cloud.google.com/container-registry/docs/) you want to use a tag like `gcr.io/<project>/flink-operator:latest`.
+Depending on which image registry you want to use, choose a tag accordingly, e.g., if you are using
+[Google Container Registry](https://cloud.google.com/container-registry/docs/) you want to use a tag like
+`gcr.io/<project>/flink-operator:latest`.
 
 ## Deploy the operator to a running Kubernetes cluster
 
@@ -65,6 +77,13 @@ Deploy the Flink Custom Resource Definitions and the Flink Operator to the clust
 
 ```bash
 make deploy
+```
+
+If you see the following error, it is likely that you are not using Kustomize v2.
+
+```
+Error: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
+error: no objects passed to apply
 ```
 
 After that, you can verify CRDs are created with
@@ -99,10 +118,17 @@ language of Flink. You can then create custom resources representing Flink sessi
 operator will detect the custom resources automatically, then create the actual clusters optionally run jobs, and update
 status in the custom resources.
 
-Deploy the [sample Flink clusters](../config/samples/flinkoperator_v1alpha1_flinkcluster.yaml) with
+Create a [sample Flink session cluster](../config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml) custom
+resource with
 
 ```bash
-make samples
+kubectl apply -f config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml
+```
+
+and a [sample Flink job cluster](../config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) custom resource with
+
+```bash
+kubectl apply -f config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml
 ```
 
 After that you can check the operator logs with
@@ -114,12 +140,12 @@ kubectl logs -n flink-operator-system -l app=flink-operator --all-containers -f 
 or check the custom resources with
 
 ```bash
-kubectl describe flinkclusters
+kubectl get flinkclusters
 ```
 
 ## Undeploy the operator
 
-Undeploy the operator from the Kubernetes cluster with
+Undeploy the operator and CRDs from the Kubernetes cluster with
 
 ```
 make undeploy

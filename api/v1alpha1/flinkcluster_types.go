@@ -155,9 +155,6 @@ type FlinkClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The name of the Flink cluster.
-	Name string `json:"name"`
-
 	// Flink image spec for the cluster's components.
 	ImageSpec ImageSpec `json:"image"`
 

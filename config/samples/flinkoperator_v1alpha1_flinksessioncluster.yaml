@@ -1,0 +1,21 @@
+apiVersion: flinkoperator.k8s.io/v1alpha1
+kind: FlinkCluster
+metadata:
+  name: flinksessioncluster-sample
+spec:
+  image:
+    name: flink:1.8.0
+    pullPolicy: Always
+  jobManager:
+    replicas: 1
+    ports:
+      rpc: 6123
+      blob: 6124
+      query: 6125
+      ui: 8081
+  taskManager:
+    replicas: 2
+    ports:
+      data: 6121
+      rpc: 6122
+      query: 6125
