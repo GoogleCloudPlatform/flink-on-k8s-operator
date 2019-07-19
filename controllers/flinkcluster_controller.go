@@ -29,14 +29,14 @@ import (
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 )
 
-// FlinkSessionClusterReconciler reconciles a FlinkSessionCluster object
-type FlinkSessionClusterReconciler struct {
+// FlinkClusterReconciler reconciles a FlinkCluster object
+type FlinkClusterReconciler struct {
 	client.Client
 	Log logr.Logger
 }
 
-// +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinksessionclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinksessionclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -44,35 +44,35 @@ type FlinkSessionClusterReconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 
-// Reconcile the observed state towards the desired state for a FlinkSessionCluster custom resource.
-func (reconciler *FlinkSessionClusterReconciler) Reconcile(
+// Reconcile the observed state towards the desired state for a FlinkCluster custom resource.
+func (reconciler *FlinkClusterReconciler) Reconcile(
 	request ctrl.Request) (ctrl.Result, error) {
-	var handler = _FlinkSessionClusterHandler{
+	var handler = _FlinkClusterHandler{
 		k8sClient: reconciler,
 		request:   request,
 		context:   context.Background(),
 		log: reconciler.Log.WithValues(
-			"flinksessioncluster", request.NamespacedName),
+			"flinkcluster", request.NamespacedName),
 		observedState: _ObservedClusterState{},
 	}
 	return handler.Reconcile(request)
 }
 
 // SetupWithManager registers this reconciler with the controller manager and
-// starts watching FlinkSessionCluster, Deployment and Service resources.
-func (reconciler *FlinkSessionClusterReconciler) SetupWithManager(
+// starts watching FlinkCluster, Deployment and Service resources.
+func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&flinkoperatorv1alpha1.FlinkSessionCluster{}).
+		For(&flinkoperatorv1alpha1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
 		Complete(reconciler)
 }
 
-// _FlinkSessionClusterHandler holds the context and state for a
+// _FlinkClusterHandler holds the context and state for a
 // reconcile request.
-type _FlinkSessionClusterHandler struct {
+type _FlinkClusterHandler struct {
 	k8sClient     client.Client
 	request       ctrl.Request
 	context       context.Context
@@ -81,7 +81,7 @@ type _FlinkSessionClusterHandler struct {
 	desiredState  _DesiredClusterState
 }
 
-func (handler *_FlinkSessionClusterHandler) Reconcile(
+func (handler *_FlinkClusterHandler) Reconcile(
 	request ctrl.Request) (ctrl.Result, error) {
 	var k8sClient = handler.k8sClient
 	var log = handler.log

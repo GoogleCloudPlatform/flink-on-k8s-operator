@@ -6,11 +6,11 @@ The Flink Operator is built on top of the Kubernetes [controller-runtime](https:
 library, and the project structure and boilerplate files are generated with [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).
 Knowledge of controller-runtime and Kubebuilder is required to better understand this project.
 
-The Flink custom resources are defined in Go structs, e.g. [FlinkSessionCluster](../api/v1alpha1/flinksessioncluster_types.go),
+The Flink custom resources are defined in Go structs, e.g. [FlinkCluster](../api/v1alpha1/flinkcluster_types.go),
 then Kubebuild generates related other Go files and YAML files, e.g.
-[flinksessionclusters.yaml](../config/crd/bases/flinkoperator.k8s.io_flinksessionclusters.yaml).
+[flinkclusters.yaml](../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml).
 The custom logic for reconciling a Flink custom resource is inside of the [controllers](../controllers) directory, e.g.,
-[flinksessioncluster_controller.go](../controllers/flinksessioncluster_controller.go).
+[flinkcluster_controller.go](../controllers/flinkcluster_controller.go).
 
 The [Dockerfile](../Dockerfile) defines the steps of building the Flink Operator image.
 
@@ -93,9 +93,13 @@ kubectl logs -n flink-operator-system -l app=flink-operator --all-containers
 
 ## Create a sample Flink cluster
 
-After deploying the Flink CRDs and the Flink Operator to a Kubernetes cluster, the operator serves as a control plane for Flink. In other words, previously the cluster only understands the language of Kubernetes, now it understands the language of Flink. You can then create custom resources representing Flink session clusters or job clusters, the operator will detect the custom resources automatically, then create the actual clusters optionally run jobs, and update status in the custom resources.
+After deploying the Flink CRDs and the Flink Operator to a Kubernetes cluster, the operator serves as a control plane
+for Flink. In other words, previously the cluster only understands the language of Kubernetes, now it understands the
+language of Flink. You can then create custom resources representing Flink session clusters or job clusters, the
+operator will detect the custom resources automatically, then create the actual clusters optionally run jobs, and update
+status in the custom resources.
 
-Deploy the sample Flink clusters with the following command
+Deploy the [sample Flink clusters](../config/samples/flinkoperator_v1alpha1_flinkcluster.yaml) with
 
 ```bash
 make samples
@@ -110,8 +114,7 @@ kubectl logs -n flink-operator-system -l app=flink-operator --all-containers -f 
 or check the custom resources with
 
 ```bash
-kubectl describe flinksessionclusters
-kubectl describe flinkjobclusters
+kubectl describe flinkclusters
 ```
 
 ## Undeploy the operator

@@ -150,8 +150,8 @@ type JobSpec struct {
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// FlinkSessionClusterSpec defines the desired state of FlinkSessionCluster
-type FlinkSessionClusterSpec struct {
+// FlinkClusterSpec defines the desired state of FlinkCluster
+type FlinkClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -173,9 +173,9 @@ type FlinkSessionClusterSpec struct {
 	JobSpec *JobSpec `json:"job,omitempty"`
 }
 
-// FlinkSessionClusterComponentState defines the observed state of a component
-// of a FlinkSessionCluster.
-type FlinkSessionClusterComponentState struct {
+// FlinkClusterComponentState defines the observed state of a component
+// of a FlinkCluster.
+type FlinkClusterComponentState struct {
 	// The resource name of the component.
 	Name string `json:"name"`
 
@@ -183,17 +183,17 @@ type FlinkSessionClusterComponentState struct {
 	State string `json:"state"`
 }
 
-// FlinkSessionClusterComponentsStatus defines the observed status of the
-// components of a FlinkSessionCluster.
-type FlinkSessionClusterComponentsStatus struct {
+// FlinkClusterComponentsStatus defines the observed status of the
+// components of a FlinkCluster.
+type FlinkClusterComponentsStatus struct {
 	// The state of JobManager deployment.
-	JobManagerDeployment FlinkSessionClusterComponentState `json:"jobManagerDeployment"`
+	JobManagerDeployment FlinkClusterComponentState `json:"jobManagerDeployment"`
 
 	// The state of JobManager service.
-	JobManagerService FlinkSessionClusterComponentState `json:"jobManagerService"`
+	JobManagerService FlinkClusterComponentState `json:"jobManagerService"`
 
 	// The state of TaskManager deployment.
-	TaskManagerDeployment FlinkSessionClusterComponentState `json:"taskManagerDeployment"`
+	TaskManagerDeployment FlinkClusterComponentState `json:"taskManagerDeployment"`
 
 	// The status of the job, available only when JobSpec is provided.
 	Job *JobStatus `json:"job,omitempty"`
@@ -208,15 +208,15 @@ type JobStatus struct {
 	State string `json:"state"`
 }
 
-// FlinkSessionClusterStatus defines the observed state of FlinkSessionCluster
-type FlinkSessionClusterStatus struct {
+// FlinkClusterStatus defines the observed state of FlinkCluster
+type FlinkClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// The overall state of the Flink cluster.
 	State string `json:"state"`
 	// The status of the components.
-	Components FlinkSessionClusterComponentsStatus `json:"components"`
+	Components FlinkClusterComponentsStatus `json:"components"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
@@ -224,24 +224,24 @@ type FlinkSessionClusterStatus struct {
 
 // +kubebuilder:object:root=true
 
-// FlinkSessionCluster is the Schema for the flinksessionclusters API
-type FlinkSessionCluster struct {
+// FlinkCluster is the Schema for the flinkclusters API
+type FlinkCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FlinkSessionClusterSpec   `json:"spec"`
-	Status FlinkSessionClusterStatus `json:"status,omitempty"`
+	Spec   FlinkClusterSpec   `json:"spec"`
+	Status FlinkClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// FlinkSessionClusterList contains a list of FlinkSessionCluster
-type FlinkSessionClusterList struct {
+// FlinkClusterList contains a list of FlinkCluster
+type FlinkClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []FlinkSessionCluster `json:"items"`
+	Items           []FlinkCluster `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&FlinkSessionCluster{}, &FlinkSessionClusterList{})
+	SchemeBuilder.Register(&FlinkCluster{}, &FlinkClusterList{})
 }

@@ -1,7 +1,0 @@
-apiVersion: flinkoperator.k8s.io/v1alpha1
-kind: FlinkJobCluster
-metadata:
-  name: flinkjobcluster-sample
-spec:
-  # Add fields here
-  foo: bar

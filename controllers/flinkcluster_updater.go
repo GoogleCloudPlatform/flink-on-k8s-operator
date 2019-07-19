@@ -45,7 +45,7 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 	}
 
 	// Current status recorded in the cluster's status field.
-	var currentStatus = flinkoperatorv1alpha1.FlinkSessionClusterStatus{}
+	var currentStatus = flinkoperatorv1alpha1.FlinkClusterStatus{}
 	updater.observedState.cluster.Status.DeepCopyInto(&currentStatus)
 	currentStatus.LastUpdateTime = ""
 
@@ -70,8 +70,8 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 	return nil
 }
 
-func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha1.FlinkSessionClusterStatus {
-	var status = flinkoperatorv1alpha1.FlinkSessionClusterStatus{}
+func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha1.FlinkClusterStatus {
+	var status = flinkoperatorv1alpha1.FlinkClusterStatus{}
 	var readyComponents = 0
 
 	// JobManager deployment.
@@ -146,8 +146,8 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 }
 
 func (updater *_ClusterStatusUpdater) isStatusChanged(
-	currentStatus flinkoperatorv1alpha1.FlinkSessionClusterStatus,
-	newStatus flinkoperatorv1alpha1.FlinkSessionClusterStatus) bool {
+	currentStatus flinkoperatorv1alpha1.FlinkClusterStatus,
+	newStatus flinkoperatorv1alpha1.FlinkClusterStatus) bool {
 	var changed = false
 	if newStatus.State != currentStatus.State {
 		changed = true
@@ -211,9 +211,9 @@ func (updater *_ClusterStatusUpdater) isStatusChanged(
 }
 
 func (updater *_ClusterStatusUpdater) updateClusterStatus(
-	status flinkoperatorv1alpha1.FlinkSessionClusterStatus) error {
-	var flinkSessionCluster = flinkoperatorv1alpha1.FlinkSessionCluster{}
-	updater.observedState.cluster.DeepCopyInto(&flinkSessionCluster)
-	flinkSessionCluster.Status = status
-	return updater.k8sClient.Update(updater.context, &flinkSessionCluster)
+	status flinkoperatorv1alpha1.FlinkClusterStatus) error {
+	var flinkCluster = flinkoperatorv1alpha1.FlinkCluster{}
+	updater.observedState.cluster.DeepCopyInto(&flinkCluster)
+	flinkCluster.Status = status
+	return updater.k8sClient.Update(updater.context, &flinkCluster)
 }

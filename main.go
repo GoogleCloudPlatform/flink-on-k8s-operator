@@ -65,20 +65,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = (&controllers.FlinkSessionClusterReconciler{
+	err = (&controllers.FlinkClusterReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FlinkSessionCluster"),
+		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
 	}).SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FlinkSessionCluster")
-		os.Exit(1)
-	}
-	err = (&controllers.FlinkJobClusterReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FlinkJobCluster"),
-	}).SetupWithManager(mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FlinkJobCluster")
+		setupLog.Error(err, "unable to create controller", "controller", "FlinkCluster")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

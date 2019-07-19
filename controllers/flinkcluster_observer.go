@@ -40,7 +40,7 @@ type _ClusterStateObserver struct {
 
 // _ObservedClusterState holds observed state of a cluster.
 type _ObservedClusterState struct {
-	cluster      *flinkoperatorv1alpha1.FlinkSessionCluster
+	cluster      *flinkoperatorv1alpha1.FlinkCluster
 	jmDeployment *appsv1.Deployment
 	jmService    *corev1.Service
 	tmDeployment *appsv1.Deployment
@@ -55,7 +55,7 @@ func (observer *_ClusterStateObserver) observe(
 	var log = observer.log
 
 	// Cluster state.
-	var observedCluster = new(flinkoperatorv1alpha1.FlinkSessionCluster)
+	var observedCluster = new(flinkoperatorv1alpha1.FlinkCluster)
 	err = observer.observeCluster(observedCluster)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -135,7 +135,7 @@ func (observer *_ClusterStateObserver) observe(
 }
 
 func (observer *_ClusterStateObserver) observeCluster(
-	cluster *flinkoperatorv1alpha1.FlinkSessionCluster) error {
+	cluster *flinkoperatorv1alpha1.FlinkCluster) error {
 	return observer.k8sClient.Get(
 		observer.context, observer.request.NamespacedName, cluster)
 }

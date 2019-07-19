@@ -28,10 +28,10 @@ import (
 // These tests are written in BDD-style using Ginkgo framework. Refer to
 // http://onsi.github.io/ginkgo to learn more.
 
-var _ = Describe("FlinkSessionCluster", func() {
+var _ = Describe("FlinkCluster", func() {
 	var (
 		key              types.NamespacedName
-		created, fetched *FlinkSessionCluster
+		created, fetched *FlinkCluster
 	)
 
 	BeforeEach(func() {
@@ -54,7 +54,7 @@ var _ = Describe("FlinkSessionCluster", func() {
 				Name:      "foo",
 				Namespace: "default",
 			}
-			created = &FlinkSessionCluster{
+			created = &FlinkCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
@@ -63,7 +63,7 @@ var _ = Describe("FlinkSessionCluster", func() {
 			By("creating an API obj")
 			Expect(k8sClient.Create(context.TODO(), created)).To(Succeed())
 
-			fetched = &FlinkSessionCluster{}
+			fetched = &FlinkCluster{}
 			Expect(k8sClient.Get(context.TODO(), key, fetched)).To(Succeed())
 			Expect(fetched).To(Equal(created))
 

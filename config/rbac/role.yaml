@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - flinkoperator.k8s.io
   resources:
-  - flinkjobclusters
+  - flinkclusters
   verbs:
   - get
   - list
@@ -21,27 +21,7 @@ rules:
 - apiGroups:
   - flinkoperator.k8s.io
   resources:
-  - flinkjobclusters/status
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
-  - flinkoperator.k8s.io
-  resources:
-  - flinksessionclusters
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - flinkoperator.k8s.io
-  resources:
-  - flinksessionclusters/status
+  - flinkclusters/status
   verbs:
   - get
   - update
