@@ -436,6 +436,9 @@ spec:
             jobManager:
               description: Flink JobManager spec.
               properties:
+                accessScope:
+                  description: Access scope, enum("Cluster", "VPC", "External").
+                  type: string
                 ports:
                   description: Ports.
                   properties:
@@ -460,6 +463,8 @@ spec:
                   description: The number of replicas.
                   format: int32
                   type: integer
+              required:
+              - accessScope
               type: object
             taskManager:
               description: Flink TaskManager spec.

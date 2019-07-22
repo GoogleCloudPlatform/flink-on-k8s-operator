@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -104,11 +105,27 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	// JobManager service.
 	var observedJmService = updater.observedState.jmService
 	if observedJmService != nil {
-		status.Components.JobManagerService.Name =
-			observedJmService.ObjectMeta.Name
-		status.Components.JobManagerService.State =
-			flinkoperatorv1alpha1.ClusterComponentState.Ready
-		readyComponents++
+		var state string
+		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
+			if observedJmService.Spec.ClusterIP != "" {
+				state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+				readyComponents++
+			} else {
+				state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+			}
+		} else if observedJmService.Spec.Type == corev1.ServiceTypeLoadBalancer {
+			if len(observedJmService.Status.LoadBalancer.Ingress) > 0 {
+				state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+				readyComponents++
+			} else {
+				state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+			}
+		}
+		status.Components.JobManagerService =
+			flinkoperatorv1alpha1.FlinkClusterComponentState{
+				Name:  observedJmService.ObjectMeta.Name,
+				State: state,
+			}
 	} else if recordedClusterStatus.Components.JobManagerService.Name != "" {
 		status.Components.JobManagerService =
 			flinkoperatorv1alpha1.FlinkClusterComponentState{

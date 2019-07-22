@@ -8,6 +8,7 @@ spec:
     pullPolicy: Always
   jobManager:
     replicas: 1
+    accessScope: Cluster
     ports:
       rpc: 6123
       blob: 6124

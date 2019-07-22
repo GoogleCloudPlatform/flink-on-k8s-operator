@@ -68,6 +68,17 @@ var JobRestartPolicy = struct {
 	Never:     "Never",
 }
 
+// AccessScope defines the access scope of JobManager service.
+var AccessScope = struct {
+	Cluster  string
+	VPC      string
+	External string
+}{
+	Cluster:  "Cluster",
+	VPC:      "VPC",
+	External: "External",
+}
+
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
 type ImageSpec struct {
 	// Flink image name.
@@ -96,6 +107,9 @@ type JobManagerPorts struct {
 type JobManagerSpec struct {
 	// The number of replicas.
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Access scope, enum("Cluster", "VPC", "External").
+	AccessScope string `json:"accessScope"`
 
 	// Ports.
 	Ports JobManagerPorts `json:"ports,omitempty"`

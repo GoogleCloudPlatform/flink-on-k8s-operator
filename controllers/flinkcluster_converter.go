@@ -161,6 +161,22 @@ func getDesiredJobManagerService(
 			Ports:    []corev1.ServicePort{rpcPort, blobPort, queryPort, uiPort},
 		},
 	}
+	// This implementation is specific to GKE, see details at
+	// https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps
+	// https://cloud.google.com/kubernetes-engine/docs/how-to/internal-load-balancing
+	switch jobManagerSpec.AccessScope {
+	case flinkoperatorv1alpha1.AccessScope.Cluster:
+		jobManagerService.Spec.Type = corev1.ServiceTypeClusterIP
+	case flinkoperatorv1alpha1.AccessScope.VPC:
+		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
+		jobManagerService.Annotations =
+			map[string]string{"cloud.google.com/load-balancer-type": "Internal"}
+	case flinkoperatorv1alpha1.AccessScope.External:
+		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
+	default:
+		panic(fmt.Sprintf(
+			"Unknown service access cope: %v", jobManagerSpec.AccessScope))
+	}
 	return jobManagerService
 }
 
