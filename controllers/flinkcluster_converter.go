@@ -57,6 +57,12 @@ func getDesiredClusterState(
 // Gets the desired JobManager deployment spec from the FlinkCluster spec.
 func getDesiredJobManagerDeployment(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *appsv1.Deployment {
+
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
+		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var imageSpec = flinkCluster.Spec.ImageSpec
@@ -111,6 +117,12 @@ func getDesiredJobManagerDeployment(
 // Gets the desired JobManager service spec from a cluster spec.
 func getDesiredJobManagerService(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *corev1.Service {
+
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
+		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobManagerSpec = flinkCluster.Spec.JobManagerSpec
@@ -155,6 +167,12 @@ func getDesiredJobManagerService(
 // Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *appsv1.Deployment {
+
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
+		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var imageSpec = flinkCluster.Spec.ImageSpec
@@ -213,6 +231,11 @@ func getDesiredJob(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *batchv1.Job {
 	var jobSpec = flinkCluster.Spec.JobSpec
 	if jobSpec == nil {
+		return nil
+	}
+
+	if flinkCluster.Status.State ==
+		flinkoperatorv1alpha1.ClusterState.Creating {
 		return nil
 	}
 

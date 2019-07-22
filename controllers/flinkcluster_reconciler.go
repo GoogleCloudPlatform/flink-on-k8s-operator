@@ -87,15 +87,22 @@ func (reconciler *_ClusterReconciler) reconcileDeployment(
 	desiredDeployment *appsv1.Deployment,
 	observedDeployment *appsv1.Deployment) error {
 	var log = reconciler.log.WithValues("component", component)
-	var err error
 
 	if desiredDeployment != nil && observedDeployment == nil {
-		err = reconciler.createDeployment(desiredDeployment, component)
-	} else {
+		return reconciler.createDeployment(desiredDeployment, component)
+	}
+
+	if desiredDeployment != nil && observedDeployment != nil {
 		log.Info("Deployment already exists, no action")
+		return nil
 		// TODO(dagang): compare and update if needed.
 	}
-	return err
+
+	if desiredDeployment == nil && observedDeployment != nil {
+		return reconciler.deleteDeployment(observedDeployment, component)
+	}
+
+	return nil
 }
 
 func (reconciler *_ClusterReconciler) createDeployment(
@@ -130,17 +137,43 @@ func (reconciler *_ClusterReconciler) updateDeployment(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) reconcileJobManagerService() error {
-	var err error
-	var desiredJmService = reconciler.desiredState.jmService
-	var observedJmService = reconciler.observedState.jmService
-	if desiredJmService != nil && observedJmService == nil {
-		err = reconciler.createService(desiredJmService, "JobManager")
+func (reconciler *_ClusterReconciler) deleteDeployment(
+	deployment *appsv1.Deployment, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Deleting deployment", "deployment", deployment)
+	var err = k8sClient.Delete(context, deployment)
+	err = client.IgnoreNotFound(err)
+	if err != nil {
+		log.Error(err, "Failed to delete deployment")
 	} else {
-		reconciler.log.Info("JobManager service already exists, no action")
-		// TODO(dagang): compare and update if needed.
+		log.Info("Deployment deleted")
 	}
 	return err
+}
+
+func (reconciler *_ClusterReconciler) reconcileJobManagerService() error {
+	var desiredJmService = reconciler.desiredState.jmService
+	var observedJmService = reconciler.observedState.jmService
+
+	if desiredJmService != nil && observedJmService == nil {
+		return reconciler.createService(desiredJmService, "JobManager")
+	}
+
+	if desiredJmService != nil && observedJmService != nil {
+		reconciler.log.Info("JobManager service already exists, no action")
+		return nil
+		// TODO(dagang): compare and update if needed.
+	}
+
+	if desiredJmService == nil && observedJmService != nil {
+		return reconciler.deleteService(observedJmService, "JobManager")
+		// TODO(dagang): compare and update if needed.
+	}
+
+	return nil
 }
 
 func (reconciler *_ClusterReconciler) createService(
@@ -159,17 +192,33 @@ func (reconciler *_ClusterReconciler) createService(
 	return err
 }
 
+func (reconciler *_ClusterReconciler) deleteService(
+	service *corev1.Service, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Deleting service", "service", service)
+	var err = k8sClient.Delete(context, service)
+	err = client.IgnoreNotFound(err)
+	if err != nil {
+		log.Error(err, "Failed to delete service")
+	} else {
+		log.Info("service deleted")
+	}
+	return err
+}
+
 func (reconciler *_ClusterReconciler) reconcileJob() error {
 	var log = reconciler.log
 	var desiredJob = reconciler.desiredState.job
 	var observedJob = reconciler.observedState.job
-	var err error
+
 	if desiredJob != nil && observedJob == nil {
-		err = reconciler.createJob(desiredJob)
-	} else {
-		log.Info("Job already exists, no action")
+		return reconciler.createJob(desiredJob)
 	}
-	return err
+	log.Info("Job already exists, no action")
+	return nil
 }
 
 func (reconciler *_ClusterReconciler) createJob(job *batchv1.Job) error {

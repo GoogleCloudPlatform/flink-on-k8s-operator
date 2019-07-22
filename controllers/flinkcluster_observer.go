@@ -21,7 +21,6 @@ import (
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
-	"github.com/prometheus/common/log"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -101,10 +100,10 @@ func (observer *_ClusterStateObserver) observe(
 
 	// TaskManager deployment.
 	var observedTmDeployment = new(appsv1.Deployment)
-	err = observer.observeTaskManagerDeployment(observedJmDeployment)
+	err = observer.observeTaskManagerDeployment(observedTmDeployment)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get JobManager service")
+			log.Error(err, "Failed to get TaskManager deployment")
 			return err
 		} else {
 			log.Info("Observed TaskManager deployment", "state", "nil")
@@ -145,23 +144,8 @@ func (observer *_ClusterStateObserver) observeJobManagerDeployment(
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var jmDeploymentName = getJobManagerDeploymentName(clusterName)
-
-	// Check if deployment already exists.
-	var err = observer.k8sClient.Get(
-		observer.context,
-		types.NamespacedName{
-			Namespace: clusterNamespace,
-			Name:      jmDeploymentName,
-		},
-		observedDeployment)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			observer.log.Error(err, "Failed to get JobManager deployment")
-		} else {
-			log.Info("JobManager deployment not found")
-		}
-	}
-	return err
+	return observer.observeDeployment(
+		clusterNamespace, jmDeploymentName, "JobManager", observedDeployment)
 }
 
 func (observer *_ClusterStateObserver) observeTaskManagerDeployment(
@@ -169,14 +153,31 @@ func (observer *_ClusterStateObserver) observeTaskManagerDeployment(
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var tmDeploymentName = getTaskManagerDeploymentName(clusterName)
+	return observer.observeDeployment(
+		clusterNamespace, tmDeploymentName, "TaskManager", observedDeployment)
+}
 
-	return observer.k8sClient.Get(
+func (observer *_ClusterStateObserver) observeDeployment(
+	namespace string,
+	name string,
+	component string,
+	observedDeployment *appsv1.Deployment) error {
+	var log = observer.log.WithValues("component", component)
+	var err = observer.k8sClient.Get(
 		observer.context,
 		types.NamespacedName{
-			Namespace: clusterNamespace,
-			Name:      tmDeploymentName,
+			Namespace: namespace,
+			Name:      name,
 		},
 		observedDeployment)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get deployment")
+		} else {
+			log.Info("Deployment not found")
+		}
+	}
+	return err
 }
 
 func (observer *_ClusterStateObserver) observeJobManagerService(

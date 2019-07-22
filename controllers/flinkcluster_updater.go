@@ -21,6 +21,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -65,14 +66,16 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
 		return updater.updateClusterStatus(newStatus)
 	} else {
-		updater.log.Info("No status change")
+		updater.log.Info("No status change", "state", currentStatus.State)
 	}
 	return nil
 }
 
 func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha1.FlinkClusterStatus {
 	var status = flinkoperatorv1alpha1.FlinkClusterStatus{}
+	var totalComponents = 3
 	var readyComponents = 0
+	var recordedClusterStatus = &updater.observedState.cluster.Status
 
 	// JobManager deployment.
 	var observedJmDeployment = updater.observedState.jmDeployment
@@ -90,6 +93,12 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				flinkoperatorv1alpha1.ClusterComponentState.Ready
 			readyComponents++
 		}
+	} else if recordedClusterStatus.Components.JobManagerDeployment.Name != "" {
+		status.Components.JobManagerDeployment =
+			flinkoperatorv1alpha1.FlinkClusterComponentState{
+				Name:  recordedClusterStatus.Components.JobManagerDeployment.Name,
+				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			}
 	}
 
 	// JobManager service.
@@ -100,6 +109,12 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		status.Components.JobManagerService.State =
 			flinkoperatorv1alpha1.ClusterComponentState.Ready
 		readyComponents++
+	} else if recordedClusterStatus.Components.JobManagerService.Name != "" {
+		status.Components.JobManagerService =
+			flinkoperatorv1alpha1.FlinkClusterComponentState{
+				Name:  recordedClusterStatus.Components.JobManagerService.Name,
+				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			}
 	}
 
 	// TaskManager deployment.
@@ -118,9 +133,16 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				flinkoperatorv1alpha1.ClusterComponentState.Ready
 			readyComponents++
 		}
+	} else if recordedClusterStatus.Components.TaskManagerDeployment.Name != "" {
+		status.Components.TaskManagerDeployment =
+			flinkoperatorv1alpha1.FlinkClusterComponentState{
+				Name:  recordedClusterStatus.Components.TaskManagerDeployment.Name,
+				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			}
 	}
 
 	// (Optional) Job.
+	var jobFinished = false
 	var observedJob = updater.observedState.job
 	if observedJob != nil {
 		status.Components.Job = new(flinkoperatorv1alpha1.JobStatus)
@@ -129,17 +151,42 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Running
 		} else if observedJob.Status.Failed > 0 {
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Failed
+			jobFinished = true
 		} else if observedJob.Status.Succeeded > 0 {
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Succeeded
+			jobFinished = true
 		} else {
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Unknown
 		}
 	}
 
-	if readyComponents < 3 {
-		status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
-	} else {
-		status.State = flinkoperatorv1alpha1.ClusterState.Running
+	// Derive the next state.
+	switch recordedClusterStatus.State {
+	case "", flinkoperatorv1alpha1.ClusterState.Creating:
+		if readyComponents < totalComponents {
+			status.State = flinkoperatorv1alpha1.ClusterState.Creating
+		} else {
+			status.State = flinkoperatorv1alpha1.ClusterState.Running
+		}
+	case flinkoperatorv1alpha1.ClusterState.Running,
+		flinkoperatorv1alpha1.ClusterState.Reconciling:
+		if readyComponents < totalComponents {
+			status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
+		} else if jobFinished {
+			status.State = flinkoperatorv1alpha1.ClusterState.Stopping
+		} else {
+			status.State = flinkoperatorv1alpha1.ClusterState.Running
+		}
+	case flinkoperatorv1alpha1.ClusterState.Stopping:
+		if readyComponents == 0 {
+			status.State = flinkoperatorv1alpha1.ClusterState.Stopped
+		} else {
+			status.State = flinkoperatorv1alpha1.ClusterState.Stopping
+		}
+	case flinkoperatorv1alpha1.ClusterState.Stopped:
+		status.State = flinkoperatorv1alpha1.ClusterState.Stopped
+	default:
+		panic(fmt.Sprintf("Unknown cluster state: %v", recordedClusterStatus.State))
 	}
 
 	return status

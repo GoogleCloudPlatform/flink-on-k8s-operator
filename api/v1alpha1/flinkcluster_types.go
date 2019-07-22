@@ -22,13 +22,15 @@ import (
 
 // ClusterState defines states for a cluster.
 var ClusterState = struct {
-	Reconciling string
+	Creating    string
 	Running     string
+	Reconciling string
 	Stopping    string
 	Stopped     string
 }{
-	Reconciling: "Reconciling",
+	Creating:    "Creating",
 	Running:     "Running",
+	Reconciling: "Reconciling",
 	Stopping:    "Stopping",
 	Stopped:     "Stopped",
 }
@@ -37,9 +39,11 @@ var ClusterState = struct {
 var ClusterComponentState = struct {
 	NotReady string
 	Ready    string
+	Deleted  string
 }{
 	NotReady: "NotReady",
 	Ready:    "Ready",
+	Deleted:  "Deleted",
 }
 
 // JobState defines states for a Flink job.
@@ -212,6 +216,7 @@ type FlinkClusterStatus struct {
 
 	// The overall state of the Flink cluster.
 	State string `json:"state"`
+
 	// The status of the components.
 	Components FlinkClusterComponentsStatus `json:"components"`
 
