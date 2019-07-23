@@ -23,3 +23,6 @@ bin
 *.swp
 *.swo
 *~
+
+# Dynamic patch files
+config/default/manager_image_patch.yaml

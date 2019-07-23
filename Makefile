@@ -9,14 +9,17 @@ all: flink-operator
 # Run tests
 test: generate fmt vet manifests
 	go test ./api/... ./controllers/... -coverprofile cover.out
+	go mod tidy
 
 # Build flink-operator binary
 flink-operator: generate fmt vet
 	go build -o bin/flink-operator main.go
+	go mod tidy
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
 	go run ./main.go
+	go mod tidy
 
 # Install CRDs into a cluster
 install: manifests
@@ -38,6 +41,7 @@ samples:
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	go mod tidy
 
 # Run go fmt against code
 fmt:
@@ -55,7 +59,7 @@ generate: controller-gen
 docker-build: test
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for Flink Operator resource"
-	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
+	sed -e 's#image: .*#image: '"${IMG}"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
 
 # Push the docker image
 docker-push:

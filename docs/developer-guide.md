@@ -64,6 +64,9 @@ Depending on which image registry you want to use, choose a tag accordingly, e.g
 [Google Container Registry](https://cloud.google.com/container-registry/docs/) you want to use a tag like
 `gcr.io/<project>/flink-operator:latest`.
 
+After building the image, it automatically saves the image tag in config/default/manager_image_patch.yaml, so that
+when you deploy the Flink operator later, it knows what image to use.
+
 ## Deploy the operator to a running Kubernetes cluster
 
 Assume you have built and pushed the Flink Operator image, then you need to have a running Kubernetes cluster. Verify
