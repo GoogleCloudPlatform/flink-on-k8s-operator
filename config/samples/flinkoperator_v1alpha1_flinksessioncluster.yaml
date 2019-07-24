@@ -14,9 +14,23 @@ spec:
       blob: 6124
       query: 6125
       ui: 8081
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
   taskManager:
     replicas: 2
     ports:
       data: 6121
       rpc: 6122
       query: 6125
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "1"

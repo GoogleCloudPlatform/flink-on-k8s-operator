@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -113,6 +114,12 @@ type JobManagerSpec struct {
 
 	// Ports.
 	Ports JobManagerPorts `json:"ports,omitempty"`
+
+	// Compute resources required by each JobManager container.
+	// If omitted, a default value will be used.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -134,6 +141,12 @@ type TaskManagerSpec struct {
 
 	// Ports.
 	Ports TaskManagerPorts `json:"ports,omitempty"`
+
+	// Compute resources required by each TaskManager container.
+	// If omitted, a default value will be used.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // JobSpec defines properties of a Flink job.

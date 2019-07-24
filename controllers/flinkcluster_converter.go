@@ -98,7 +98,9 @@ func getDesiredJobManagerDeployment(
 							Image:           imageSpec.Name,
 							ImagePullPolicy: corev1.PullPolicy(*imageSpec.PullPolicy),
 							Args:            []string{"jobmanager"},
-							Ports:           []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort},
+							Ports: []corev1.ContainerPort{
+								rpcPort, blobPort, queryPort, uiPort},
+							Resources: jobManagerSpec.Resources,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "JOB_MANAGER_RPC_ADDRESS",
@@ -227,6 +229,7 @@ func getDesiredTaskManagerDeployment(
 							Args:            []string{"taskmanager"},
 							Ports: []corev1.ContainerPort{
 								dataPort, rpcPort, queryPort},
+							Resources: taskManagerSpec.Resources,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "JOB_MANAGER_RPC_ADDRESS",
