@@ -21,6 +21,9 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
+    envVars:
+      - name: HADOOP_CONF_DIR
+        value: /etc/hadoop/conf
   taskManager:
     replicas: 2
     ports:
@@ -34,6 +37,9 @@ spec:
       limits:
         memory: "1024Mi"
         cpu: "1"
+    envVars:
+      - name: HADOOP_CONF_DIR
+        value: /etc/hadoop/conf
   job:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount

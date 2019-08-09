@@ -120,6 +120,9 @@ type JobManagerSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Environment variables
+	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -147,6 +150,9 @@ type TaskManagerSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Environment variables
+	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
 }
 
 // JobSpec defines properties of a Flink job.

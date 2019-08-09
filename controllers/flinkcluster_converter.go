@@ -77,6 +77,13 @@ func getDesiredJobManagerDeployment(
 		"app":       "flink",
 		"component": "jobmanager",
 	}
+	var envVars = []corev1.EnvVar{
+		{
+			Name:  "JOB_MANAGER_RPC_ADDRESS",
+			Value: jobManagerDeploymentName,
+		},
+	}
+	envVars = append(envVars, jobManagerSpec.EnvVars...)
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -101,12 +108,7 @@ func getDesiredJobManagerDeployment(
 							Ports: []corev1.ContainerPort{
 								rpcPort, blobPort, queryPort, uiPort},
 							Resources: jobManagerSpec.Resources,
-							Env: []corev1.EnvVar{
-								{
-									Name:  "JOB_MANAGER_RPC_ADDRESS",
-									Value: jobManagerDeploymentName,
-								},
-							},
+							Env:       envVars,
 						},
 					},
 				},
@@ -205,6 +207,13 @@ func getDesiredTaskManagerDeployment(
 		"app":       "flink",
 		"component": "taskmanager",
 	}
+	var envVars = []corev1.EnvVar{
+		{
+			Name:  "JOB_MANAGER_RPC_ADDRESS",
+			Value: jobManagerDeploymentName,
+		},
+	}
+	envVars = append(envVars, taskManagerSpec.EnvVars...)
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -230,12 +239,7 @@ func getDesiredTaskManagerDeployment(
 							Ports: []corev1.ContainerPort{
 								dataPort, rpcPort, queryPort},
 							Resources: taskManagerSpec.Resources,
-							Env: []corev1.EnvVar{
-								{
-									Name:  "JOB_MANAGER_RPC_ADDRESS",
-									Value: jobManagerDeploymentName,
-								},
-							},
+							Env:       envVars,
 						},
 					},
 				},

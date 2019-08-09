@@ -34,3 +34,6 @@ spec:
       limits:
         memory: "1024Mi"
         cpu: "1"
+    envVars:
+      - name: HADOOP_CONF_DIR
+        value: /etc/hadoop/conf
