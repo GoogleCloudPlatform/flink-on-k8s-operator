@@ -134,17 +134,50 @@ and a [sample Flink job cluster](../config/samples/flinkoperator_v1alpha1_flinkj
 kubectl apply -f config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml
 ```
 
-After that you can check the operator logs with
+## Monitoring
+
+### Operator
+
+You can check the operator logs with
 
 ```bash
 kubectl logs -n flink-operator-system -l app=flink-operator --all-containers -f --tail=1000
 ```
 
-or check the custom resources with
+### Flink cluster and job
+
+After deploying a Flink cluster with the operator, you can find the cluster custom resource with
 
 ```bash
 kubectl get flinkclusters
 ```
+
+check the cluster status with
+
+```bash
+kubectl describe flinkclusters <CLUSTER-NAME>
+```
+
+In a job cluster, check the Flink job status and logs with
+
+```bash
+kubectl describe jobs <CLUSTER-NAME>-job
+kubectl logs jobs/<CLUSTER-NAME>-job -f --tail=1000
+```
+
+You can also access the Flink web UI via a proxy, run the following command in a terminal
+
+```bash
+kubectl proxy
+```
+
+then navigate to
+
+```
+http://localhost:8001/api/v1/namespaces/default/services/<CLUSTER-NAME>-jobmanager:ui/proxy
+```
+
+in your browser.
 
 ## Undeploy the operator
 
