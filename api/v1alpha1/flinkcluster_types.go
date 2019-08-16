@@ -195,6 +195,9 @@ type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
 	ImageSpec ImageSpec `json:"image"`
 
+	// Flink properties which are appened to flink-conf.yaml of the image.
+	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
+
 	// Flink JobManager spec.
 	JobManagerSpec JobManagerSpec `json:"jobManager"`
 

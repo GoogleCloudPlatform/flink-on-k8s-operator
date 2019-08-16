@@ -4,8 +4,15 @@ metadata:
   name: flinksessioncluster-sample
 spec:
   image:
-    name: flink:1.8.0
+    name: flink:1.8.1-dataproc
     pullPolicy: Always
+  flinkProperties:
+    jobmanager.heap.size: 256m
+    taskmanager.heap.size: 256m
+    taskmanager.numberOfTaskSlots: "2"
+    state.backend.fs.checkpointdir: file:///checkpoints/flink/checkpoints
+    state.checkpoints.dir: file:///checkpoints/flink/externalized-checkpoints
+    state.savepoints.dir: file:///checkpoints/flink/savepoints
   jobManager:
     replicas: 1
     accessScope: VPC
@@ -16,7 +23,7 @@ spec:
       ui: 8081
     resources:
       requests:
-        memory: "128Mi"
+        memory: "256Mi"
         cpu: "100m"
       limits:
         memory: "512Mi"
@@ -29,7 +36,7 @@ spec:
       query: 6125
     resources:
       requests:
-        memory: "128Mi"
+        memory: "256Mi"
         cpu: "100m"
       limits:
         memory: "1024Mi"

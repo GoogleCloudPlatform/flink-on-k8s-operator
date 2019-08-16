@@ -4,8 +4,15 @@ metadata:
   name: flinkjobcluster-sample
 spec:
   image:
-    name: flink:1.8.0
+    name: flink:1.8.1-dataproc
     pullPolicy: Always
+  flinkProperties:
+    jobmanager.heap.size: 1024m
+    taskmanager.heap.size: 1024m
+    taskmanager.numberOfTaskSlots: "2"
+    state.backend.fs.checkpointdir: file:///checkpoints/flink/checkpoints
+    state.checkpoints.dir: file:///checkpoints/flink/externalized-checkpoints
+    state.savepoints.dir: file:///checkpoints/flink/savepoints
   jobManager:
     replicas: 1
     accessScope: Cluster
@@ -16,8 +23,8 @@ spec:
       ui: 8081
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "100m"
+        memory: "256Mi"
+        cpu: "200m"
       limits:
         memory: "512Mi"
         cpu: "500m"
@@ -32,8 +39,8 @@ spec:
       query: 6125
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "100m"
+        memory: "256Mi"
+        cpu: "200m"
       limits:
         memory: "1024Mi"
         cpu: "1"
@@ -43,7 +50,7 @@ spec:
   job:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount
-    args: ["--input", "./README.txt"]
+    args: ["--input", "gs://dagang-testdata/README.md"]
     noLoggingToStdout: false
     savepoint: gs://my-flink-savepoints/savepoint-1234
     allowNonRestoredState: true

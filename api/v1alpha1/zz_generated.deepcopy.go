@@ -126,6 +126,13 @@ func (in *FlinkClusterList) DeepCopyObject() runtime.Object {
 func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 	*out = *in
 	in.ImageSpec.DeepCopyInto(&out.ImageSpec)
+	if in.FlinkProperties != nil {
+		in, out := &in.FlinkProperties, &out.FlinkProperties
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	in.JobManagerSpec.DeepCopyInto(&out.JobManagerSpec)
 	in.TaskManagerSpec.DeepCopyInto(&out.TaskManagerSpec)
 	if in.JobSpec != nil {

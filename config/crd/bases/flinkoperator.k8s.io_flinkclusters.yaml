@@ -385,6 +385,12 @@ spec:
           type: object
         spec:
           properties:
+            flinkProperties:
+              additionalProperties:
+                type: string
+              description: Flink properties which are appened to flink-conf.yaml of
+                the image.
+              type: object
             image:
               description: Flink image spec for the cluster's components.
               properties:

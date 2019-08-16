@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -81,6 +82,10 @@ func getDesiredJobManagerDeployment(
 		{
 			Name:  "JOB_MANAGER_RPC_ADDRESS",
 			Value: jobManagerDeploymentName,
+		},
+		{
+			Name:  "EXTRA_FLINK_PROPERTIES",
+			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
 	envVars = append(envVars, jobManagerSpec.EnvVars...)
@@ -211,6 +216,10 @@ func getDesiredTaskManagerDeployment(
 		{
 			Name:  "JOB_MANAGER_RPC_ADDRESS",
 			Value: jobManagerDeploymentName,
+		},
+		{
+			Name:  "EXTRA_FLINK_PROPERTIES",
+			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
 	envVars = append(envVars, taskManagerSpec.EnvVars...)
@@ -357,4 +366,13 @@ func getTaskManagerDeploymentName(clusterName string) string {
 // Gets Job name
 func getJobName(clusterName string) string {
 	return clusterName + "-job"
+}
+
+// Gets Flink properties
+func getFlinkProperties(properties map[string]string) string {
+	var builder strings.Builder
+	for key, value := range properties {
+		builder.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+	}
+	return builder.String()
 }
