@@ -28,6 +28,12 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
+    volumes:
+      - name: checkpoints-volume
+        emptyDir: {}
+    mounts:
+      - mountPath: /checkpoints
+        name: checkpoints-volume
   taskManager:
     replicas: 2
     ports:
@@ -44,3 +50,9 @@ spec:
     envVars:
       - name: HADOOP_CONF_DIR
         value: /etc/hadoop/conf
+    volumes:
+      - name: checkpoints-volume
+        emptyDir: {}
+    mounts:
+      - mountPath: /checkpoints
+        name: checkpoints-volume

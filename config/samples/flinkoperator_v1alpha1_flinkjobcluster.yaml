@@ -31,6 +31,12 @@ spec:
     envVars:
       - name: HADOOP_CONF_DIR
         value: /etc/hadoop/conf
+    volumes:
+      - name: checkpoints-volume
+        emptyDir: {}
+    mounts:
+      - mountPath: /checkpoints
+        name: checkpoints-volume
   taskManager:
     replicas: 2
     ports:
@@ -47,6 +53,12 @@ spec:
     envVars:
       - name: HADOOP_CONF_DIR
         value: /etc/hadoop/conf
+    volumes:
+      - name: checkpoints-volume
+        emptyDir: {}
+    mounts:
+      - mountPath: /checkpoints
+        name: checkpoints-volume
   job:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount
@@ -56,3 +68,9 @@ spec:
     allowNonRestoredState: true
     parallelism: 4
     restartPolicy: OnFailure
+    volumes:
+      - name: scratch-volume
+        emptyDir: {}
+    mounts:
+      - mountPath: /scratch
+        name: scratch-volume

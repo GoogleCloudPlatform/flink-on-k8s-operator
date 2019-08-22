@@ -123,6 +123,12 @@ type JobManagerSpec struct {
 
 	// Environment variables
 	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
+
+	// Volumes in the JobManager pod.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// Volume mounts in the JobManager container.
+	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -153,6 +159,12 @@ type TaskManagerSpec struct {
 
 	// Environment variables
 	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
+
+	// Volumes in the TaskManager pods.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// Volume mounts in the TaskManager containers.
+	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
 }
 
 // JobSpec defines properties of a Flink job.
@@ -181,7 +193,11 @@ type JobSpec struct {
 	// Restart policy, "OnFailure" or "Never".
 	RestartPolicy string `json:"restartPolicy"`
 
-	// TODO(dagang): support volumes and volumeMounts.
+	// Volumes in the Job pod.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// Volume mounts in the Job container.
+	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
 }
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
