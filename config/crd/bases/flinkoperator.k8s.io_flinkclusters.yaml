@@ -398,8 +398,20 @@ spec:
                   description: Flink image name.
                   type: string
                 pullPolicy:
-                  description: Flink image pull policy.
+                  description: Image pull policy. One of Always, Never, IfNotPresent.
+                    Defaults to Always if :latest tag is specified, or IfNotPresent
+                    otherwise.
                   type: string
+                pullSecrets:
+                  description: Secrets for image pull.
+                  items:
+                    properties:
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                    type: object
+                  type: array
               required:
               - name
               type: object

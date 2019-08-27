@@ -85,8 +85,12 @@ type ImageSpec struct {
 	// Flink image name.
 	Name string `json:"name"`
 
-	// Flink image pull policy.
-	PullPolicy *string `json:"pullPolicy,omitempty"`
+	// Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always
+	// if :latest tag is specified, or IfNotPresent otherwise.
+	PullPolicy corev1.PullPolicy `json:"pullPolicy,omitempty"`
+
+	// Secrets for image pull.
+	PullSecrets []corev1.LocalObjectReference `json:"pullSecrets,omitempty"`
 }
 
 // JobManagerPorts defines ports of JobManager.
