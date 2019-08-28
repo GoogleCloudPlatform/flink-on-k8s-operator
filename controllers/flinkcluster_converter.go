@@ -309,7 +309,22 @@ func getDesiredJob(
 		*jobSpec.NoLoggingToStdout == true {
 		jobArgs = append(jobArgs, "--sysoutLogging")
 	}
-	jobArgs = append(jobArgs, jobSpec.JarFile)
+
+	// If the JAR file is remote, put the URI in the env variable
+	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
+	// script of the container will download it before submitting it to Flink.
+	var envVars = []corev1.EnvVar{}
+	var jarPath = jobSpec.JarFile
+	if strings.Contains(jobSpec.JarFile, "://") {
+		var parts = strings.Split(jobSpec.JarFile, "/")
+		jarPath = "/opt/flink/job/" + parts[len(parts)-1]
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "FLINK_JOB_JAR_URI",
+			Value: jobSpec.JarFile,
+		})
+	}
+	jobArgs = append(jobArgs, jarPath)
+
 	jobArgs = append(jobArgs, jobSpec.Args...)
 	var job = &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -331,6 +346,7 @@ func getDesiredJob(
 							Image:           imageSpec.Name,
 							ImagePullPolicy: imageSpec.PullPolicy,
 							Args:            jobArgs,
+							Env:             envVars,
 							VolumeMounts:    jobSpec.Mounts,
 						},
 					},

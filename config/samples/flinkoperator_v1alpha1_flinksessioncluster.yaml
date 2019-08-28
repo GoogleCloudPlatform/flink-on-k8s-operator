@@ -4,15 +4,15 @@ metadata:
   name: flinksessioncluster-sample
 spec:
   image:
-    name: flink:1.8.1-dataproc
+    name: gcr.io/google.com/hadoop-cloud-dev/flink:1.8.1-dataproc
     pullPolicy: Always
   flinkProperties:
     jobmanager.heap.size: 256m
     taskmanager.heap.size: 256m
     taskmanager.numberOfTaskSlots: "2"
-    state.backend.fs.checkpointdir: file:///checkpoints/flink/checkpoints
-    state.checkpoints.dir: file:///checkpoints/flink/externalized-checkpoints
-    state.savepoints.dir: file:///checkpoints/flink/savepoints
+    state.backend.fs.checkpointdir: gs:///my-bucket/checkpoints
+    state.checkpoints.dir: gs:///my-bucket/externalized-checkpoints
+    state.savepoints.dir: gs:///my-bucket/savepoints
   jobManager:
     replicas: 1
     accessScope: VPC
@@ -29,11 +29,11 @@ spec:
         memory: "512Mi"
         cpu: "500m"
     volumes:
-      - name: checkpoints-volume
+      - name: cache-volume
         emptyDir: {}
     mounts:
-      - mountPath: /checkpoints
-        name: checkpoints-volume
+      - mountPath: /cache
+        name: cache-volume
   taskManager:
     replicas: 2
     ports:
@@ -51,8 +51,8 @@ spec:
       - name: HADOOP_CONF_DIR
         value: /etc/hadoop/conf
     volumes:
-      - name: checkpoints-volume
+      - name: cache-volume
         emptyDir: {}
     mounts:
-      - mountPath: /checkpoints
-        name: checkpoints-volume
+      - mountPath: /cache
+        name: cache-volume
