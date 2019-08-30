@@ -88,7 +88,7 @@ func getDesiredJobManagerDeployment(
 			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
-	envVars = append(envVars, jobManagerSpec.EnvVars...)
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -225,7 +225,7 @@ func getDesiredTaskManagerDeployment(
 			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
-	envVars = append(envVars, taskManagerSpec.EnvVars...)
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -310,10 +310,12 @@ func getDesiredJob(
 		jobArgs = append(jobArgs, "--sysoutLogging")
 	}
 
+	var envVars = []corev1.EnvVar{}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+
 	// If the JAR file is remote, put the URI in the env variable
 	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
 	// script of the container will download it before submitting it to Flink.
-	var envVars = []corev1.EnvVar{}
 	var jarPath = jobSpec.JarFile
 	if strings.Contains(jobSpec.JarFile, "://") {
 		var parts = strings.Split(jobSpec.JarFile, "/")

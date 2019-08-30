@@ -126,6 +126,13 @@ func (in *FlinkClusterList) DeepCopyObject() runtime.Object {
 func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 	*out = *in
 	in.ImageSpec.DeepCopyInto(&out.ImageSpec)
+	in.JobManagerSpec.DeepCopyInto(&out.JobManagerSpec)
+	in.TaskManagerSpec.DeepCopyInto(&out.TaskManagerSpec)
+	if in.JobSpec != nil {
+		in, out := &in.JobSpec, &out.JobSpec
+		*out = new(JobSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.FlinkProperties != nil {
 		in, out := &in.FlinkProperties, &out.FlinkProperties
 		*out = make(map[string]string, len(*in))
@@ -133,12 +140,12 @@ func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 			(*out)[key] = val
 		}
 	}
-	in.JobManagerSpec.DeepCopyInto(&out.JobManagerSpec)
-	in.TaskManagerSpec.DeepCopyInto(&out.TaskManagerSpec)
-	if in.JobSpec != nil {
-		in, out := &in.JobSpec, &out.JobSpec
-		*out = new(JobSpec)
-		(*in).DeepCopyInto(*out)
+	if in.EnvVars != nil {
+		in, out := &in.EnvVars, &out.EnvVars
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 
@@ -233,13 +240,6 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 	}
 	in.Ports.DeepCopyInto(&out.Ports)
 	in.Resources.DeepCopyInto(&out.Resources)
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make([]v1.EnvVar, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))
@@ -375,13 +375,6 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
 	in.Resources.DeepCopyInto(&out.Resources)
-	if in.EnvVars != nil {
-		in, out := &in.EnvVars, &out.EnvVars
-		*out = make([]v1.EnvVar, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))

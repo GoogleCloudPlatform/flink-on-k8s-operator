@@ -125,9 +125,6 @@ type JobManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// Environment variables
-	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
-
 	// Volumes in the JobManager pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
@@ -160,9 +157,6 @@ type TaskManagerSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-
-	// Environment variables
-	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
 
 	// Volumes in the TaskManager pods.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
@@ -215,9 +209,6 @@ type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
 	ImageSpec ImageSpec `json:"image"`
 
-	// Flink properties which are appened to flink-conf.yaml of the image.
-	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
-
 	// Flink JobManager spec.
 	JobManagerSpec JobManagerSpec `json:"jobManager"`
 
@@ -228,6 +219,13 @@ type FlinkClusterSpec struct {
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
 	JobSpec *JobSpec `json:"job,omitempty"`
+
+	// Flink properties which are appened to flink-conf.yaml of the image.
+	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
+
+	// Environment variables shared by all JobManager, TaskManager and job
+	// containers.
+	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
 }
 
 // FlinkClusterComponentState defines the observed state of a component
