@@ -18,6 +18,11 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
@@ -44,6 +49,18 @@ type _ObservedClusterState struct {
 	jmService    *corev1.Service
 	tmDeployment *appsv1.Deployment
 	job          *batchv1.Job
+	flinkJobID   *string
+}
+
+// Flink job status.
+type _JobStatus struct {
+	ID     string
+	Status string
+}
+
+// Flink job status list.
+type _JobStatusList struct {
+	Jobs []_JobStatus
 }
 
 // Observes the state of the cluster and its components.
@@ -62,11 +79,13 @@ func (observer *_ClusterStateObserver) observe(
 			return err
 		} else {
 			log.Info("Observed cluster", "cluster", "nil")
+			observedCluster = nil
 		}
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observedState.cluster = observedCluster
 	}
+	var clusterSpec = observedState.cluster.Spec
 
 	// JobManager deployment.
 	var observedJmDeployment = new(appsv1.Deployment)
@@ -77,6 +96,7 @@ func (observer *_ClusterStateObserver) observe(
 			return err
 		} else {
 			log.Info("Observed JobManager deployment", "state", "nil")
+			observedJmDeployment = nil
 		}
 	} else {
 		log.Info("Observed JobManager deployment", "state", *observedJmDeployment)
@@ -92,6 +112,7 @@ func (observer *_ClusterStateObserver) observe(
 			return err
 		} else {
 			log.Info("Observed JobManager service", "state", "nil")
+			observedJmService = nil
 		}
 	} else {
 		log.Info("Observed JobManager service", "state", *observedJmService)
@@ -107,6 +128,7 @@ func (observer *_ClusterStateObserver) observe(
 			return err
 		} else {
 			log.Info("Observed TaskManager deployment", "state", "nil")
+			observedTmDeployment = nil
 		}
 	} else {
 		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
@@ -130,6 +152,48 @@ func (observer *_ClusterStateObserver) observe(
 		}
 	}
 
+	// (Optional) get Flink job ID.
+	if observedState.job != nil && observedJmService != nil {
+		var url = fmt.Sprintf(
+			"http://%s.%s.svc.cluster.local:%d/jobs",
+			observedJmService.GetName(),
+			observedJmService.GetNamespace(),
+			*clusterSpec.JobManagerSpec.Ports.UI)
+		var flinkJobID = observer.getFlinkJobID(url)
+		if flinkJobID != nil {
+			observedState.flinkJobID = flinkJobID
+		}
+	}
+
+	return nil
+}
+
+func (observer *_ClusterStateObserver) getFlinkJobID(url string) *string {
+	var log = observer.log
+	var client = &http.Client{
+		Timeout: 15 * time.Second,
+	}
+	var req, err = http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "flink-operator")
+	log.Info("Polling job status from Flink API...", "url", url)
+	resp, err := client.Do(req)
+	if err == nil {
+		defer resp.Body.Close()
+		var body []byte
+		body, err = ioutil.ReadAll(resp.Body)
+		if err == nil {
+			var jobStatusList _JobStatusList
+			json.Unmarshal(body, &jobStatusList)
+			log.Info("Flink job status list", "jobs", jobStatusList)
+			if len(jobStatusList.Jobs) > 0 {
+				return &jobStatusList.Jobs[0].ID
+			}
+		}
+	}
+	if err != nil {
+		log.Error(err, "Failed to get Flink job ID.")
+	}
 	return nil
 }
 

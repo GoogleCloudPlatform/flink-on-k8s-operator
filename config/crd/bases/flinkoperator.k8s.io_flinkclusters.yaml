@@ -4375,14 +4375,18 @@ spec:
                   description: The status of the job, available only when JobSpec
                     is provided.
                   properties:
+                    id:
+                      description: The ID of the Flink job.
+                      type: string
                     name:
-                      description: The name of the job resource.
+                      description: The name of the Kubernetes job resource.
                       type: string
                     state:
-                      description: The state of the job.
+                      description: The state of the Kubernetes job.
                       type: string
                   required:
                   - name
+                  - id
                   - state
                   type: object
                 jobManagerDeployment:

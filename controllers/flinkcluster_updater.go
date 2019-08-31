@@ -175,6 +175,30 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		} else {
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Unknown
 		}
+
+		// (Optional) Flink Job ID.
+		if updater.observedState.flinkJobID != nil {
+			status.Components.Job.ID = *updater.observedState.flinkJobID
+		}
+		var hasID = len(status.Components.Job.ID) > 0
+
+		// Keep the previous ID if no longer being able to retrieve the current ID,
+		// maybe the JobManager has been deleted, or transient error.
+		var hasOldID = (recordedClusterStatus.Components.Job != nil &&
+			len(recordedClusterStatus.Components.Job.ID) > 0)
+		if !hasID && hasOldID {
+			status.Components.Job.ID = recordedClusterStatus.Components.Job.ID
+		}
+
+		if hasID && hasOldID &&
+			status.Components.Job.ID != recordedClusterStatus.Components.Job.ID {
+			updater.log.Info(
+				"Flink job ID changed unexpectedly!",
+				"current",
+				recordedClusterStatus.Components.Job.ID,
+				"new",
+				status.Components.Job.ID)
+		}
 	}
 
 	// Derive the next state.
