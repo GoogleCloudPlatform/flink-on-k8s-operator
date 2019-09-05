@@ -2,12 +2,13 @@
 
 ## Project overview
 
-The Flink Operator is built on top of the Kubernetes [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)
-library. The project structure and boilerplate files are generated with [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).
-Knowledge of controller-runtime and Kubebuilder is required to better understand this project.
+[Kubernetes](https://kubernetes.io/) Operator for [Apache Flink](https://flink.apache.org) is built on top of the
+Kubernetes [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime) library. The project structure
+and boilerplate files are generated with [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder). Knowledge of
+controller-runtime and Kubebuilder is required to better understand this project.
 
-The Flink custom resources are defined in Go structs, e.g. [FlinkCluster](../api/v1alpha1/flinkcluster_types.go),
-then Kubebuild generates related other Go files and YAML files, e.g.
+The Flink custom resource is defined in Go struct [FlinkCluster](../api/v1alpha1/flinkcluster_types.go),
+then Kubebuild generates related Go files and YAML files, e.g.
 [flinkclusters.yaml](../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml).
 The custom logic for reconciling a Flink custom resource is inside of the [controllers](../controllers) directory, e.g.,
 [flinkcluster_controller.go](../controllers/flinkcluster_controller.go).
@@ -24,7 +25,7 @@ The following dependencies are required on your local machine to generate, build
 * [Go v1.12+](https://golang.org/)
 * [Docker](https://www.docker.com/)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [Kustomize v2](https://github.com/kubernetes-sigs/kustomize) (v3 is not compatible)
+* [Kustomize v2+](https://github.com/kubernetes-sigs/kustomize)
 * [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
 
 ## Local build and test
@@ -82,7 +83,7 @@ Deploy the Flink Custom Resource Definitions and the Flink Operator to the clust
 make deploy
 ```
 
-If you see the following error, it is likely that you are not using Kustomize v2.
+If you see the following error, it is likely that you are using Kustomize v3, give v2 a try.
 
 ```
 Error: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch

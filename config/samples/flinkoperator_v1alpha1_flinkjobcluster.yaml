@@ -18,7 +18,7 @@ metadata:
   name: flinkjobcluster-sample
 spec:
   image:
-    name: gcr.io/google.com/hadoop-cloud-dev/flink:1.8.1-dataproc
+    name: flink:1.8.1
     pullPolicy: Always
   jobManager:
     replicas: 1
@@ -35,12 +35,6 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
-    volumes:
-      - name: cache-volume
-        emptyDir: {}
-    mounts:
-      - mountPath: /cache
-        name: cache-volume
   taskManager:
     replicas: 2
     ports:
@@ -48,42 +42,15 @@ spec:
       rpc: 6122
       query: 6125
     resources:
-      requests:
-        memory: "512Mi"
-        cpu: "200m"
       limits:
         memory: "2048Mi"
         cpu: "1"
-    volumes:
-      - name: cache-volume
-        emptyDir: {}
-    mounts:
-      - mountPath: /cache
-        name: cache-volume
   job:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount
-    args: ["--input", "gs://dagang-test/README.md"]
+    args: ["--input", "./README.txt"]
     noLoggingToStdout: false
-    savepoint: gs://my-flink-savepoints/savepoint-1234
-    allowNonRestoredState: true
     parallelism: 2
     restartPolicy: OnFailure
-    volumes:
-      - name: scratch-volume
-        emptyDir: {}
-    mounts:
-      - mountPath: /scratch
-        name: scratch-volume
-  envVars:
-    - name: HADOOP_CONF_DIR
-      value: /etc/hadoop/conf
   flinkProperties:
-    fs.output.always-create-directory: "true"
-    fs.overwrite-files: "true"
-    jobmanager.heap.size: 1024m
-    taskmanager.heap.size: 2048m
     taskmanager.numberOfTaskSlots: "1"
-    state.backend.fs.checkpointdir: gs://dagang-test/checkpoints
-    state.checkpoints.dir: gs://dagang-test/externalized-checkpoints
-    state.savepoints.dir: gs://dagang-test/savepoints
