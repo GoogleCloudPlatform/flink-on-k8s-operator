@@ -20,7 +20,7 @@ The operator is under active development, backward compatibility of the APIs is 
 
 The Kubernetes Operator for Apache Flink extends the vocabulary (e.g., Pod, Service, etc) of the Kubernetes language
 with custom resource definition [FlinkCluster](docs/crd.md) and runs a
-[controller](../controllers/flinkcluster_controller.go) Pod to keep watching the custom resources.
+[controller](controllers/flinkcluster_controller.go) Pod to keep watching the custom resources.
 Once a FlinkCluster custom resource is created and detected by the controller, the controller creates the underlying
 Kubernetes resources (e.g., JobManager Pod) based on the spec of the custom resource. With the operator installed in a
 cluster, users can then talk to the cluster through the Kubernetes API and Flink custom resources to manage their Flink
