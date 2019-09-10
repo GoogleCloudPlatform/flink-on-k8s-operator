@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -82,6 +83,26 @@ func getDesiredJobManagerDeployment(
 		{
 			Name:  "JOB_MANAGER_RPC_ADDRESS",
 			Value: jobManagerDeploymentName,
+		},
+		{
+			Name: "JOB_MANAGER_CPU_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "jobmanager",
+					Resource:      "limits.cpu",
+					Divisor:       resource.MustParse("1m"),
+				},
+			},
+		},
+		{
+			Name: "JOB_MANAGER_MEMORY_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "jobmanager",
+					Resource:      "limits.memory",
+					Divisor:       resource.MustParse("1Mi"),
+				},
+			},
 		},
 		{
 			Name:  "EXTRA_FLINK_PROPERTIES",
@@ -219,6 +240,26 @@ func getDesiredTaskManagerDeployment(
 		{
 			Name:  "JOB_MANAGER_RPC_ADDRESS",
 			Value: jobManagerDeploymentName,
+		},
+		{
+			Name: "TASK_MANAGER_CPU_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "taskmanager",
+					Resource:      "limits.cpu",
+					Divisor:       resource.MustParse("1m"),
+				},
+			},
+		},
+		{
+			Name: "TASK_MANAGER_MEMORY_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "taskmanager",
+					Resource:      "limits.memory",
+					Divisor:       resource.MustParse("1Mi"),
+				},
+			},
 		},
 		{
 			Name:  "EXTRA_FLINK_PROPERTIES",
