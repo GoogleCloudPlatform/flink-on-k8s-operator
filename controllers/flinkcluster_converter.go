@@ -267,6 +267,18 @@ func getDesiredTaskManagerDeployment(
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var containers = []corev1.Container{corev1.Container{
+		Name:            "taskmanager",
+		Image:           imageSpec.Name,
+		ImagePullPolicy: imageSpec.PullPolicy,
+		Args:            []string{"taskmanager"},
+		Ports: []corev1.ContainerPort{
+			dataPort, rpcPort, queryPort},
+		Resources:    taskManagerSpec.Resources,
+		Env:          envVars,
+		VolumeMounts: taskManagerSpec.Mounts,
+	}}
+	containers = append(containers, taskManagerSpec.Sidecars...)
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -283,19 +295,7 @@ func getDesiredTaskManagerDeployment(
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						corev1.Container{
-							Name:            "taskmanager",
-							Image:           imageSpec.Name,
-							ImagePullPolicy: imageSpec.PullPolicy,
-							Args:            []string{"taskmanager"},
-							Ports: []corev1.ContainerPort{
-								dataPort, rpcPort, queryPort},
-							Resources:    taskManagerSpec.Resources,
-							Env:          envVars,
-							VolumeMounts: taskManagerSpec.Mounts,
-						},
-					},
+					Containers:       containers,
 					Volumes:          taskManagerSpec.Volumes,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},
