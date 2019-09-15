@@ -6,6 +6,9 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 all: flink-operator
 
+deps:
+	bash scripts/check_build_deps.sh
+
 # Run tests
 test: generate fmt vet manifests
 	go test ./api/... ./controllers/... -coverprofile cover.out
@@ -52,7 +55,7 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
+generate: deps controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
 
 # Build the docker image

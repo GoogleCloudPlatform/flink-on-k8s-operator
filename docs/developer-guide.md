@@ -25,12 +25,12 @@ The following dependencies are required on your local machine to generate, build
 * [Go v1.12+](https://golang.org/)
 * [Docker](https://www.docker.com/)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [Kustomize v2+](https://github.com/kubernetes-sigs/kustomize)
+* [Kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize)
 * [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
 
 ## Local build and test
 
-Run
+To build the Flink Operator binary locally, run
 
 ```bash
 make flink-operator
@@ -42,8 +42,7 @@ or simply
 make
 ```
 
-to build the Flink Operator binary locally. This is useful to detect compliation errors after you change the source
-code. ```make flink-operator``` automatically runs ```make generate``` which generates Go source code and YAML files
+```make flink-operator``` automatically runs ```make generate``` which generates Go source code and YAML files
 with KubeBuilder.
 
 Run unit tests with
@@ -65,7 +64,7 @@ Depending on which image registry you want to use, choose a tag accordingly, e.g
 [Google Container Registry](https://cloud.google.com/container-registry/docs/) you want to use a tag like
 `gcr.io/<project>/flink-operator:latest`.
 
-After building the image, it automatically saves the image tag in config/default/manager_image_patch.yaml, so that
+After building the image, it automatically saves the image tag in `config/default/manager_image_patch.yaml`, so that
 when you deploy the Flink operator later, it knows what image to use.
 
 ## Deploy the operator to a running Kubernetes cluster
@@ -83,17 +82,16 @@ Deploy the Flink Custom Resource Definitions and the Flink Operator to the clust
 make deploy
 ```
 
-If you see the following error, it is likely that you are using Kustomize v3, give v2 a try.
-
-```
-Error: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
-error: no objects passed to apply
-```
-
-After that, you can verify CRDs are created with
+After that, you can verify CRD `flinkclusters.flinkoperator.k8s.io` has been created with
 
 ```bash
-kubectl get crds | grep flink
+kubectl get crds | grep flinkclusters.flinkoperator.k8s.io
+```
+
+You can also view the details of the CRD with
+
+```bash
+kubectl describe crds/flinkclusters.flinkoperator.k8s.io
 ```
 
 The operator runs as a Kubernetes Deployment, you can find out the deployment with
