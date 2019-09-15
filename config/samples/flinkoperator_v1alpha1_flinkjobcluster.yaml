@@ -30,11 +30,11 @@ spec:
       ui: 8081
     resources:
       requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
         memory: "256Mi"
         cpu: "200m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
   taskManager:
     replicas: 2
     ports:
@@ -42,9 +42,12 @@ spec:
       rpc: 6122
       query: 6125
     resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
       limits:
-        memory: "2048Mi"
-        cpu: "1"
+        memory: "256Mi"
+        cpu: "200m"
   job:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount
