@@ -85,7 +85,6 @@ func (observer *_ClusterStateObserver) observe(
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observedState.cluster = observedCluster
 	}
-	var clusterSpec = observedState.cluster.Spec
 
 	// JobManager deployment.
 	var observedJmDeployment = new(appsv1.Deployment)
@@ -136,8 +135,9 @@ func (observer *_ClusterStateObserver) observe(
 	}
 
 	// (Optional) job.
+	var observedJob = nil
 	if observedState.cluster != nil && observedState.cluster.Spec.JobSpec != nil {
-		var observedJob = new(batchv1.Job)
+		observedJob = new(batchv1.Job)
 		err = observer.observeJob(observedJob)
 		if err != nil {
 			if client.IgnoreNotFound(err) != nil {
@@ -145,6 +145,7 @@ func (observer *_ClusterStateObserver) observe(
 				return err
 			} else {
 				log.Info("Observed job", "state", "nil")
+				observedJob = nil
 			}
 		} else {
 			log.Info("Observed job", "state", *observedJob)
@@ -153,12 +154,12 @@ func (observer *_ClusterStateObserver) observe(
 	}
 
 	// (Optional) get Flink job ID.
-	if observedState.job != nil && observedJmService != nil {
+	if observedCluster != nil && observedJob != nil && observedJmService != nil {
 		var url = fmt.Sprintf(
 			"http://%s.%s.svc.cluster.local:%d/jobs",
 			observedJmService.GetName(),
 			observedJmService.GetNamespace(),
-			*clusterSpec.JobManagerSpec.Ports.UI)
+			*observedCluster.Spec.JobManagerSpec.Ports.UI)
 		var flinkJobID = observer.getFlinkJobID(url)
 		if flinkJobID != nil {
 			observedState.flinkJobID = flinkJobID
