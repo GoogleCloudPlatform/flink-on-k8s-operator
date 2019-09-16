@@ -163,6 +163,10 @@ type TaskManagerSpec struct {
 
 	// Volume mounts in the TaskManager containers.
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+
+	// Sidecar containers running alongside with the TaskManager container in the
+	// pod.
+	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
 // JobSpec defines properties of a Flink job.

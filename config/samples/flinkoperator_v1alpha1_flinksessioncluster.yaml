@@ -51,6 +51,12 @@ spec:
     mounts:
       - mountPath: /cache
         name: cache-volume
+    sidecars:
+      - name: sidecar
+        image: alpine
+        command:
+          - "sleep"
+          - "10000"
   envVars:
     - name: FOO
       value: bar
