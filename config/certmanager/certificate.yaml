@@ -28,10 +28,10 @@ metadata:
   name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
   namespace: system
 spec:
-  # $(SERVICENAME) and $(NAMESPACE) will be substituted by kustomize
-  commonName: $(SERVICENAME).$(NAMESPACE).svc
+  # $(WEBHOOK_SERVICE_NAME) and $(NAMESPACE) will be substituted by kustomize
+  commonName: $(WEBHOOK_SERVICE_NAME).$(NAMESPACE).svc
   dnsNames:
-  - $(SERVICENAME).$(NAMESPACE).svc.cluster.local
+  - $(WEBHOOK_SERVICE_NAME).$(NAMESPACE).svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer

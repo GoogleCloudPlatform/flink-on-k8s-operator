@@ -6,6 +6,7 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 all: flink-operator
 
+# Check build dependencies.
 deps:
 	bash scripts/check_build_deps.sh
 
@@ -28,8 +29,12 @@ run: generate fmt vet
 install: manifests
 	kubectl apply -f config/crd/bases
 
+# Deploy cert-manager which is required by webhooks of the operator.
+cert-manager:
+	bash scripts/deploy_cert_manager.sh
+
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
+deploy: manifests cert-manager
 	kubectl apply -f config/crd/bases
 	kustomize build config/default | kubectl apply -f -
 

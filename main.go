@@ -61,7 +61,7 @@ func main() {
 		LeaderElection:     enableLeaderElection,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "Unable to start manager")
 		os.Exit(1)
 	}
 
@@ -70,14 +70,25 @@ func main() {
 		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
 	}).SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FlinkCluster")
+		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")
 		os.Exit(1)
 	}
+
+	// Set up webhooks for the custom resource.
+	// Disable it with `FLINK_OPERATOR_ENABLE_WEBHOOKS=false` when we run locally.
+	if os.Getenv("FLINK_OPERATOR_ENABLE_WEBHOOKS") != "false" {
+		err = (&flinkoperatorv1alpha1.FlinkCluster{}).SetupWebhookWithManager(mgr)
+		if err != nil {
+			setupLog.Error(err, "Unable to setup webhooks", "webhook", "FlinkCluster")
+			os.Exit(1)
+		}
+	}
+
 	// +kubebuilder:scaffold:builder
 
-	setupLog.Info("starting manager")
+	setupLog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		setupLog.Error(err, "Problem running manager")
 		os.Exit(1)
 	}
 }
