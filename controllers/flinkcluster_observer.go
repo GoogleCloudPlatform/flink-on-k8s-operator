@@ -135,7 +135,7 @@ func (observer *_ClusterStateObserver) observe(
 	}
 
 	// (Optional) job.
-	var observedJob = nil
+	var observedJob *batchv1.Job
 	if observedState.cluster != nil && observedState.cluster.Spec.JobSpec != nil {
 		observedJob = new(batchv1.Job)
 		err = observer.observeJob(observedJob)
