@@ -79,10 +79,9 @@ func (cluster *FlinkCluster) ValidateCreate() error {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered
 // for the type.
 func (cluster *FlinkCluster) ValidateUpdate(old runtime.Object) error {
-	flinkclusterlog.Info("validate update", "name", cluster.Name)
-
-	// TODO
-	return nil
+	flinkclusterlog.Info("Validate update", "name", cluster.Name)
+	var oldCluster = old.(*FlinkCluster)
+	return _ValidateUpdate(oldCluster, cluster)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered
