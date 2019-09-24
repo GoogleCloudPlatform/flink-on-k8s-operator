@@ -393,7 +393,7 @@ func getDesiredJob(
 							VolumeMounts:    jobSpec.Mounts,
 						},
 					},
-					RestartPolicy:    corev1.RestartPolicy(jobSpec.RestartPolicy),
+					RestartPolicy:    *jobSpec.RestartPolicy,
 					Volumes:          jobSpec.Volumes,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},

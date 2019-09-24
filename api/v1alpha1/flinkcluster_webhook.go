@@ -19,7 +19,6 @@ package v1alpha1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -55,8 +54,9 @@ var _ webhook.Defaulter = &FlinkCluster{}
 // Default implements webhook.Defaulter so a webhook will be registered for the
 // type.
 func (cluster *FlinkCluster) Default() {
-	flinkclusterlog.Info("default", "name", cluster.Name)
-	//TODO
+	flinkclusterlog.Info("default", "name", cluster.Name, "original", *cluster)
+	_SetDefault(cluster)
+	flinkclusterlog.Info("default", "name", cluster.Name, "augmented", *cluster)
 }
 
 /*

@@ -518,7 +518,7 @@ spec:
                 finishes; otherwise, it is a long-running Session Cluster.
               properties:
                 allowNonRestoredState:
-                  description: Allow non-restored state.
+                  description: 'Allow non-restored state, default: false.'
                   type: boolean
                 args:
                   description: Args of the job.
@@ -570,14 +570,14 @@ spec:
                     type: object
                   type: array
                 noLoggingToStdout:
-                  description: No logging output to STDOUT.
+                  description: 'No logging output to STDOUT, default: false.'
                   type: boolean
                 parallelism:
-                  description: Job parallelism.
+                  description: 'Job parallelism, default: 1.'
                   format: int32
                   type: integer
                 restartPolicy:
-                  description: Restart policy, "OnFailure" or "Never".
+                  description: 'Restart policy, "OnFailure" or "Never", default: "OnFailure".'
                   type: string
                 savepoint:
                   description: Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
@@ -1834,19 +1834,19 @@ spec:
                   description: Ports.
                   properties:
                     blob:
-                      description: Blob port.
+                      description: 'Blob port, default: 6124.'
                       format: int32
                       type: integer
                     query:
-                      description: Query port.
+                      description: 'Query port, default: 6125.'
                       format: int32
                       type: integer
                     rpc:
-                      description: RPC port.
+                      description: 'RPC port, default: 6123.'
                       format: int32
                       type: integer
                     ui:
-                      description: UI port.
+                      description: 'UI port, default: 8081.'
                       format: int32
                       type: integer
                   type: object
@@ -3122,7 +3122,7 @@ spec:
                   description: Ports.
                   properties:
                     data:
-                      description: Data port.
+                      description: 'Data port, default: 6121.'
                       format: int32
                       type: integer
                     query:
@@ -3130,7 +3130,7 @@ spec:
                       format: int32
                       type: integer
                     rpc:
-                      description: RPC port.
+                      description: 'RPC port, default: 6122.'
                       format: int32
                       type: integer
                   type: object

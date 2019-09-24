@@ -19,32 +19,16 @@ metadata:
 spec:
   image:
     name: flink:1.8.1
-    pullPolicy: Always
   jobManager:
-    replicas: 1
-    accessScope: Cluster
     ports:
-      rpc: 6123
-      blob: 6124
-      query: 6125
       ui: 8081
     resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
       limits:
         memory: "512Mi"
         cpu: "200m"
   taskManager:
     replicas: 2
-    ports:
-      data: 6121
-      rpc: 6122
-      query: 6125
     resources:
-      requests:
-        memory: "512Mi"
-        cpu: "100m"
       limits:
         memory: "1024Mi"
         cpu: "200m"
@@ -52,8 +36,6 @@ spec:
     jarFile: ./examples/batch/WordCount.jar
     className: org.apache.flink.examples.java.wordcount.WordCount
     args: ["--input", "./README.txt"]
-    noLoggingToStdout: false
     parallelism: 2
-    restartPolicy: OnFailure
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"

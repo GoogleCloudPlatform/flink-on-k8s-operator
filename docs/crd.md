@@ -78,10 +78,10 @@ FlinkCluster
         `Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; `External`:
         accessible from the internet. Currently `VPC` and `External` are only available for GKE.
       * **Ports** (optional): Ports that JobManager listening on.
-        * **RPC** (optional): RPC port.
-        * **Blob** (optional): Blob port.
-        * **Query** (optional): Query port.
-        * **UI** (optional): UI port.
+        * **RPC** (optional): RPC port, default: 6123.
+        * **Blob** (optional): Blob port, default: 6124.
+        * **Query** (optional): Query port, default: 6125.
+        * **UI** (optional): UI port, default: 8081.
       * **Resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
         More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -109,10 +109,10 @@ FlinkCluster
       * **ClassName** (required): Fully qualified Java class name of the job.
       * **Args** (optional): Command-line args of the job.
       * **Savepoint** (optional): Savepoint where to restore the job from.
-      * **AllowNonRestoredState** (optional):  Allow non-restored state.
-      * **Parallelism** (optional):  Parallelism of the job.
-      * **NoLoggingToStdout** (optional):  No logging output to STDOUT.
-      * **RestartPolicy** (optional):   Restart policy, `OnFailure` or `Never`.
+      * **AllowNonRestoredState** (optional):  Allow non-restored state, default: false.
+      * **Parallelism** (optional):  Parallelism of the job, default: 1.
+      * **NoLoggingToStdout** (optional):  No logging output to STDOUT, default: false.
+      * **RestartPolicy** (optional):   Restart policy, `OnFailure` or `Never`, default: `OnFailure`.
       * **Volumes** (optional): Volumes in the Job pod.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the Job container.
