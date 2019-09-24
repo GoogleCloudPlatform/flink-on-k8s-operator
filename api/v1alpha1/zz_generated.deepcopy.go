@@ -299,6 +299,11 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.RestartPolicy != nil {
+		in, out := &in.RestartPolicy, &out.RestartPolicy
+		*out = new(v1.RestartPolicy)
+		**out = **in
+	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))

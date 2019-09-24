@@ -95,16 +95,16 @@ type ImageSpec struct {
 
 // JobManagerPorts defines ports of JobManager.
 type JobManagerPorts struct {
-	// RPC port.
+	// RPC port, default: 6123.
 	RPC *int32 `json:"rpc,omitempty"`
 
-	// Blob port.
+	// Blob port, default: 6124.
 	Blob *int32 `json:"blob,omitempty"`
 
-	// Query port.
+	// Query port, default: 6125.
 	Query *int32 `json:"query,omitempty"`
 
-	// UI port.
+	// UI port, default: 8081.
 	UI *int32 `json:"ui,omitempty"`
 }
 
@@ -134,10 +134,10 @@ type JobManagerSpec struct {
 
 // TaskManagerPorts defines ports of TaskManager.
 type TaskManagerPorts struct {
-	// Data port.
+	// Data port, default: 6121.
 	Data *int32 `json:"data,omitempty"`
 
-	// RPC port.
+	// RPC port, default: 6122.
 	RPC *int32 `json:"rpc,omitempty"`
 
 	// Query port.
@@ -183,17 +183,17 @@ type JobSpec struct {
 	// Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
 	Savepoint *string `json:"savepoint,omitempty"`
 
-	// Allow non-restored state.
+	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
-	// Job parallelism.
+	// Job parallelism, default: 1.
 	Parallelism *int32 `json:"parallelism,omitempty"`
 
-	// No logging output to STDOUT.
+	// No logging output to STDOUT, default: false.
 	NoLoggingToStdout *bool `json:"noLoggingToStdout,omitempty"`
 
-	// Restart policy, "OnFailure" or "Never".
-	RestartPolicy string `json:"restartPolicy"`
+	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
+	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
 
 	// Volumes in the Job pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`

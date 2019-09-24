@@ -21,26 +21,18 @@ spec:
     name: flink:1.8.1
     pullPolicy: Always
   jobManager:
-    replicas: 1
     accessScope: Cluster
     ports:
-      rpc: 6123
-      blob: 6124
-      query: 6125
       ui: 8081
     resources:
       requests:
-        memory: "256Mi"
+        memory: "512Mi"
         cpu: "100m"
       limits:
         memory: "512Mi"
         cpu: "200m"
   taskManager:
     replicas: 1
-    ports:
-      data: 6121
-      rpc: 6122
-      query: 6125
     resources:
       requests:
         memory: "512Mi"
