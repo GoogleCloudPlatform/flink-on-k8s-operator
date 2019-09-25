@@ -8,7 +8,7 @@ echo "Checking build dependencies..."
 # Go
 go_url="https://golang.org/doc/install"
 go_version=$(go version | grep -P -o '\d\.\d+')
-if [[ ! "${go_version}" > "1.12" ]]; then
+if [[ ! "${go_version}" == 1.12* && ! "${go_version}" > "1.12" ]]; then
   echo "Error: Go 1.12+ is required for the build"
   echo "Please install it by following the instructions at ${go_url}"
   exit 1
