@@ -7,8 +7,9 @@ echo "Checking build dependencies..."
 
 # Go
 go_url="https://golang.org/doc/install"
-go_version=$(go version | grep -P -o '\d\.\d+')
-if [[ ! "${go_version}" > "1.12" ]]; then
+go_major_version=$(go version | grep -P -o '\d\.\d+' | cut -d '.' -f 1)
+go_minor_version=$(go version | grep -P -o '\d\.\d+' | cut -d '.' -f 2)
+if [[ "${go_major_version}" -lt 1 && "${go_minor_version}" -lt 12 ]]; then
   echo "Error: Go 1.12+ is required for the build"
   echo "Please install it by following the instructions at ${go_url}"
   exit 1
@@ -24,8 +25,10 @@ fi
 
 # Kustomize
 kustomize_url="https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md"
-kustomize_version=$(kustomize version | grep -P -o 'KustomizeVersion:\d+.\d+.\d+' | grep -P -o '\d+.\d+.\d+')
-if [[ ! "${kustomize_version}" > "3." ]]; then
+kustomize_major_version=$(kustomize version \
+    | grep -P -o 'KustomizeVersion:\d+\.' \
+    | grep -P -o '\d+')
+if [[ "${kustomize_major_version}" -lt 3 ]]; then
   echo "Error: Kustomize v3+ is required for the build."
   echo "Please install it by following the instructions at ${kustomize_url}"
   exit 1
@@ -33,8 +36,10 @@ fi
 
 # KubeBuilder
 kubebuilder_url="https://book.kubebuilder.io/quick-start.html#installation"
-kubebuilder_version=$(kubebuilder version | grep -P -o 'KubeBuilderVersion:"\d+\.\d+\.\d+.*",' | grep -P -o '\d+\.\d+\.\d+')
-if [[ ! "${kubebuilder_version}" > "2." ]]; then
+kubebuilder_major_version=$(kubebuilder version \
+    | grep -P -o 'KubeBuilderVersion:"\d+\.' \
+    | grep -P -o '\d+')
+if [[ "${kubebuilder_major_version}" -lt 2 ]]; then
   echo "Error: KubeBuilder v2+ is required for the build."
   echo "Please install it by following the instructions at ${kubebuilder_url}"
   exit 1
