@@ -105,7 +105,7 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 		{
-			Name:  "EXTRA_FLINK_PROPERTIES",
+			Name:  "FLINK_PROPERTIES",
 			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
@@ -262,7 +262,7 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 		{
-			Name:  "EXTRA_FLINK_PROPERTIES",
+			Name:  "FLINK_PROPERTIES",
 			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
