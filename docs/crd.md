@@ -45,6 +45,7 @@ FlinkCluster
         |__ RestartPolicy
         |__ Volumes
         |__ Mounts
+        |__ Sidecars
     |__ FlinkProperties
     |__ EnvVars
 |__ Status
@@ -102,6 +103,8 @@ FlinkCluster
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the TaskManager containers.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
+      * **Sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
+        More info: https://kubernetes.io/docs/concepts/containers/
     * **JobSpec** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
       session cluster.
       * **JarFile** (required): JAR file of the job. It could be a local file or remote URI, depending on which
