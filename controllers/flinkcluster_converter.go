@@ -313,11 +313,6 @@ func getDesiredJob(
 		return nil
 	}
 
-	if flinkCluster.Status.State ==
-		flinkoperatorv1alpha1.ClusterState.Creating {
-		return nil
-	}
-
 	var imageSpec = flinkCluster.Spec.ImageSpec
 	var jobManagerSpec = flinkCluster.Spec.JobManagerSpec
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
