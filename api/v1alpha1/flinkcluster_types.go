@@ -130,6 +130,11 @@ type JobManagerSpec struct {
 
 	// Volume mounts in the JobManager container.
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+
+	// Selector which must match a node's labels for the JobManager pod to be
+	// scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -163,6 +168,11 @@ type TaskManagerSpec struct {
 
 	// Volume mounts in the TaskManager containers.
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+
+	// Selector which must match a node's labels for the TaskManager pod to be
+	// scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Sidecar containers running alongside with the TaskManager container in the
 	// pod.

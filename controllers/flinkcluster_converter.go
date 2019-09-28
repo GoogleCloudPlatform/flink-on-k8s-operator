@@ -139,6 +139,7 @@ func getDesiredJobManagerDeployment(
 						},
 					},
 					Volumes:          jobManagerSpec.Volumes,
+					NodeSelector:     jobManagerSpec.NodeSelector,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},
 			},
@@ -297,6 +298,7 @@ func getDesiredTaskManagerDeployment(
 				Spec: corev1.PodSpec{
 					Containers:       containers,
 					Volumes:          taskManagerSpec.Volumes,
+					NodeSelector:     taskManagerSpec.NodeSelector,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},
 			},
