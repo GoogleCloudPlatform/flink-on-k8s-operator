@@ -66,9 +66,9 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 			"new", newStatus)
 		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
 		return updater.updateClusterStatus(newStatus)
-	} else {
-		updater.log.Info("No status change", "state", currentStatus.State)
 	}
+
+	updater.log.Info("No status change", "state", currentStatus.State)
 	return nil
 }
 
@@ -79,8 +79,10 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 
 	var totalComponents = 0
 	if updater.observedState.cluster.Spec.JobSpec != nil {
+		// jmDeployment, jmService, tmDeployment, job
 		totalComponents = 4
 	} else {
+		// jmDeployment, jmService, tmDeployment
 		totalComponents = 3
 	}
 

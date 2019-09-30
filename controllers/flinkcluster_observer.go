@@ -78,10 +78,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get the cluster resource")
 			return err
-		} else {
-			log.Info("Observed cluster", "cluster", "nil")
-			observedCluster = nil
 		}
+		log.Info("Observed cluster", "cluster", "nil")
+		observedCluster = nil
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observedState.cluster = observedCluster
@@ -94,10 +93,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get JobManager deployment")
 			return err
-		} else {
-			log.Info("Observed JobManager deployment", "state", "nil")
-			observedJmDeployment = nil
 		}
+		log.Info("Observed JobManager deployment", "state", "nil")
+		observedJmDeployment = nil
 	} else {
 		log.Info("Observed JobManager deployment", "state", *observedJmDeployment)
 		observedState.jmDeployment = observedJmDeployment
@@ -110,10 +108,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get JobManager service")
 			return err
-		} else {
-			log.Info("Observed JobManager service", "state", "nil")
-			observedJmService = nil
 		}
+		log.Info("Observed JobManager service", "state", "nil")
+		observedJmService = nil
 	} else {
 		log.Info("Observed JobManager service", "state", *observedJmService)
 		observedState.jmService = observedJmService
@@ -126,10 +123,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get TaskManager deployment")
 			return err
-		} else {
-			log.Info("Observed TaskManager deployment", "state", "nil")
-			observedTmDeployment = nil
 		}
+		log.Info("Observed TaskManager deployment", "state", "nil")
+		observedTmDeployment = nil
 	} else {
 		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
 		observedState.tmDeployment = observedTmDeployment
@@ -159,10 +155,9 @@ func (observer *_ClusterStateObserver) observeJob(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get job")
 			return err
-		} else {
-			log.Info("Observed job", "state", "nil")
-			observedJob = nil
 		}
+		log.Info("Observed job", "state", "nil")
+		observedJob = nil
 	} else {
 		log.Info("Observed job", "state", *observedJob)
 		observedState.job = observedJob
@@ -175,10 +170,9 @@ func (observer *_ClusterStateObserver) observeJob(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get job pods")
 			return err
-		} else {
-			log.Info("Observed job pods", "pods", "nil")
-			observedJobPods = nil
 		}
+		log.Info("Observed job pods", "pods", "nil")
+		observedJobPods = nil
 	} else {
 		log.Info("Observed job pods", "pods", observedJobPods.Items)
 		if len(observedJobPods.Items) == 1 {
@@ -317,7 +311,8 @@ func (observer *_ClusterStateObserver) observeJobResource(
 		observedJob)
 }
 
-func (observer *_ClusterStateObserver) observeJobPods(observedJobPod *corev1.PodList) error {
+func (observer *_ClusterStateObserver) observeJobPods(
+	observedJobPod *corev1.PodList) error {
 	var clusterName = observer.request.Name
 	var jobName = getJobName(observer.request.Name)
 	var inNamespace = client.InNamespace(observer.request.Namespace)
@@ -326,5 +321,7 @@ func (observer *_ClusterStateObserver) observeJobPods(observedJobPod *corev1.Pod
 		"cluster":  clusterName,
 		"job-name": jobName,
 	}
-	return observer.k8sClient.List(context.Background(), observedJobPod, inNamespace, matchingLabels)
+	var jobPods = observer.k8sClient.List(
+		observer.context, observedJobPod, inNamespace, matchingLabels)
+	return jobPods
 }

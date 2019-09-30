@@ -46,13 +46,12 @@ func getDesiredClusterState(
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return _DesiredClusterState{}
-	} else {
-		return _DesiredClusterState{
-			jmDeployment: getDesiredJobManagerDeployment(cluster),
-			jmService:    getDesiredJobManagerService(cluster),
-			tmDeployment: getDesiredTaskManagerDeployment(cluster),
-			job:          getDesiredJob(cluster),
-		}
+	}
+	return _DesiredClusterState{
+		jmDeployment: getDesiredJobManagerDeployment(cluster),
+		jmService:    getDesiredJobManagerService(cluster),
+		tmDeployment: getDesiredTaskManagerDeployment(cluster),
+		job:          getDesiredJob(cluster),
 	}
 }
 
