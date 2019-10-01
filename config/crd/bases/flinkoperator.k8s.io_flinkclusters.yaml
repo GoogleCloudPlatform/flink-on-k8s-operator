@@ -1830,6 +1830,12 @@ spec:
                     - mountPath
                     type: object
                   type: array
+                nodeSelector:
+                  additionalProperties:
+                    type: string
+                  description: 'Selector which must match a node''s labels for the
+                    JobManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                  type: object
                 ports:
                   description: Ports.
                   properties:
@@ -3118,6 +3124,12 @@ spec:
                     - mountPath
                     type: object
                   type: array
+                nodeSelector:
+                  additionalProperties:
+                    type: string
+                  description: 'Selector which must match a node''s labels for the
+                    TaskManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                  type: object
                 ports:
                   description: Ports.
                   properties:
