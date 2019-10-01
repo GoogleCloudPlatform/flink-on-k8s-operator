@@ -49,6 +49,7 @@ type _ObservedClusterState struct {
 	jmService    *corev1.Service
 	tmDeployment *appsv1.Deployment
 	job          *batchv1.Job
+	jobPod       *corev1.Pod
 	flinkJobID   *string
 }
 
@@ -77,10 +78,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get the cluster resource")
 			return err
-		} else {
-			log.Info("Observed cluster", "cluster", "nil")
-			observedCluster = nil
 		}
+		log.Info("Observed cluster", "cluster", "nil")
+		observedCluster = nil
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observedState.cluster = observedCluster
@@ -93,10 +93,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get JobManager deployment")
 			return err
-		} else {
-			log.Info("Observed JobManager deployment", "state", "nil")
-			observedJmDeployment = nil
 		}
+		log.Info("Observed JobManager deployment", "state", "nil")
+		observedJmDeployment = nil
 	} else {
 		log.Info("Observed JobManager deployment", "state", *observedJmDeployment)
 		observedState.jmDeployment = observedJmDeployment
@@ -109,10 +108,9 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get JobManager service")
 			return err
-		} else {
-			log.Info("Observed JobManager service", "state", "nil")
-			observedJmService = nil
 		}
+		log.Info("Observed JobManager service", "state", "nil")
+		observedJmService = nil
 	} else {
 		log.Info("Observed JobManager service", "state", *observedJmService)
 		observedState.jmService = observedJmService
@@ -125,45 +123,85 @@ func (observer *_ClusterStateObserver) observe(
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get TaskManager deployment")
 			return err
-		} else {
-			log.Info("Observed TaskManager deployment", "state", "nil")
-			observedTmDeployment = nil
 		}
+		log.Info("Observed TaskManager deployment", "state", "nil")
+		observedTmDeployment = nil
 	} else {
 		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
 		observedState.tmDeployment = observedTmDeployment
 	}
 
 	// (Optional) job.
-	var observedJob *batchv1.Job
-	if observedState.cluster != nil && observedState.cluster.Spec.JobSpec != nil {
-		observedJob = new(batchv1.Job)
-		err = observer.observeJob(observedJob)
-		if err != nil {
-			if client.IgnoreNotFound(err) != nil {
-				log.Error(err, "Failed to get job")
-				return err
-			} else {
-				log.Info("Observed job", "state", "nil")
-				observedJob = nil
-			}
-		} else {
-			log.Info("Observed job", "state", *observedJob)
-			observedState.job = observedJob
+	err = observer.observeJob(observedState)
+
+	return err
+}
+
+func (observer *_ClusterStateObserver) observeJob(
+	observedState *_ObservedClusterState) error {
+	var err error
+	var log = observer.log
+
+	// Either the cluster has been deleted or it is a session cluster.
+	if observedState.cluster == nil ||
+		observedState.cluster.Spec.JobSpec == nil {
+		return nil
+	}
+
+	// Job resource.
+	var observedJob = new(batchv1.Job)
+	err = observer.observeJobResource(observedJob)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get job")
+			return err
+		}
+		log.Info("Observed job", "state", "nil")
+		observedJob = nil
+	} else {
+		log.Info("Observed job", "state", *observedJob)
+		observedState.job = observedJob
+	}
+
+	// Job pod.
+	var observedJobPods = new(corev1.PodList)
+	err = observer.observeJobPods(observedJobPods)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get job pods")
+			return err
+		}
+		log.Info("Observed job pods", "pods", "nil")
+		observedJobPods = nil
+	} else {
+		log.Info("Observed job pods", "pods", observedJobPods.Items)
+		if len(observedJobPods.Items) == 1 {
+			observedState.jobPod = &observedJobPods.Items[0]
+		} else if len(observedJobPods.Items) > 1 {
+			// Should never be true unless the user manually created a pod
+			// which matches the labels.
+			return fmt.Errorf(
+				"Exactly one job pod is expected, but found more: %p",
+				observedJobPods.Items)
 		}
 	}
 
-	// (Optional) get Flink job ID.
-	if observedCluster != nil && observedJob != nil && observedJmService != nil {
+	// Flink job ID.
+	var isJobCreated = observedJob != nil &&
+		observedState.jobPod != nil &&
+		observedState.jobPod.Status.Phase != corev1.PodPhase("Pending")
+	if isJobCreated {
 		var url = fmt.Sprintf(
 			"http://%s.%s.svc.cluster.local:%d/jobs",
-			observedJmService.GetName(),
-			observedJmService.GetNamespace(),
-			*observedCluster.Spec.JobManagerSpec.Ports.UI)
+			observedState.jmService.GetName(),
+			observedState.jmService.GetNamespace(),
+			*observedState.cluster.Spec.JobManagerSpec.Ports.UI)
 		var flinkJobID = observer.getFlinkJobID(url)
 		if flinkJobID != nil {
 			observedState.flinkJobID = flinkJobID
 		}
+	} else {
+		log.Info("Skip getting Flink job ID")
 	}
 
 	return nil
@@ -259,7 +297,7 @@ func (observer *_ClusterStateObserver) observeJobManagerService(
 		observedService)
 }
 
-func (observer *_ClusterStateObserver) observeJob(
+func (observer *_ClusterStateObserver) observeJobResource(
 	observedJob *batchv1.Job) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
@@ -271,4 +309,19 @@ func (observer *_ClusterStateObserver) observeJob(
 			Name:      getJobName(clusterName),
 		},
 		observedJob)
+}
+
+func (observer *_ClusterStateObserver) observeJobPods(
+	observedJobPod *corev1.PodList) error {
+	var clusterName = observer.request.Name
+	var jobName = getJobName(observer.request.Name)
+	var inNamespace = client.InNamespace(observer.request.Namespace)
+	var matchingLabels client.MatchingLabels = map[string]string{
+		"app":      "flink",
+		"cluster":  clusterName,
+		"job-name": jobName,
+	}
+	var jobPods = observer.k8sClient.List(
+		observer.context, observedJobPod, inNamespace, matchingLabels)
+	return jobPods
 }

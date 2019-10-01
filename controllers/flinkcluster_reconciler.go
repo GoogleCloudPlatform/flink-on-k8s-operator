@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -213,11 +214,23 @@ func (reconciler *_ClusterReconciler) reconcileJob() error {
 	var log = reconciler.log
 	var desiredJob = reconciler.desiredState.job
 	var observedJob = reconciler.observedState.job
-
-	if desiredJob != nil && observedJob == nil {
-		return reconciler.createJob(desiredJob)
+	var observedClusterComponents = reconciler.observedState.cluster.Status.Components
+	if desiredJob != nil {
+		if observedJob == nil {
+			var jmDeploymentReady = observedClusterComponents.JobManagerDeployment.State ==
+				flinkoperatorv1alpha1.ClusterComponentState.Ready
+			var jmServiceReady = observedClusterComponents.JobManagerService.State ==
+				flinkoperatorv1alpha1.ClusterComponentState.Ready
+			var tmDeploymentReady = observedClusterComponents.TaskManagerDeployment.State ==
+				flinkoperatorv1alpha1.ClusterComponentState.Ready
+			if jmDeploymentReady && jmServiceReady && tmDeploymentReady {
+				return reconciler.createJob(desiredJob)
+			}
+			log.Info("Skip creating job, waiting for other components to be ready")
+		} else {
+			log.Info("Job already exists, no action")
+		}
 	}
-	log.Info("Job already exists, no action")
 	return nil
 }
 

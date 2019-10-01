@@ -49,11 +49,13 @@ var ClusterComponentState = struct {
 
 // JobState defines states for a Flink job.
 var JobState = struct {
+	Pending   string
 	Running   string
 	Succeeded string
 	Failed    string
 	Unknown   string
 }{
+	Pending:   "Pending",
 	Running:   "Running",
 	Succeeded: "Succeeded",
 	Failed:    "Failed",

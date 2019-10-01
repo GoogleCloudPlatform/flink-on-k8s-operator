@@ -46,13 +46,12 @@ func getDesiredClusterState(
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return _DesiredClusterState{}
-	} else {
-		return _DesiredClusterState{
-			jmDeployment: getDesiredJobManagerDeployment(cluster),
-			jmService:    getDesiredJobManagerService(cluster),
-			tmDeployment: getDesiredTaskManagerDeployment(cluster),
-			job:          getDesiredJob(cluster),
-		}
+	}
+	return _DesiredClusterState{
+		jmDeployment: getDesiredJobManagerDeployment(cluster),
+		jmService:    getDesiredJobManagerService(cluster),
+		tmDeployment: getDesiredTaskManagerDeployment(cluster),
+		job:          getDesiredJob(cluster),
 	}
 }
 
@@ -312,11 +311,6 @@ func getDesiredJob(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *batchv1.Job {
 	var jobSpec = flinkCluster.Spec.JobSpec
 	if jobSpec == nil {
-		return nil
-	}
-
-	if flinkCluster.Status.State ==
-		flinkoperatorv1alpha1.ClusterState.Creating {
 		return nil
 	}
 
