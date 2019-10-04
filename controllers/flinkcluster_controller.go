@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -154,7 +155,10 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	err = reconciler.reconcile()
 	if err != nil {
 		log.Error(err, "Failed to reconcile")
-		return ctrl.Result{}, err
+		return ctrl.Result{
+                	RequeueAfter: 5 * time.Second,
+                	Requeue:      true,
+		}, err
 	}
 
 	return ctrl.Result{}, nil
