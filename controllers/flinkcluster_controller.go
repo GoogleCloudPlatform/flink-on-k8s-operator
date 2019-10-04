@@ -156,7 +156,7 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	if err != nil {
 		log.Error(err, "Failed to reconcile")
 		return ctrl.Result{
-                	RequeueAfter: time.Second,
+                	RequeueAfter: 5 * time.Second,
                 	Requeue:      true,
 		}, err
 	}
