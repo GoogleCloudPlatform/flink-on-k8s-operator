@@ -21,19 +21,20 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 )
 
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
 	client.Client
 	Log logr.Logger
+	mgr ctrl.Manager
 }
 
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
@@ -44,6 +45,8 @@ type FlinkClusterReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events/status,verbs=get
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 
@@ -56,6 +59,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 		context:   context.Background(),
 		log: reconciler.Log.WithValues(
 			"flinkcluster", request.NamespacedName),
+		eventRecorder: reconciler.mgr.GetEventRecorderFor("FlinkOperator"),
 		observedState: _ObservedClusterState{},
 	}
 	return handler.Reconcile(request)
@@ -65,6 +69,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 // starts watching FlinkCluster, Deployment and Service resources.
 func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	mgr ctrl.Manager) error {
+	reconciler.mgr = mgr
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&flinkoperatorv1alpha1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
@@ -80,6 +85,7 @@ type _FlinkClusterHandler struct {
 	request       ctrl.Request
 	context       context.Context
 	log           logr.Logger
+	eventRecorder record.EventRecorder
 	observedState _ObservedClusterState
 	desiredState  _DesiredClusterState
 }
@@ -135,6 +141,7 @@ func (handler *_FlinkClusterHandler) Reconcile(
 		k8sClient:     handler.k8sClient,
 		context:       handler.context,
 		log:           handler.log,
+		eventRecorder: handler.eventRecorder,
 		observedState: handler.observedState,
 	}
 	err = updater.updateClusterStatusIfChanged()
@@ -156,8 +163,8 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	if err != nil {
 		log.Error(err, "Failed to reconcile")
 		return ctrl.Result{
-                	RequeueAfter: 5 * time.Second,
-                	Requeue:      true,
+			RequeueAfter: 5 * time.Second,
+			Requeue:      true,
 		}, err
 	}
 

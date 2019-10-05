@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,6 +35,7 @@ type _ClusterStatusUpdater struct {
 	k8sClient     client.Client
 	context       context.Context
 	log           logr.Logger
+	eventRecorder record.EventRecorder
 	observedState _ObservedClusterState
 }
 
@@ -47,29 +49,96 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 	}
 
 	// Current status recorded in the cluster's status field.
-	var currentStatus = flinkoperatorv1alpha1.FlinkClusterStatus{}
-	updater.observedState.cluster.Status.DeepCopyInto(&currentStatus)
-	currentStatus.LastUpdateTime = ""
+	var oldStatus = flinkoperatorv1alpha1.FlinkClusterStatus{}
+	updater.observedState.cluster.Status.DeepCopyInto(&oldStatus)
+	oldStatus.LastUpdateTime = ""
 
 	// New status derived from the cluster's components.
 	var newStatus = updater.deriveClusterStatus()
 
 	// Compare
-	var changed = updater.isStatusChanged(currentStatus, newStatus)
+	var changed = updater.isStatusChanged(oldStatus, newStatus)
 
 	// Update
 	if changed {
 		updater.log.Info(
-			"Updating status",
-			"current",
+			"Status changed",
+			"old",
 			updater.observedState.cluster.Status,
 			"new", newStatus)
+		updater.createStatusChangeEvents(oldStatus, newStatus)
 		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
 		return updater.updateClusterStatus(newStatus)
 	}
 
-	updater.log.Info("No status change", "state", currentStatus.State)
+	updater.log.Info("No status change", "state", oldStatus.State)
 	return nil
+}
+
+func (updater *_ClusterStatusUpdater) createStatusChangeEvents(
+	oldStatus flinkoperatorv1alpha1.FlinkClusterStatus,
+	newStatus flinkoperatorv1alpha1.FlinkClusterStatus) {
+	if oldStatus.Components.JobManagerDeployment.State !=
+		newStatus.Components.JobManagerDeployment.State {
+		updater.createStatusChangeEvent(
+			"JobManager deployment",
+			oldStatus.Components.JobManagerDeployment.State,
+			newStatus.Components.JobManagerDeployment.State)
+	}
+
+	// JobManager service.
+	if oldStatus.Components.JobManagerService.State !=
+		newStatus.Components.JobManagerService.State {
+		updater.createStatusChangeEvent(
+			"JobManager service",
+			oldStatus.Components.JobManagerService.State,
+			newStatus.Components.JobManagerService.State)
+	}
+
+	// TaskManager.
+	if oldStatus.Components.TaskManagerDeployment.State !=
+		newStatus.Components.TaskManagerDeployment.State {
+		updater.createStatusChangeEvent(
+			"TaskManager deployment",
+			oldStatus.Components.TaskManagerDeployment.State,
+			newStatus.Components.TaskManagerDeployment.State)
+	}
+
+	// Job.
+	if oldStatus.Components.Job == nil && newStatus.Components.Job != nil {
+		updater.createStatusChangeEvent(
+			"Flink job", "", newStatus.Components.Job.State)
+	}
+	if oldStatus.Components.Job != nil && newStatus.Components.Job != nil &&
+		oldStatus.Components.Job.State != newStatus.Components.Job.State {
+		updater.createStatusChangeEvent(
+			"Flink job",
+			oldStatus.Components.Job.State,
+			newStatus.Components.Job.State)
+	}
+
+	// Cluster.
+	if oldStatus.State != newStatus.State {
+		updater.createStatusChangeEvent("Cluster", oldStatus.State, newStatus.State)
+	}
+}
+
+func (updater *_ClusterStatusUpdater) createStatusChangeEvent(
+	name string, oldStatus string, newStatus string) {
+	if len(oldStatus) == 0 {
+		updater.eventRecorder.Event(
+			updater.observedState.cluster,
+			"Normal",
+			"StatusUpdate",
+			fmt.Sprintf("%v status: %v", name, newStatus))
+	} else {
+		updater.eventRecorder.Event(
+			updater.observedState.cluster,
+			"Normal",
+			"StatusUpdate",
+			fmt.Sprintf(
+				"%v status changed: %v -> %v", name, oldStatus, newStatus))
+	}
 }
 
 func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha1.FlinkClusterStatus {
