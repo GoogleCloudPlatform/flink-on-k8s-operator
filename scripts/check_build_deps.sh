@@ -28,6 +28,11 @@ kustomize_url="https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INS
 kustomize_major_version=$(kustomize version \
     | grep -P -o 'KustomizeVersion:\d+\.' \
     | grep -P -o '\d+')
+if [[ -z "${kustomize_major_version}" ]]; then
+  kustomize_major_version=$(kustomize version \
+    | grep -P -o 'kustomize/v\d+\.' \
+    | grep -P -o '\d+')
+fi
 if [[ "${kustomize_major_version}" -lt 3 ]]; then
   echo "Error: Kustomize v3+ is required for the build."
   echo "Please install it by following the instructions at ${kustomize_url}"
