@@ -187,26 +187,33 @@ func (observer *_ClusterStateObserver) observeJob(
 	}
 
 	// Flink job ID.
-	var isJobCreated = observedJob != nil &&
-		observedState.jobPod != nil &&
-		observedState.jobPod.Status.Phase != corev1.PodPhase("Pending")
-	if isJobCreated {
-		var url = fmt.Sprintf(
-			"http://%s.%s.svc.cluster.local:%d/jobs",
-			observedState.jmService.GetName(),
-			observedState.jmService.GetNamespace(),
-			*observedState.cluster.Spec.JobManagerSpec.Ports.UI)
-		var flinkJobID = observer.getFlinkJobID(url)
-		if flinkJobID != nil {
-			observedState.flinkJobID = flinkJobID
-		}
+	var observedJobStatus = observedState.cluster.Status.Components.Job
+	if observedJobStatus != nil && len(observedJobStatus.ID) > 0 {
+		log.Info("Flink job ID is already available.", "ID", observedJobStatus.ID)
+		observedState.flinkJobID = &observedJobStatus.ID
 	} else {
-		log.Info("Skip getting Flink job ID")
+		var isJobCreated = observedJob != nil &&
+			observedState.jobPod != nil &&
+			observedState.jobPod.Status.Phase != corev1.PodPhase("Pending")
+		if isJobCreated && observedState.jmService != nil {
+			var url = fmt.Sprintf(
+				"http://%s.%s.svc.cluster.local:%d/jobs",
+				observedState.jmService.GetName(),
+				observedState.jmService.GetNamespace(),
+				*observedState.cluster.Spec.JobManagerSpec.Ports.UI)
+			var flinkJobID = observer.getFlinkJobID(url)
+			if flinkJobID != nil {
+				observedState.flinkJobID = flinkJobID
+			}
+		} else {
+			log.Info("Skip getting Flink job ID")
+		}
 	}
 
 	return nil
 }
 
+// Gets Flink job ID through Flink REST API.
 func (observer *_ClusterStateObserver) getFlinkJobID(url string) *string {
 	var log = observer.log
 	var client = &http.Client{
