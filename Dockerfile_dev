@@ -1,0 +1,25 @@
+FROM ubuntu:18.04
+
+# Install kubectl
+RUN apt-get update && apt-get install -y \
+	apt-transport-https \
+	curl \
+	gnupg
+RUN curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
+RUN apt-get update && apt-get install -y kubectl
+
+# Install Kustomize
+RUN curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest |\
+  grep browser_download |\
+  grep linux |\
+  cut -d '"' -f 4 |\
+  xargs curl -O -L
+RUN mv kustomize_kustomize\.v*_linux_amd64 kustomize
+RUN chmod u+x kustomize && mv kustomize /usr/local/bin
+
+# Install Kubebuilder
+RUN curl -sL https://go.kubebuilder.io/dl/2.0.1/linux/amd64 | tar -xz -C /tmp/
+RUN mv /tmp/kubebuilder_2.0.1_linux_amd64 /usr/local/kubebuilder
+ENV PATH="/usr/local/kubebuilder/bin:${PATH}"
+
