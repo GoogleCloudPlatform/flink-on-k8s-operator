@@ -146,14 +146,8 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	var runningComponents = 0
 	var recordedClusterStatus = &updater.observedState.cluster.Status
 
-	var totalComponents = 0
-	if updater.observedState.cluster.Spec.JobSpec != nil {
-		// jmDeployment, jmService, tmDeployment, job
-		totalComponents = 4
-	} else {
-		// jmDeployment, jmService, tmDeployment
-		totalComponents = 3
-	}
+	// jmDeployment, jmService, tmDeployment.
+	var totalComponents = 3
 
 	// JobManager deployment.
 	var observedJmDeployment = updater.observedState.jmDeployment
@@ -249,7 +243,6 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Pending
 			} else {
 				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Running
-				runningComponents++
 			}
 		} else if observedJob.Status.Failed > 0 {
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Failed
@@ -258,7 +251,7 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Succeeded
 			jobFinished = true
 		} else {
-			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Unknown
+			status.Components.Job = nil
 		}
 
 		// (Optional) Flink Job ID.
@@ -286,7 +279,7 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		}
 	}
 
-	// Derive the next state.
+	// Derive the new cluster state.
 	switch recordedClusterStatus.State {
 	case "", flinkoperatorv1alpha1.ClusterState.Creating:
 		if runningComponents < totalComponents {
@@ -296,10 +289,10 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		}
 	case flinkoperatorv1alpha1.ClusterState.Running,
 		flinkoperatorv1alpha1.ClusterState.Reconciling:
-		if runningComponents < totalComponents {
-			status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
-		} else if jobFinished {
+		if jobFinished {
 			status.State = flinkoperatorv1alpha1.ClusterState.Stopping
+		} else if runningComponents < totalComponents {
+			status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
 		} else {
 			status.State = flinkoperatorv1alpha1.ClusterState.Running
 		}
