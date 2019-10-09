@@ -194,13 +194,20 @@ func (observer *_ClusterStateObserver) observeJob(
 	} else {
 		var isJobCreated = observedJob != nil &&
 			observedState.jobPod != nil &&
-			observedState.jobPod.Status.Phase != corev1.PodPhase("Pending")
+			observedState.jobPod.Status.Phase != corev1.PodPhase("Pending") &&
+			observedState.jobPod.Status.Phase != corev1.PodPhase("Unknown")
 		if isJobCreated && observedState.jmService != nil {
 			var url = fmt.Sprintf(
 				"http://%s.%s.svc.cluster.local:%d/jobs",
 				observedState.jmService.GetName(),
 				observedState.jmService.GetNamespace(),
 				*observedState.cluster.Spec.JobManagerSpec.Ports.UI)
+			log.Info(
+				"Polling job status from Flink API...",
+				"url",
+				url,
+				"jobPodPhase",
+				observedState.jobPod.Status.Phase)
 			var flinkJobID = observer.getFlinkJobID(url)
 			if flinkJobID != nil {
 				observedState.flinkJobID = flinkJobID
@@ -222,7 +229,6 @@ func (observer *_ClusterStateObserver) getFlinkJobID(url string) *string {
 	var req, err = http.NewRequest("GET", url, nil)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "flink-operator")
-	log.Info("Polling job status from Flink API...", "url", url)
 	resp, err := client.Do(req)
 	if err == nil {
 		defer resp.Body.Close()
