@@ -110,6 +110,18 @@ type JobManagerPorts struct {
 	UI *int32 `json:"ui,omitempty"`
 }
 
+// JobManagerIngress defines ingress of JobManager
+type JobManagerIngressSpec struct {
+	// Ingress annotations
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// TLS use
+	UseTLS *bool `json:"useTls,omitempty"`
+
+	// TLS secret name
+	TLSSecretName *string `json:"tlsSecretName,omitempty"`
+}
+
 // JobManagerSpec defines properties of JobManager.
 type JobManagerSpec struct {
 	// The number of replicas.
@@ -117,6 +129,9 @@ type JobManagerSpec struct {
 
 	// Access scope, enum("Cluster", "VPC", "External").
 	AccessScope string `json:"accessScope"`
+
+	// (Optional) Ingress.
+	Ingress *JobManagerIngressSpec `json:"ingress,omitempty"`
 
 	// Ports.
 	Ports JobManagerPorts `json:"ports,omitempty"`
@@ -263,6 +278,9 @@ type FlinkClusterComponentsStatus struct {
 	// The state of JobManager service.
 	JobManagerService FlinkClusterComponentState `json:"jobManagerService"`
 
+	// The state of JobManager ingress.
+	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
+
 	// The state of TaskManager deployment.
 	TaskManagerDeployment FlinkClusterComponentState `json:"taskManagerDeployment"`
 
@@ -280,6 +298,18 @@ type JobStatus struct {
 
 	// The state of the Kubernetes job.
 	State string `json:"state"`
+}
+
+// JobManagerIngressStatus defines the status of a JobManager ingress.
+type JobManagerIngressStatus struct {
+	// The name of the Kubernetes ingress resource.
+	Name string `json:"name"`
+
+	// The state of the component.
+	State string `json:"state"`
+
+	// The URL of ingress.
+	URLs []string `json:"urls,omitempty"`
 }
 
 // FlinkClusterStatus defines the observed state of FlinkCluster

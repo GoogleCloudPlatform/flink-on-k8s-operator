@@ -1792,6 +1792,21 @@ spec:
                 accessScope:
                   description: Access scope, enum("Cluster", "VPC", "External").
                   type: string
+                ingress:
+                  description: (Optional) Ingress.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Ingress annotations
+                      type: object
+                    tlsSecretName:
+                      description: TLS secret name
+                      type: string
+                    useTls:
+                      description: TLS use
+                      type: boolean
+                  type: object
                 mounts:
                   description: Volume mounts in the JobManager container.
                   items:
@@ -5282,6 +5297,24 @@ spec:
                     state:
                       description: The state of the component.
                       type: string
+                  required:
+                  - name
+                  - state
+                  type: object
+                jobManagerIngress:
+                  description: The state of JobManager ingress.
+                  properties:
+                    name:
+                      description: The name of the Kubernetes ingress resource.
+                      type: string
+                    state:
+                      description: The state of the component.
+                      type: string
+                    urls:
+                      description: The URL of ingress.
+                      items:
+                        type: string
+                      type: array
                   required:
                   - name
                   - state

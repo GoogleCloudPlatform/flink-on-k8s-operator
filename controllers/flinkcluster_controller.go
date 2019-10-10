@@ -33,8 +33,13 @@ import (
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
 	client.Client
-	Log logr.Logger
-	mgr ctrl.Manager
+	Log    logr.Logger
+	mgr    ctrl.Manager
+	Config FlinkClusterConfig
+}
+
+type FlinkClusterConfig struct {
+	IngressHostFormat string
 }
 
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
@@ -49,6 +54,8 @@ type FlinkClusterReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=events/status,verbs=get
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
+// +kubebuilder:rbac:groups=extensions,resources=ingress,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=extensions,resources=ingress/status,verbs=get
 
 // Reconcile the observed state towards the desired state for a FlinkCluster custom resource.
 func (reconciler *FlinkClusterReconciler) Reconcile(
@@ -61,6 +68,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 			"flinkcluster", request.NamespacedName),
 		eventRecorder: reconciler.mgr.GetEventRecorderFor("FlinkOperator"),
 		observedState: _ObservedClusterState{},
+		config:        reconciler.Config,
 	}
 	return handler.Reconcile(request)
 }
@@ -88,6 +96,7 @@ type _FlinkClusterHandler struct {
 	eventRecorder record.EventRecorder
 	observedState _ObservedClusterState
 	desiredState  _DesiredClusterState
+	config        FlinkClusterConfig
 }
 
 func (handler *_FlinkClusterHandler) Reconcile(
@@ -97,6 +106,7 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	var context = handler.context
 	var observedState = &handler.observedState
 	var desiredState = &handler.desiredState
+	var config = &handler.config
 	var err error
 
 	log.Info("============================================================")
@@ -112,7 +122,7 @@ func (handler *_FlinkClusterHandler) Reconcile(
 
 	log.Info("---------- 2. Compute the desired state ----------")
 
-	*desiredState = getDesiredClusterState(observedState.cluster)
+	*desiredState = getDesiredClusterState(observedState.cluster, config)
 	if desiredState.jmDeployment != nil {
 		log.Info("Desired state", "JobManager deployment", *desiredState.jmDeployment)
 	} else {
@@ -122,6 +132,15 @@ func (handler *_FlinkClusterHandler) Reconcile(
 		log.Info("Desired state", "JobManager service", *desiredState.jmService)
 	} else {
 		log.Info("Desired state", "JobManager service", "nil")
+	}
+	if desiredState.jmIngress != nil {
+		log.Info("Desired state", "JobManager ingress", *desiredState.jmIngress)
+	} else {
+		var msg string
+		if observedState.cluster != nil && observedState.cluster.Spec.JobManagerSpec.Ingress != nil && config.IngressHostFormat == "" {
+			msg = " (JobManager ingress spec is provided but operator config --ingress-host-format is missing)"
+		}
+		log.Info("Desired state"+msg, "JobManager ingress", "nil")
 	}
 	if desiredState.tmDeployment != nil {
 		log.Info("Desired state", "TaskManager deployment", *desiredState.tmDeployment)

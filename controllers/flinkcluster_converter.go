@@ -18,12 +18,14 @@ package controllers
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -36,13 +38,15 @@ import (
 type _DesiredClusterState struct {
 	jmDeployment *appsv1.Deployment
 	jmService    *corev1.Service
+	jmIngress    *extensionsv1beta1.Ingress
 	tmDeployment *appsv1.Deployment
 	job          *batchv1.Job
 }
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *flinkoperatorv1alpha1.FlinkCluster) _DesiredClusterState {
+	cluster *flinkoperatorv1alpha1.FlinkCluster,
+	config *FlinkClusterConfig) _DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return _DesiredClusterState{}
@@ -50,6 +54,7 @@ func getDesiredClusterState(
 	return _DesiredClusterState{
 		jmDeployment: getDesiredJobManagerDeployment(cluster),
 		jmService:    getDesiredJobManagerService(cluster),
+		jmIngress:    getDesiredJobManagerIngress(cluster, config.IngressHostFormat),
 		tmDeployment: getDesiredTaskManagerDeployment(cluster),
 		job:          getDesiredJob(cluster),
 	}
@@ -211,6 +216,72 @@ func getDesiredJobManagerService(
 			"Unknown service access cope: %v", jobManagerSpec.AccessScope))
 	}
 	return jobManagerService
+}
+
+// Gets the desired JobManager service spec from a cluster spec.
+func getDesiredJobManagerIngress(
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	ingressHostFormat string) *extensionsv1beta1.Ingress {
+	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
+	if ingressHostFormat == "" || jobManagerIngressSpec == nil {
+		return nil
+	}
+
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
+		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
+	var clusterName = flinkCluster.ObjectMeta.Name
+	var jobManagerServiceName = getJobManagerServiceName(clusterName)
+	var jobManagerServiceUIPort = intstr.FromString("ui")
+	var ingressName = getJobManagerIngressName(clusterName)
+	var annotations = jobManagerIngressSpec.Annotations
+	var ingressHost = getJobManagerIngressHost(ingressHostFormat, clusterName)
+	var labels = map[string]string{
+		"cluster":   clusterName,
+		"app":       "flink",
+		"component": "jobmanager",
+	}
+	var ingressTLS []extensionsv1beta1.IngressTLS
+	if jobManagerIngressSpec.UseTLS != nil && *jobManagerIngressSpec.UseTLS == true {
+		ingressTLS = []extensionsv1beta1.IngressTLS{{
+			Hosts:      []string{ingressHost},
+			SecretName: *jobManagerIngressSpec.TLSSecretName,
+		}}
+	} else {
+		ingressTLS = nil
+	}
+	var jobManagerIngress = &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      ingressName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkCluster)},
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			TLS: ingressTLS,
+			Rules: []extensionsv1beta1.IngressRule{extensionsv1beta1.IngressRule{
+				Host: ingressHost,
+				IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+					HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+						Paths: []extensionsv1beta1.HTTPIngressPath{extensionsv1beta1.HTTPIngressPath{
+							Path: "/",
+							Backend: extensionsv1beta1.IngressBackend{
+								ServiceName: jobManagerServiceName,
+								ServicePort: jobManagerServiceUIPort,
+							},
+						}},
+					},
+				},
+			}},
+		},
+	}
+
+	return jobManagerIngress
 }
 
 // Gets the desired TaskManager deployment spec from a cluster spec.
@@ -422,6 +493,11 @@ func getJobManagerServiceName(clusterName string) string {
 	return clusterName + "-jobmanager"
 }
 
+// Gets JobManager ingress name
+func getJobManagerIngressName(clusterName string) string {
+	return clusterName + "-jobmanager"
+}
+
 // Gets TaskManager name
 func getTaskManagerDeploymentName(clusterName string) string {
 	return clusterName + "-taskmanager"
@@ -439,4 +515,10 @@ func getFlinkProperties(properties map[string]string) string {
 		builder.WriteString(fmt.Sprintf("%s: %s\n", key, value))
 	}
 	return builder.String()
+}
+
+var jobManagerIngressHostRegex = regexp.MustCompile("{{\\s*[$]clusterName\\s*}}")
+
+func getJobManagerIngressHost(ingressHostFormat string, clusterName string) string {
+	return jobManagerIngressHostRegex.ReplaceAllString(ingressHostFormat, clusterName)
 }

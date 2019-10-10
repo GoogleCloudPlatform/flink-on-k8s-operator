@@ -26,7 +26,14 @@ import (
 
 // Tests default values are set as expected.
 func TestSetDefault(t *testing.T) {
-	var cluster = FlinkCluster{Spec: FlinkClusterSpec{JobSpec: &JobSpec{}}}
+	var cluster = FlinkCluster{
+		Spec: FlinkClusterSpec{
+			JobSpec: &JobSpec{},
+			JobManagerSpec: JobManagerSpec{
+				Ingress: &JobManagerIngressSpec{},
+			},
+		},
+	}
 	_SetDefault(&cluster)
 
 	var defaultJmReplicas = int32(1)
@@ -41,7 +48,7 @@ func TestSetDefault(t *testing.T) {
 	var defaultJobParallelism = int32(1)
 	var defaultJobNoLoggingToStdout = false
 	var defaultJobRestartPolicy = corev1.RestartPolicy("OnFailure")
-
+	var defatulJobManagerIngressTLSUse = false
 	var expectedCluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -54,6 +61,9 @@ func TestSetDefault(t *testing.T) {
 			JobManagerSpec: JobManagerSpec{
 				Replicas:    &defaultJmReplicas,
 				AccessScope: "Cluster",
+				Ingress: &JobManagerIngressSpec{
+					UseTLS: &defatulJobManagerIngressTLSUse,
+				},
 				Ports: JobManagerPorts{
 					RPC:   &defaultJmRPCPort,
 					Blob:  &defaultJmBlobPort,
@@ -103,6 +113,7 @@ func TestSetNonDefault(t *testing.T) {
 	var jobParallelism = int32(2)
 	var jobNoLoggingToStdout = true
 	var jobRestartPolicy = corev1.RestartPolicy("Never")
+	var jobManagerIngressTLSUse = true
 	var cluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -115,6 +126,9 @@ func TestSetNonDefault(t *testing.T) {
 			JobManagerSpec: JobManagerSpec{
 				Replicas:    &jmReplicas,
 				AccessScope: "Cluster",
+				Ingress: &JobManagerIngressSpec{
+					UseTLS: &jobManagerIngressTLSUse,
+				},
 				Ports: JobManagerPorts{
 					RPC:   &jmRPCPort,
 					Blob:  &jmBlobPort,
@@ -161,6 +175,9 @@ func TestSetNonDefault(t *testing.T) {
 			JobManagerSpec: JobManagerSpec{
 				Replicas:    &jmReplicas,
 				AccessScope: "Cluster",
+				Ingress: &JobManagerIngressSpec{
+					UseTLS: &jobManagerIngressTLSUse,
+				},
 				Ports: JobManagerPorts{
 					RPC:   &jmRPCPort,
 					Blob:  &jmBlobPort,
