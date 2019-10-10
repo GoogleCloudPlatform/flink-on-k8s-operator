@@ -39,8 +39,8 @@ The operator is still under active development, there is not Helm chart availabl
 
 ## Documentation
 
-* [FlinkCluster Custom Resource Definition](docs/crd.md)
 * [Developer Guide](docs/developer-guide.md)
+* [FlinkCluster Custom Resource Definition](docs/crd.md)
 
 ## Contributing
 
