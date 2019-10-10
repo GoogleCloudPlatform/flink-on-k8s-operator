@@ -20,32 +20,33 @@ unit tests, build and push docker image, deploy the Flink Operator to a Kubernet
 
 ## Dependencies
 
-The following dependencies are required on your local machine to generate, build and deploy the operator:
+The following dependencies are required to build the Flink Operator binary and run unit tests:
 
 * [Go v1.12+](https://golang.org/)
+* [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
+
+But you don't have to install them on your local machine, because this project includes a
+[builder Docker image](../Dockerfile.builder) with the dependencies installed. Build and unit test can happen inside of
+the builder container. This is the recommended way for local development.
+
+But to create the Flink Operator Docker image and deploy it to a Kubernetes cluster, the following dependencies are
+required on you local machine:
+
 * [Docker](https://www.docker.com/)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [Kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize)
-* [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
 
 ## Local build and test
 
-To build the Flink Operator binary locally, run
+To build the Flink Operator binary and run unit tests, run
+
+### In Docker (recommended)
 
 ```bash
-make flink-operator
+make test-in-docker
 ```
 
-or simply
-
-```bash
-make
-```
-
-```make flink-operator``` automatically runs ```make generate``` which generates Go source code and YAML files
-with KubeBuilder.
-
-Run unit tests with
+### Non-Docker (not recommended)
 
 ```bash
 make test
@@ -53,11 +54,10 @@ make test
 
 ## Build and push docker image
 
-Build a Docker image for the Flink Operator and then push it to an image
-registry with
+Build a Docker image for the Flink Operator and then push it to an image registry with
 
 ```bash
-make docker-build docker-push IMG=<tag>
+make operator-image push-operator-image IMG=<tag>
 ```
 
 Depending on which image registry you want to use, choose a tag accordingly, e.g., if you are using
