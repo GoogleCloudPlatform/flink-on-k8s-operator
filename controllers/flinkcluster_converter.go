@@ -34,10 +34,10 @@ import (
 
 // _DesiredClusterState holds desired state of a cluster.
 type _DesiredClusterState struct {
-	jmDeployment *appsv1.Deployment
-	jmService    *corev1.Service
-	tmDeployment *appsv1.Deployment
-	job          *batchv1.Job
+	JmDeployment *appsv1.Deployment
+	JmService    *corev1.Service
+	TmDeployment *appsv1.Deployment
+	Job          *batchv1.Job
 }
 
 // Gets the desired state of a cluster.
@@ -48,10 +48,10 @@ func getDesiredClusterState(
 		return _DesiredClusterState{}
 	}
 	return _DesiredClusterState{
-		jmDeployment: getDesiredJobManagerDeployment(cluster),
-		jmService:    getDesiredJobManagerService(cluster),
-		tmDeployment: getDesiredTaskManagerDeployment(cluster),
-		job:          getDesiredJob(cluster),
+		JmDeployment: getDesiredJobManagerDeployment(cluster),
+		JmService:    getDesiredJobManagerService(cluster),
+		TmDeployment: getDesiredTaskManagerDeployment(cluster),
+		Job:          getDesiredJob(cluster),
 	}
 }
 

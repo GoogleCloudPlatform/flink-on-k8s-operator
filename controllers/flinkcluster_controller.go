@@ -111,25 +111,24 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	}
 
 	log.Info("---------- 2. Compute the desired state ----------")
-
 	*desiredState = getDesiredClusterState(observedState.cluster)
-	if desiredState.jmDeployment != nil {
-		log.Info("Desired state", "JobManager deployment", *desiredState.jmDeployment)
+	if desiredState.JmDeployment != nil {
+		log.Info("Desired state", "JobManager deployment", *desiredState.JmDeployment)
 	} else {
 		log.Info("Desired state", "JobManager deployment", "nil")
 	}
-	if desiredState.jmService != nil {
-		log.Info("Desired state", "JobManager service", *desiredState.jmService)
+	if desiredState.JmService != nil {
+		log.Info("Desired state", "JobManager service", *desiredState.JmService)
 	} else {
 		log.Info("Desired state", "JobManager service", "nil")
 	}
-	if desiredState.tmDeployment != nil {
-		log.Info("Desired state", "TaskManager deployment", *desiredState.tmDeployment)
+	if desiredState.TmDeployment != nil {
+		log.Info("Desired state", "TaskManager deployment", *desiredState.TmDeployment)
 	} else {
 		log.Info("Desired state", "TaskManager deployment", "nil")
 	}
-	if desiredState.job != nil {
-		log.Info("Desired state", "Job", *desiredState.job)
+	if desiredState.Job != nil {
+		log.Info("Desired state", "Job", *desiredState.Job)
 	} else {
 		log.Info("Desired state", "Job", "nil")
 	}
