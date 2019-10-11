@@ -246,9 +246,13 @@ func getDesiredJobManagerIngress(
 	}
 	var ingressTLS []extensionsv1beta1.IngressTLS
 	if jobManagerIngressSpec.UseTLS != nil && *jobManagerIngressSpec.UseTLS == true {
+		var tlsSecret string
+		if jobManagerIngressSpec.TLSSecretName != nil {
+			tlsSecret = *jobManagerIngressSpec.TLSSecretName
+		}
 		ingressTLS = []extensionsv1beta1.IngressTLS{{
 			Hosts:      []string{ingressHost},
-			SecretName: *jobManagerIngressSpec.TLSSecretName,
+			SecretName: tlsSecret,
 		}}
 	} else {
 		ingressTLS = nil
