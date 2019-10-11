@@ -13,7 +13,7 @@ build: generate fmt vet
 	go mod tidy
 
 # Run tests.
-test: generate fmt vet manifests build
+test: generate fmt vet manifests
 	go test ./api/... ./controllers/... -coverprofile cover.out
 	go mod tidy
 
