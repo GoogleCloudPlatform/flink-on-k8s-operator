@@ -148,36 +148,48 @@ kubectl apply -f config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml
 
 ## Submit a job
 
-In a session cluster, you can submit jobs to the cluster through Flink web UI
-(see instructions in the next section on how to access it) or API endpoint.
+There are several ways to submit jobs to a session cluster.
 
-When submitting jobs through Flink API endpoint, depending on the access scope
-of JobManager you defined in the CR, you can submit jobs to Flink from within
-the Kubernetes cluster or/and from outside of the cluster (e.g., your local
-machine).
+1) **Flink web UI**
 
-Examples:
+You can submit jobs through the Flink web UI. See instructions in the
+Monitoring section on how to setup a proxy to the Flink Web UI.
 
-* Access scope: Cluster
+2) **From within the cluster**
 
-  Run the following command on your local machine to create a pod which submits
-  a job to the session cluster (access scope: Cluster):
+You can submit jobs through a client Pod in the same cluster, for example:
 
-  ```bash
-  kubectl run my-job-submitter --image=flink:1.8.1 --generator=run-pod/v1 -- \
-      /opt/flink/bin/flink run -m flinksessioncluster-sample-jobmanager:8081 \
-      /opt/flink/examples/batch/WordCount.jar --input /opt/flink/README.txt
-  ```
+```bash
+kubectl run my-job-submitter --image=flink:1.8.1 --generator=run-pod/v1 -- \
+    /opt/flink/bin/flink run -m flinksessioncluster-sample-jobmanager:8081 \
+    /opt/flink/examples/batch/WordCount.jar --input /opt/flink/README.txt
+```
 
-* Access scope: VPC or External
+3) **From outside the cluster**
 
-  Run the following command on your local machine to submit a job directly to
-  the session cluster:
+If you have configured the access scope of JobManager as `External` or `VPC`,
+you can submit jobs from a machine which is in the scope, for example:
 
-  ```bash
-  flink run -m <jobmanager-service-ip>:8081 \
-      /opt/flink/examples/batch/WordCount.jar --input /opt/flink/README.txt
-  ```
+```bash
+bin/flink run -m <jobmanager-service-ip>:8081 \
+    examples/batch/WordCount.jar --input /opt/flink/README.txt
+```
+
+Or if the access scope is `Cluster` which is the default, you can use port
+forwarding to establish a tunnel from a machine which has access to the
+Kubernetes API service (typically your local machine) to the JobManager service
+first, for example:
+
+```bash
+kubectl port-forward service/flinksessioncluster-sample-jobmanager 8081:8081
+```
+
+then submit jobs through the tunnel, for example:
+
+```bash
+bin/flink run -m localhost:8081 \
+    examples/batch/WordCount.jar --input ./README.txt
+```
 
 ## Monitoring
 
