@@ -50,11 +50,9 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	var ingressHostFormat string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&ingressHostFormat, "ingress-host-format", "", "Ingress host format.")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
@@ -72,9 +70,6 @@ func main() {
 	err = (&controllers.FlinkClusterReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
-		Config: controllers.FlinkClusterConfig{
-			IngressHostFormat: ingressHostFormat,
-		},
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")

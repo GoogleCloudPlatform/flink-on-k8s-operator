@@ -217,7 +217,7 @@ func (reconciler *_ClusterReconciler) deleteService(
 }
 
 func (reconciler *_ClusterReconciler) reconcileJobManagerIngress() error {
-	var desiredJmIngress = reconciler.desiredState.jmIngress
+	var desiredJmIngress = reconciler.desiredState.JmIngress
 	var observedJmIngress = reconciler.observedState.jmIngress
 
 	if desiredJmIngress != nil && observedJmIngress == nil {
@@ -225,14 +225,13 @@ func (reconciler *_ClusterReconciler) reconcileJobManagerIngress() error {
 	}
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
-		reconciler.log.Info("JobManager service already exists, no action")
+		reconciler.log.Info("JobManager ingress already exists, no action")
 		return nil
 		// TODO: compare and update if needed.
 	}
 
 	if desiredJmIngress == nil && observedJmIngress != nil {
 		return reconciler.deleteIngress(observedJmIngress, "JobManager")
-		// TODO: compare and update if needed.
 	}
 
 	return nil

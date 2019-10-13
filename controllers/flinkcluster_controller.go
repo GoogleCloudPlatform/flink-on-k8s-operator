@@ -33,13 +33,8 @@ import (
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
 	client.Client
-	Log    logr.Logger
-	mgr    ctrl.Manager
-	Config FlinkClusterConfig
-}
-
-type FlinkClusterConfig struct {
-	IngressHostFormat string
+	Log logr.Logger
+	mgr ctrl.Manager
 }
 
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
@@ -68,7 +63,6 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 			"flinkcluster", request.NamespacedName),
 		eventRecorder: reconciler.mgr.GetEventRecorderFor("FlinkOperator"),
 		observedState: _ObservedClusterState{},
-		config:        reconciler.Config,
 	}
 	return handler.Reconcile(request)
 }
@@ -96,7 +90,6 @@ type _FlinkClusterHandler struct {
 	eventRecorder record.EventRecorder
 	observedState _ObservedClusterState
 	desiredState  _DesiredClusterState
-	config        FlinkClusterConfig
 }
 
 func (handler *_FlinkClusterHandler) Reconcile(
@@ -106,7 +99,6 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	var context = handler.context
 	var observedState = &handler.observedState
 	var desiredState = &handler.desiredState
-	var config = &handler.config
 	var err error
 
 	log.Info("============================================================")
@@ -132,12 +124,13 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	} else {
 		log.Info("Desired state", "JobManager service", "nil")
 	}
-	if desiredState.jmIngress != nil {
-		log.Info("Desired state", "JobManager ingress", *desiredState.jmIngress)
+	if desiredState.JmIngress != nil {
+		log.Info("Desired state", "JobManager ingress", *desiredState.JmIngress)
 	} else {
+		// TODO: IngressHostFormat should be provided. This validation will be moved to validation hook
 		var msg string
-		if observedState.cluster != nil && observedState.cluster.Spec.JobManagerSpec.Ingress != nil && config.IngressHostFormat == "" {
-			msg = " (JobManager ingress spec is provided but operator config --ingress-host-format is missing)"
+		if observedState.cluster != nil && observedState.cluster.Spec.JobManagerSpec.Ingress != nil && observedState.cluster.Spec.JobManagerSpec.Ingress.IngressHostFormat == "" {
+			msg = " (JobManager ingress spec is provided but IngressHostFormat is missing)"
 		}
 		log.Info("Desired state"+msg, "JobManager ingress", "nil")
 	}

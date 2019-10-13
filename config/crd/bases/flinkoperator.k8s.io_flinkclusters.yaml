@@ -1798,13 +1798,16 @@ spec:
                     annotations:
                       additionalProperties:
                         type: string
-                      description: Ingress annotations
+                      description: Ingress annotations.
                       type: object
+                    ingressHostFormat:
+                      description: Ingress host format. ex) {{$clusterName}}.example.com
+                      type: string
                     tlsSecretName:
-                      description: TLS secret name
+                      description: TLS secret name.
                       type: string
                     useTls:
-                      description: TLS use
+                      description: TLS use.
                       type: boolean
                   type: object
                 mounts:

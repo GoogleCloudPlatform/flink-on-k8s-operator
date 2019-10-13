@@ -112,13 +112,16 @@ type JobManagerPorts struct {
 
 // JobManagerIngress defines ingress of JobManager
 type JobManagerIngressSpec struct {
-	// Ingress annotations
+	// Ingress host format. ex) {{$clusterName}}.example.com
+	IngressHostFormat string `json:"ingressHostFormat,omitempty"`
+
+	// Ingress annotations.
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// TLS use
+	// TLS use.
 	UseTLS *bool `json:"useTls,omitempty"`
 
-	// TLS secret name
+	// TLS secret name.
 	TLSSecretName *string `json:"tlsSecretName,omitempty"`
 }
 

@@ -38,15 +38,14 @@ import (
 type _DesiredClusterState struct {
 	JmDeployment *appsv1.Deployment
 	JmService    *corev1.Service
-  JmIngress    *extensionsv1beta1.Ingress
+	JmIngress    *extensionsv1beta1.Ingress
 	TmDeployment *appsv1.Deployment
 	Job          *batchv1.Job
 }
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *flinkoperatorv1alpha1.FlinkCluster,
-	config *FlinkClusterConfig) _DesiredClusterState {
+	cluster *flinkoperatorv1alpha1.FlinkCluster) _DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return _DesiredClusterState{}
@@ -54,7 +53,7 @@ func getDesiredClusterState(
 	return _DesiredClusterState{
 		JmDeployment: getDesiredJobManagerDeployment(cluster),
 		JmService:    getDesiredJobManagerService(cluster),
-    JmIngress:    getDesiredJobManagerIngress(cluster, config.IngressHostFormat),
+		JmIngress:    getDesiredJobManagerIngress(cluster),
 		TmDeployment: getDesiredTaskManagerDeployment(cluster),
 		Job:          getDesiredJob(cluster),
 	}
@@ -218,12 +217,11 @@ func getDesiredJobManagerService(
 	return jobManagerService
 }
 
-// Gets the desired JobManager service spec from a cluster spec.
+// Gets the desired JobManager ingress spec from a cluster spec.
 func getDesiredJobManagerIngress(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
-	ingressHostFormat string) *extensionsv1beta1.Ingress {
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *extensionsv1beta1.Ingress {
 	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
-	if ingressHostFormat == "" || jobManagerIngressSpec == nil {
+	if jobManagerIngressSpec == nil || jobManagerIngressSpec.IngressHostFormat == "" {
 		return nil
 	}
 
@@ -237,6 +235,7 @@ func getDesiredJobManagerIngress(
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var jobManagerServiceUIPort = intstr.FromString("ui")
 	var ingressName = getJobManagerIngressName(clusterName)
+	var ingressHostFormat = jobManagerIngressSpec.IngressHostFormat
 	var annotations = jobManagerIngressSpec.Annotations
 	var ingressHost = getJobManagerIngressHost(ingressHostFormat, clusterName)
 	var labels = map[string]string{
