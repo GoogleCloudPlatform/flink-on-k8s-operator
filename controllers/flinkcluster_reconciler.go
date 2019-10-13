@@ -78,14 +78,14 @@ func (reconciler *_ClusterReconciler) reconcile() error {
 func (reconciler *_ClusterReconciler) reconcileJobManagerDeployment() error {
 	return reconciler.reconcileDeployment(
 		"JobManager",
-		reconciler.desiredState.jmDeployment,
+		reconciler.desiredState.JmDeployment,
 		reconciler.observedState.jmDeployment)
 }
 
 func (reconciler *_ClusterReconciler) reconcileTaskManagerDeployment() error {
 	return reconciler.reconcileDeployment(
 		"TaskManager",
-		reconciler.desiredState.tmDeployment,
+		reconciler.desiredState.TmDeployment,
 		reconciler.observedState.tmDeployment)
 }
 
@@ -162,7 +162,7 @@ func (reconciler *_ClusterReconciler) deleteDeployment(
 }
 
 func (reconciler *_ClusterReconciler) reconcileJobManagerService() error {
-	var desiredJmService = reconciler.desiredState.jmService
+	var desiredJmService = reconciler.desiredState.JmService
 	var observedJmService = reconciler.observedState.jmService
 
 	if desiredJmService != nil && observedJmService == nil {
@@ -273,7 +273,7 @@ func (reconciler *_ClusterReconciler) deleteIngress(
 
 func (reconciler *_ClusterReconciler) reconcileJob() error {
 	var log = reconciler.log
-	var desiredJob = reconciler.desiredState.job
+	var desiredJob = reconciler.desiredState.Job
 	var observedJob = reconciler.observedState.job
 	var observedClusterComponents = reconciler.observedState.cluster.Status.Components
 	if desiredJob != nil {

@@ -1,0 +1,11 @@
+steps:
+  # Create builder image with source code and build dependencies
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--tag=flink-operator-builder:$BUILD_ID', '-f', 'Dockerfile.builder', '.']
+  # Run test with the builder image
+  - name: 'flink-operator-builder:$BUILD_ID'
+    entrypoint: 'make'
+    args: ['test']
+options:
+  machineType: 'N1_HIGHCPU_32'
+timeout: 600s
