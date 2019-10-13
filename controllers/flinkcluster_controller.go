@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
@@ -62,7 +61,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 		eventRecorder: reconciler.mgr.GetEventRecorderFor("FlinkOperator"),
 		observedState: _ObservedClusterState{},
 	}
-	return handler.Reconcile(request)
+	return handler.reconcile(request)
 }
 
 // SetupWithManager registers this reconciler with the controller manager and
@@ -90,7 +89,7 @@ type _FlinkClusterHandler struct {
 	desiredState  _DesiredClusterState
 }
 
-func (handler *_FlinkClusterHandler) Reconcile(
+func (handler *_FlinkClusterHandler) reconcile(
 	request ctrl.Request) (ctrl.Result, error) {
 	var k8sClient = handler.k8sClient
 	var log = handler.log
@@ -111,6 +110,7 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	}
 
 	log.Info("---------- 2. Compute the desired state ----------")
+
 	*desiredState = getDesiredClusterState(observedState.cluster)
 	if desiredState.JmDeployment != nil {
 		log.Info("Desired state", "JobManager deployment", *desiredState.JmDeployment)
@@ -135,7 +135,6 @@ func (handler *_FlinkClusterHandler) Reconcile(
 
 	log.Info("---------- 3. Update cluster status ----------")
 
-	// Update cluster status if changed.
 	var updater = _ClusterStatusUpdater{
 		k8sClient:     handler.k8sClient,
 		context:       handler.context,
@@ -158,14 +157,13 @@ func (handler *_FlinkClusterHandler) Reconcile(
 		observedState: handler.observedState,
 		desiredState:  handler.desiredState,
 	}
-	err = reconciler.reconcile()
+	result, err := reconciler.reconcile()
 	if err != nil {
 		log.Error(err, "Failed to reconcile")
-		return ctrl.Result{
-			RequeueAfter: 5 * time.Second,
-			Requeue:      true,
-		}, err
+	}
+	if result.RequeueAfter > 0 {
+		log.Info("Requeue reconcile request", "after", result.RequeueAfter)
 	}
 
-	return ctrl.Result{}, nil
+	return result, err
 }
