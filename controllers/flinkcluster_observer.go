@@ -18,14 +18,12 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	"github.com/googlecloudplatform/flink-operator/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,13 +42,13 @@ type _ClusterStateObserver struct {
 
 // _ObservedClusterState holds observed state of a cluster.
 type _ObservedClusterState struct {
-	cluster      *flinkoperatorv1alpha1.FlinkCluster
-	jmDeployment *appsv1.Deployment
-	jmService    *corev1.Service
-	tmDeployment *appsv1.Deployment
-	job          *batchv1.Job
-	jobPod       *corev1.Pod
-	flinkJobID   *string
+	cluster            *flinkoperatorv1alpha1.FlinkCluster
+	jmDeployment       *appsv1.Deployment
+	jmService          *corev1.Service
+	tmDeployment       *appsv1.Deployment
+	job                *batchv1.Job
+	flinkJobStatusList *flinkclient.JobStatusList
+	flinkJobID         *string
 }
 
 // Flink job status.
@@ -148,6 +146,10 @@ func (observer *_ClusterStateObserver) observeJob(
 		return nil
 	}
 
+	// Flink job status list can be available before there is any job
+	// submitted.
+	observer.observeFlinkJobs(observedState)
+
 	// Job resource.
 	var observedJob = new(batchv1.Job)
 	err = observer.observeJobResource(observedJob)
@@ -163,90 +165,77 @@ func (observer *_ClusterStateObserver) observeJob(
 		observedState.job = observedJob
 	}
 
-	// Job pod.
-	var observedJobPods = new(corev1.PodList)
-	err = observer.observeJobPods(observedJobPods)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get job pods")
-			return err
-		}
-		log.Info("Observed job pods", "pods", "nil")
-		observedJobPods = nil
-	} else {
-		log.Info("Observed job pods", "pods", observedJobPods.Items)
-		if len(observedJobPods.Items) == 1 {
-			observedState.jobPod = &observedJobPods.Items[0]
-		} else if len(observedJobPods.Items) > 1 {
-			// Should never be true unless the user manually created a pod
-			// which matches the labels.
-			return fmt.Errorf(
-				"Exactly one job pod is expected, but found more: %p",
-				observedJobPods.Items)
-		}
-	}
-
-	// Flink job ID.
-	var observedJobStatus = observedState.cluster.Status.Components.Job
-	if observedJobStatus != nil && len(observedJobStatus.ID) > 0 {
-		log.Info("Flink job ID is already available.", "ID", observedJobStatus.ID)
-		observedState.flinkJobID = &observedJobStatus.ID
-	} else {
-		var isJobCreated = observedJob != nil &&
-			observedState.jobPod != nil &&
-			observedState.jobPod.Status.Phase != corev1.PodPhase("Pending") &&
-			observedState.jobPod.Status.Phase != corev1.PodPhase("Unknown")
-		if isJobCreated && observedState.jmService != nil {
-			var url = fmt.Sprintf(
-				"http://%s.%s.svc.cluster.local:%d/jobs",
-				observedState.jmService.GetName(),
-				observedState.jmService.GetNamespace(),
-				*observedState.cluster.Spec.JobManagerSpec.Ports.UI)
-			log.Info(
-				"Polling job status from Flink API...",
-				"url",
-				url,
-				"jobPodPhase",
-				observedState.jobPod.Status.Phase)
-			var flinkJobID = observer.getFlinkJobID(url)
-			if flinkJobID != nil {
-				observedState.flinkJobID = flinkJobID
-			}
-		} else {
-			log.Info("Skip getting Flink job ID")
-		}
-	}
-
 	return nil
 }
 
-// Gets Flink job ID through Flink REST API.
-func (observer *_ClusterStateObserver) getFlinkJobID(url string) *string {
+// Observes Flink jobs through Flink API (instead of Kubernetes jobs through
+// Kubernetes API).
+//
+// This needs to be done after the cluster is running and before the job is
+// submitted, because we use it to detect whether the Flink API server is up
+// and running.
+func (observer *_ClusterStateObserver) observeFlinkJobs(
+	observed *_ObservedClusterState) {
 	var log = observer.log
-	var client = &http.Client{
-		Timeout: 15 * time.Second,
+
+	// Wait until the cluster is running.
+	if observed.cluster.Status.State !=
+		flinkoperatorv1alpha1.ClusterState.Running {
+		log.Info(
+			"Skip getting Flink job status.",
+			"clusterState",
+			observed.cluster.Status.State)
+		return
 	}
-	var req, err = http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "flink-operator")
-	resp, err := client.Do(req)
-	if err == nil {
-		defer resp.Body.Close()
-		var body []byte
-		body, err = ioutil.ReadAll(resp.Body)
-		if err == nil {
-			var jobStatusList _JobStatusList
-			json.Unmarshal(body, &jobStatusList)
-			log.Info("Flink job status list", "jobs", jobStatusList)
-			if len(jobStatusList.Jobs) > 0 {
-				return &jobStatusList.Jobs[0].ID
-			}
+
+	// Skip if it is already recorded.
+	var recordedJobStatus = observed.cluster.Status.Components.Job
+	if recordedJobStatus != nil && len(recordedJobStatus.ID) > 0 {
+		log.Info(
+			"Skip getting Flink job status.",
+			"recordedStatus",
+			*recordedJobStatus)
+		return
+	}
+
+	// Get Flink job status list.
+	var jobList = &flinkclient.JobStatusList{}
+	var url = getFlinkJobsAPIUrl(
+		observed.jmService.GetName(),
+		observed.jmService.GetNamespace(),
+		*observed.cluster.Spec.JobManagerSpec.Ports.UI)
+	var err = flinkclient.GetJobStatusList(url, jobList)
+	if err != nil {
+		// It is normal in many cases, not an error.
+		log.Info("Failed to get Flink job status list.", "error", err)
+		jobList = nil
+	}
+	observed.flinkJobStatusList = jobList
+
+	// Extract Flink job ID.
+	if jobList != nil {
+		var jobs = jobList.Jobs
+		var jobCount = len(jobs)
+		log.Info("Observed Flink job status list", "jobs", jobs)
+		if jobCount > 1 {
+			log.Error(
+				errors.New("more than one Flink job is found"),
+				"count",
+				jobCount)
+		} else if jobCount == 1 {
+			observed.flinkJobID = &jobs[0].ID
+			log.Info("Observed Flink job ID", "ID", observed.flinkJobID)
 		}
 	}
-	if err != nil {
-		log.Error(err, "Failed to get Flink job ID.")
-	}
-	return nil
+}
+
+func getFlinkJobsAPIUrl(
+	jmServiceName string, jmServiceNamespace string, uiPort int32) string {
+	return fmt.Sprintf(
+		"http://%s.%s.svc.cluster.local:%d/jobs",
+		jmServiceName,
+		jmServiceNamespace,
+		uiPort)
 }
 
 func (observer *_ClusterStateObserver) observeCluster(
@@ -322,19 +311,4 @@ func (observer *_ClusterStateObserver) observeJobResource(
 			Name:      getJobName(clusterName),
 		},
 		observedJob)
-}
-
-func (observer *_ClusterStateObserver) observeJobPods(
-	observedJobPod *corev1.PodList) error {
-	var clusterName = observer.request.Name
-	var jobName = getJobName(observer.request.Name)
-	var inNamespace = client.InNamespace(observer.request.Namespace)
-	var matchingLabels client.MatchingLabels = map[string]string{
-		"app":      "flink",
-		"cluster":  clusterName,
-		"job-name": jobName,
-	}
-	var jobPods = observer.k8sClient.List(
-		observer.context, observedJobPod, inNamespace, matchingLabels)
-	return jobPods
 }

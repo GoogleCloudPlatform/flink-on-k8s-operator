@@ -107,12 +107,12 @@ func (updater *_ClusterStatusUpdater) createStatusChangeEvents(
 	// Job.
 	if oldStatus.Components.Job == nil && newStatus.Components.Job != nil {
 		updater.createStatusChangeEvent(
-			"Flink job", "", newStatus.Components.Job.State)
+			"Job", "", newStatus.Components.Job.State)
 	}
 	if oldStatus.Components.Job != nil && newStatus.Components.Job != nil &&
 		oldStatus.Components.Job.State != newStatus.Components.Job.State {
 		updater.createStatusChangeEvent(
-			"Flink job",
+			"Job",
 			oldStatus.Components.Job.State,
 			newStatus.Components.Job.State)
 	}
@@ -235,11 +235,17 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	if observedJob != nil {
 		status.Components.Job = new(flinkoperatorv1alpha1.JobStatus)
 		status.Components.Job.Name = observedJob.ObjectMeta.Name
+
+		var flinkJobID = updater.getFlinkJobID()
+		if flinkJobID != nil {
+			status.Components.Job.ID = *flinkJobID
+		}
+
 		if observedJob.Status.Active > 0 {
-			var observedJobPod = updater.observedState.jobPod
 			// When job status is Active, it is possible that the pod is still
-			// Pending.
-			if observedJobPod != nil && observedJobPod.Status.Phase == "Pending" {
+			// Pending (for scheduling), so we use Flink job ID to determine
+			// the actual state.
+			if flinkJobID == nil {
 				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Pending
 			} else {
 				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Running
@@ -252,30 +258,6 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 			jobFinished = true
 		} else {
 			status.Components.Job = nil
-		}
-
-		// (Optional) Flink Job ID.
-		if updater.observedState.flinkJobID != nil {
-			status.Components.Job.ID = *updater.observedState.flinkJobID
-		}
-		var hasID = len(status.Components.Job.ID) > 0
-
-		// Keep the previous ID if no longer being able to retrieve the current ID,
-		// maybe the JobManager has been deleted, or transient error.
-		var hasOldID = (recordedClusterStatus.Components.Job != nil &&
-			len(recordedClusterStatus.Components.Job.ID) > 0)
-		if !hasID && hasOldID {
-			status.Components.Job.ID = recordedClusterStatus.Components.Job.ID
-		}
-
-		if hasID && hasOldID &&
-			status.Components.Job.ID != recordedClusterStatus.Components.Job.ID {
-			updater.log.Info(
-				"Flink job ID changed unexpectedly!",
-				"current",
-				recordedClusterStatus.Components.Job.ID,
-				"new",
-				status.Components.Job.ID)
 		}
 	}
 
@@ -309,6 +291,26 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	}
 
 	return status
+}
+
+// Gets Flink job ID based on the observed state and the recorded state.
+//
+// It is possible that the recorded is not nil, but the observed is, due
+// to transient error or being skiped as an optimization.
+func (updater *_ClusterStatusUpdater) getFlinkJobID() *string {
+	// Observed.
+	var observedID = updater.observedState.flinkJobID
+	if observedID != nil && len(*observedID) > 0 {
+		return observedID
+	}
+
+	// Recorded.
+	var recordedJobStatus = updater.observedState.cluster.Status.Components.Job
+	if recordedJobStatus != nil && len(recordedJobStatus.ID) > 0 {
+		return &recordedJobStatus.ID
+	}
+
+	return nil
 }
 
 func (updater *_ClusterStatusUpdater) isStatusChanged(

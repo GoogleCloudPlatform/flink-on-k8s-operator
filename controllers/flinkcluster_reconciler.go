@@ -18,12 +18,13 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,36 +38,33 @@ type _ClusterReconciler struct {
 
 // Compares the desired state and the observed state, if there is a difference,
 // takes actions to drive the observed state towards the desired state.
-func (reconciler *_ClusterReconciler) reconcile() error {
+func (reconciler *_ClusterReconciler) reconcile() (ctrl.Result, error) {
 	var err error
 
 	// Child resources of the cluster CR will be automatically reclaimed by K8S.
 	if reconciler.observedState.cluster == nil {
 		reconciler.log.Info("The cluster has been deleted, no action to take")
-		return nil
+		return ctrl.Result{}, nil
 	}
 
 	err = reconciler.reconcileJobManagerDeployment()
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
 	err = reconciler.reconcileJobManagerService()
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
 	err = reconciler.reconcileTaskManagerDeployment()
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
-	err = reconciler.reconcileJob()
-	if err != nil {
-		return err
-	}
+	result, err := reconciler.reconcileJob()
 
-	return nil
+	return result, nil
 }
 
 func (reconciler *_ClusterReconciler) reconcileJobManagerDeployment() error {
@@ -210,28 +208,33 @@ func (reconciler *_ClusterReconciler) deleteService(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) reconcileJob() error {
+func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var log = reconciler.log
 	var desiredJob = reconciler.desiredState.Job
-	var observedJob = reconciler.observedState.job
-	var observedClusterComponents = reconciler.observedState.cluster.Status.Components
+	var observed = reconciler.observedState
+	var observedJob = observed.job
+
 	if desiredJob != nil {
 		if observedJob == nil {
-			var jmDeploymentReady = observedClusterComponents.JobManagerDeployment.State ==
-				flinkoperatorv1alpha1.ClusterComponentState.Ready
-			var jmServiceReady = observedClusterComponents.JobManagerService.State ==
-				flinkoperatorv1alpha1.ClusterComponentState.Ready
-			var tmDeploymentReady = observedClusterComponents.TaskManagerDeployment.State ==
-				flinkoperatorv1alpha1.ClusterComponentState.Ready
-			if jmDeploymentReady && jmServiceReady && tmDeploymentReady {
-				return reconciler.createJob(desiredJob)
+			// If the observed Flink job status list is not nil (e.g., emtpy list), it means
+			// Flink REST API server is up and running. It is the source of truth of whether
+			// we can submit a job.
+			if reconciler.observedState.flinkJobStatusList != nil {
+				var err = reconciler.createJob(desiredJob)
+				return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
 			}
-			log.Info("Skip creating job, waiting for other components to be ready")
-		} else {
-			log.Info("Job already exists, no action")
+			log.Info("Skip creating job, waiting for Flink API to be ready")
+			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
+
+		var observedJobStatus = reconciler.observedState.cluster.Status.Components.Job
+		if observedJobStatus != nil && len(observedJobStatus.ID) == 0 {
+			log.Info("Flink job ID is not set yet")
+			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
+		}
+		log.Info("Job already exists, no action")
 	}
-	return nil
+	return ctrl.Result{}, nil
 }
 
 func (reconciler *_ClusterReconciler) createJob(job *batchv1.Job) error {
