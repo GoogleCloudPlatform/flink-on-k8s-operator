@@ -23,7 +23,7 @@ spec:
   jobManager:
     accessScope: Cluster
     ingress:
-      ingressHostFormat: '{{$clusterName}}.example.com'
+      hostFormat: '{{$clusterName}}.example.com'
       useTls: false
       annotations:
         kubernetes.io/ingress.class: nginx

@@ -221,7 +221,7 @@ func getDesiredJobManagerService(
 func getDesiredJobManagerIngress(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *extensionsv1beta1.Ingress {
 	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
-	if jobManagerIngressSpec == nil || jobManagerIngressSpec.IngressHostFormat == "" {
+	if jobManagerIngressSpec == nil || jobManagerIngressSpec.HostFormat == "" {
 		return nil
 	}
 
@@ -235,7 +235,7 @@ func getDesiredJobManagerIngress(
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var jobManagerServiceUIPort = intstr.FromString("ui")
 	var ingressName = getJobManagerIngressName(clusterName)
-	var ingressHostFormat = jobManagerIngressSpec.IngressHostFormat
+	var ingressHostFormat = jobManagerIngressSpec.HostFormat
 	var annotations = jobManagerIngressSpec.Annotations
 	var ingressHost = getJobManagerIngressHost(ingressHostFormat, clusterName)
 	var labels = map[string]string{

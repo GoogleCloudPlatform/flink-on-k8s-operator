@@ -127,10 +127,10 @@ func (handler *_FlinkClusterHandler) Reconcile(
 	if desiredState.JmIngress != nil {
 		log.Info("Desired state", "JobManager ingress", *desiredState.JmIngress)
 	} else {
-		// TODO: IngressHostFormat should be provided. This validation will be moved to validation hook
+		// TODO: HostFormat should be provided. This validation will be moved to validation hook
 		var msg string
-		if observedState.cluster != nil && observedState.cluster.Spec.JobManagerSpec.Ingress != nil && observedState.cluster.Spec.JobManagerSpec.Ingress.IngressHostFormat == "" {
-			msg = " (JobManager ingress spec is provided but IngressHostFormat is missing)"
+		if observedState.cluster != nil && observedState.cluster.Spec.JobManagerSpec.Ingress != nil && observedState.cluster.Spec.JobManagerSpec.Ingress.HostFormat == "" {
+			msg = " (JobManager ingress spec is provided but HostFormat is missing)"
 		}
 		log.Info("Desired state"+msg, "JobManager ingress", "nil")
 	}

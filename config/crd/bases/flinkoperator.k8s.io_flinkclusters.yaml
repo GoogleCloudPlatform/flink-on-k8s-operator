@@ -1800,7 +1800,7 @@ spec:
                         type: string
                       description: Ingress annotations.
                       type: object
-                    ingressHostFormat:
+                    hostFormat:
                       description: Ingress host format. ex) {{$clusterName}}.example.com
                       type: string
                     tlsSecretName:
@@ -1810,7 +1810,7 @@ spec:
                       description: TLS use.
                       type: boolean
                   required:
-                  - ingressHostFormat
+                  - hostFormat
                   type: object
                 mounts:
                   description: Volume mounts in the JobManager container.

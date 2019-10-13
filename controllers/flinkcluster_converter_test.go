@@ -70,7 +70,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			JobManagerSpec: flinkoperatorv1alpha1.JobManagerSpec{
 				AccessScope: flinkoperatorv1alpha1.AccessScope.VPC,
 				Ingress: &flinkoperatorv1alpha1.JobManagerIngressSpec{
-					IngressHostFormat: "{{$clusterName}}.example.com",
+					HostFormat: "{{$clusterName}}.example.com",
 					Annotations: map[string]string{
 						"kubernetes.io/ingress.class":                "nginx",
 						"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
@@ -330,7 +330,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 		},
 	}
 
-	assert.Assert(t, desiredState.JmDeployment != nil)
+	assert.Assert(t, desiredState.JmIngress != nil)
 	assert.DeepEqual(
 		t,
 		*desiredState.JmIngress,
