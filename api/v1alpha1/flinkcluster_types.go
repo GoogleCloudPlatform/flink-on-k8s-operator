@@ -113,7 +113,7 @@ type JobManagerPorts struct {
 // JobManagerIngress defines ingress of JobManager
 type JobManagerIngressSpec struct {
 	// Ingress host format. ex) {{$clusterName}}.example.com
-	IngressHostFormat string `json:"ingressHostFormat,omitempty"`
+	IngressHostFormat string `json:"ingressHostFormat"`
 
 	// Ingress annotations.
 	Annotations map[string]string `json:"annotations,omitempty"`

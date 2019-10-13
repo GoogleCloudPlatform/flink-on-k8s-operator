@@ -26,7 +26,6 @@ func _SetDefault(cluster *FlinkCluster) {
 	_SetJobManagerDefault(&cluster.Spec.JobManagerSpec)
 	_SetTaskManagerDefault(&cluster.Spec.TaskManagerSpec)
 	_SetJobDefault(cluster.Spec.JobSpec)
-	_SetJobManagerIngressDefault(cluster.Spec.JobManagerSpec.Ingress)
 }
 
 func _SetImageDefault(imageSpec *ImageSpec) {
@@ -42,6 +41,12 @@ func _SetJobManagerDefault(jmSpec *JobManagerSpec) {
 	}
 	if len(jmSpec.AccessScope) == 0 {
 		jmSpec.AccessScope = AccessScope.Cluster
+	}
+	if jmSpec.Ingress != nil {
+		if jmSpec.Ingress.UseTLS == nil {
+			jmSpec.Ingress.UseTLS = new(bool)
+			*jmSpec.Ingress.UseTLS = false
+		}
 	}
 	if jmSpec.Ports.RPC == nil {
 		jmSpec.Ports.RPC = new(int32)
@@ -95,15 +100,5 @@ func _SetJobDefault(jobSpec *JobSpec) {
 	if jobSpec.RestartPolicy == nil {
 		jobSpec.RestartPolicy = new(corev1.RestartPolicy)
 		*jobSpec.RestartPolicy = corev1.RestartPolicyOnFailure
-	}
-}
-
-func _SetJobManagerIngressDefault(ingressSpec *JobManagerIngressSpec) {
-	if ingressSpec == nil {
-		return
-	}
-	if ingressSpec.UseTLS == nil {
-		ingressSpec.UseTLS = new(bool)
-		*ingressSpec.UseTLS = false
 	}
 }

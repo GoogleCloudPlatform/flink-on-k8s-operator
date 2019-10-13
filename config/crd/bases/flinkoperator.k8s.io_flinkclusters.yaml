@@ -1809,6 +1809,8 @@ spec:
                     useTls:
                       description: TLS use.
                       type: boolean
+                  required:
+                  - ingressHostFormat
                   type: object
                 mounts:
                   description: Volume mounts in the JobManager container.
