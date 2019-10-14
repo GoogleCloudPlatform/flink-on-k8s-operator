@@ -187,7 +187,7 @@ kubectl port-forward service/flinksessioncluster-sample-jobmanager 8081:8081
 then submit jobs through the tunnel, for example:
 
 ```bash
-bin/flink run -m localhost:8081 \
+flink run -m localhost:8081 \
     examples/batch/WordCount.jar --input ./README.txt
 ```
 
