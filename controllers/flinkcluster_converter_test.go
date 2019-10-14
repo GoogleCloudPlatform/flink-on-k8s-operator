@@ -268,7 +268,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 	}
-	assert.Assert(t, desiredState.JmDeployment != nil)
+	assert.Assert(t, desiredState.JmService != nil)
 	assert.DeepEqual(
 		t,
 		*desiredState.JmService,
