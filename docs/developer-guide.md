@@ -171,7 +171,7 @@ If you have configured the access scope of JobManager as `External` or `VPC`,
 you can submit jobs from a machine which is in the scope, for example:
 
 ```bash
-bin/flink run -m <jobmanager-service-ip>:8081 \
+flink run -m <jobmanager-service-ip>:8081 \
     examples/batch/WordCount.jar --input /opt/flink/README.txt
 ```
 
