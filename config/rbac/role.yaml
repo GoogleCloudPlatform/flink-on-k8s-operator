@@ -115,7 +115,7 @@ rules:
 - apiGroups:
   - extensions
   resources:
-  - ingress
+  - ingresses
   verbs:
   - get
   - list
@@ -127,6 +127,6 @@ rules:
 - apiGroups:
   - extensions
   resources:
-  - ingress/status
+  - ingresses/status
   verbs:
   - get
