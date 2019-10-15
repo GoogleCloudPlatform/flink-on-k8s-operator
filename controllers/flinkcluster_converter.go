@@ -221,7 +221,7 @@ func getDesiredJobManagerService(
 func getDesiredJobManagerIngress(
 	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *extensionsv1beta1.Ingress {
 	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
-	if jobManagerIngressSpec == nil || jobManagerIngressSpec.HostFormat == "" {
+	if jobManagerIngressSpec == nil {
 		return nil
 	}
 
@@ -235,26 +235,32 @@ func getDesiredJobManagerIngress(
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var jobManagerServiceUIPort = intstr.FromString("ui")
 	var ingressName = getJobManagerIngressName(clusterName)
-	var ingressHostFormat = jobManagerIngressSpec.HostFormat
-	var annotations = jobManagerIngressSpec.Annotations
-	var ingressHost = getJobManagerIngressHost(ingressHostFormat, clusterName)
+	var ingressAnnotations = jobManagerIngressSpec.Annotations
+	var ingressHost string
+	var ingressTLS []extensionsv1beta1.IngressTLS
 	var labels = map[string]string{
 		"cluster":   clusterName,
 		"app":       "flink",
 		"component": "jobmanager",
 	}
-	var ingressTLS []extensionsv1beta1.IngressTLS
+	if jobManagerIngressSpec.HostFormat != nil {
+		ingressHost = getJobManagerIngressHost(*jobManagerIngressSpec.HostFormat, clusterName)
+	}
 	if jobManagerIngressSpec.UseTLS != nil && *jobManagerIngressSpec.UseTLS == true {
-		var tlsSecret string
-		if jobManagerIngressSpec.TLSSecretName != nil {
-			tlsSecret = *jobManagerIngressSpec.TLSSecretName
+		var secretName string
+		var hosts []string
+		if ingressHost != "" {
+			hosts = []string{ingressHost}
 		}
-		ingressTLS = []extensionsv1beta1.IngressTLS{{
-			Hosts:      []string{ingressHost},
-			SecretName: tlsSecret,
-		}}
-	} else {
-		ingressTLS = nil
+		if jobManagerIngressSpec.TLSSecretName != nil {
+			secretName = *jobManagerIngressSpec.TLSSecretName
+		}
+		if hosts != nil || secretName != "" {
+			ingressTLS = []extensionsv1beta1.IngressTLS{{
+				Hosts:      hosts,
+				SecretName: secretName,
+			}}
+		}
 	}
 	var jobManagerIngress = &extensionsv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -263,15 +269,15 @@ func getDesiredJobManagerIngress(
 			OwnerReferences: []metav1.OwnerReference{
 				toOwnerReference(flinkCluster)},
 			Labels:      labels,
-			Annotations: annotations,
+			Annotations: ingressAnnotations,
 		},
 		Spec: extensionsv1beta1.IngressSpec{
 			TLS: ingressTLS,
-			Rules: []extensionsv1beta1.IngressRule{extensionsv1beta1.IngressRule{
+			Rules: []extensionsv1beta1.IngressRule{{
 				Host: ingressHost,
 				IngressRuleValue: extensionsv1beta1.IngressRuleValue{
 					HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
-						Paths: []extensionsv1beta1.HTTPIngressPath{extensionsv1beta1.HTTPIngressPath{
+						Paths: []extensionsv1beta1.HTTPIngressPath{{
 							Path: "/",
 							Backend: extensionsv1beta1.IngressBackend{
 								ServiceName: jobManagerServiceName,
@@ -523,5 +529,6 @@ func getFlinkProperties(properties map[string]string) string {
 var jobManagerIngressHostRegex = regexp.MustCompile("{{\\s*[$]clusterName\\s*}}")
 
 func getJobManagerIngressHost(ingressHostFormat string, clusterName string) string {
+	// TODO: Validating webhook should verify hostFormat
 	return jobManagerIngressHostRegex.ReplaceAllString(ingressHostFormat, clusterName)
 }

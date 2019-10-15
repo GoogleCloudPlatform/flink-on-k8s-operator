@@ -113,7 +113,7 @@ type JobManagerPorts struct {
 // JobManagerIngress defines ingress of JobManager
 type JobManagerIngressSpec struct {
 	// Ingress host format. ex) {{$clusterName}}.example.com
-	HostFormat string `json:"hostFormat"`
+	HostFormat *string `json:"hostFormat,omitempty"`
 
 	// Ingress annotations.
 	Annotations map[string]string `json:"annotations,omitempty"`
@@ -311,7 +311,7 @@ type JobManagerIngressStatus struct {
 	// The state of the component.
 	State string `json:"state"`
 
-	// The URL of ingress.
+	// The URLs of ingress.
 	URLs []string `json:"urls,omitempty"`
 }
 

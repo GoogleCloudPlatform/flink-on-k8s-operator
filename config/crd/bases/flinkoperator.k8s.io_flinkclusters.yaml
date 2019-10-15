@@ -1809,8 +1809,6 @@ spec:
                     useTls:
                       description: TLS use.
                       type: boolean
-                  required:
-                  - hostFormat
                   type: object
                 mounts:
                   description: Volume mounts in the JobManager container.
@@ -5316,7 +5314,7 @@ spec:
                       description: The state of the component.
                       type: string
                     urls:
-                      description: The URL of ingress.
+                      description: The URLs of ingress.
                       items:
                         type: string
                       type: array

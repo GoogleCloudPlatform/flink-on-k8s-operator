@@ -224,7 +224,13 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	if observedJmIngress != nil {
 		var state string
 		var urls []string
+		var useTLS bool
+
 		if len(observedJmIngress.Spec.TLS) > 0 {
+			useTLS = true
+		}
+
+		if useTLS {
 			for _, tls := range observedJmIngress.Spec.TLS {
 				for _, host := range tls.Hosts {
 					if host != "" {
@@ -239,6 +245,22 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				}
 			}
 		}
+
+		// If ingress does not have host, get ip from status
+		if len(urls) == 0 && observedJmIngress.Status.LoadBalancer.Ingress != nil {
+			var scheme string
+			if useTLS {
+				scheme = "https://"
+			} else {
+				scheme = "http://"
+			}
+			for _, ingress := range observedJmIngress.Status.LoadBalancer.Ingress {
+				if ingress.IP != "" {
+					urls = append(urls, scheme+ingress.IP)
+				}
+			}
+		}
+
 		if len(urls) > 0 {
 			state = flinkoperatorv1alpha1.ClusterComponentState.Ready
 		} else {

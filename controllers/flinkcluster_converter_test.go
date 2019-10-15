@@ -47,6 +47,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var replicas int32 = 42
 	var restartPolicy = corev1.RestartPolicy("OnFailure")
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
+	var hostFormat = "{{$clusterName}}.example.com"
 
 	// Setup.
 	var cluster = &flinkoperatorv1alpha1.FlinkCluster{
@@ -70,7 +71,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			JobManagerSpec: flinkoperatorv1alpha1.JobManagerSpec{
 				AccessScope: flinkoperatorv1alpha1.AccessScope.VPC,
 				Ingress: &flinkoperatorv1alpha1.JobManagerIngressSpec{
-					HostFormat: "{{$clusterName}}.example.com",
+					HostFormat: &hostFormat,
 					Annotations: map[string]string{
 						"kubernetes.io/ingress.class":                "nginx",
 						"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
