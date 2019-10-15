@@ -258,6 +258,9 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				if ingress.IP != "" {
 					urls = append(urls, scheme+ingress.IP)
 				}
+				if ingress.Hostname != "" {
+					urls = append(urls, scheme+ingress.Hostname)
+				}
 			}
 		}
 
