@@ -246,7 +246,7 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 			}
 		}
 
-		// If ingress does not have host, get ip from status
+		// If ingress spec does not have host, get ip or hostname from status
 		if len(urls) == 0 && observedJmIngress.Status.LoadBalancer.Ingress != nil {
 			var scheme string
 			if useTLS {
