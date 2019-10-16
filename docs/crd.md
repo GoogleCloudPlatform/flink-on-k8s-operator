@@ -22,6 +22,11 @@ FlinkCluster
             |__ Blob
             |__ Query
             |__ UI
+        |__ Ingress
+            |__ HostFormat
+            |__ Annotations
+            |__ UseTLS
+            |__ TLSSecretName
         |__ Resources
         |__ Volumes
         |__ Mounts
@@ -57,6 +62,10 @@ FlinkCluster
         |__ JobManagerService
             |__ Name
             |__ State
+        |__ JobManagerIngress
+            |__ Name
+            |__ State
+            |__ URLs
         |__ TaskManagerDeployment
             |__ Name
             |__ State
@@ -83,6 +92,11 @@ FlinkCluster
         * **Blob** (optional): Blob port, default: 6124.
         * **Query** (optional): Query port, default: 6125.
         * **UI** (optional): UI port, default: 8081.
+      * **Ingress** (optional): Provide external access to JobManager UI/API.
+        * **HostFormat** (optional): Host format for generating URLs. ex) {{$clusterName}}.example.com
+        * **Annotations** (optional): Annotations for ingress configuration.
+        * **UseTLS** (optional): TLS use, default: false.
+        * **TLSSecretName** (optional): Kubernetes secret resource name for TLS.
       * **Resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
         More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -131,6 +145,10 @@ FlinkCluster
       * **JobManagerService**: The status of the JobManager service.
         * **Name**: The resource name of the JobManager service.
         * **State**: The state of the JobManager service.
+      * **JobManagerIngress**: The status of the JobManager ingress.
+        * **Name**: The resource name of the JobManager ingress.
+        * **State**: The state of the JobManager ingress.
+        * **URLs**: The generated URLs for JobManager.
       * **TaskManagerDeployment**: The status of the TaskManager deployment.
         * **Name**: The resource name of the TaskManager deployment.
         * **State**: The state of the TaskManager deployment.
