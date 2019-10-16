@@ -96,6 +96,20 @@ func (updater *_ClusterStatusUpdater) createStatusChangeEvents(
 			newStatus.Components.JobManagerService.State)
 	}
 
+	// JobManager ingress.
+	if oldStatus.Components.JobManagerIngress == nil && newStatus.Components.JobManagerIngress != nil {
+		updater.createStatusChangeEvent(
+			"JobManager ingress", "",
+			newStatus.Components.JobManagerIngress.State)
+	}
+	if oldStatus.Components.JobManagerIngress != nil && newStatus.Components.JobManagerIngress != nil &&
+		oldStatus.Components.JobManagerIngress.State != newStatus.Components.JobManagerIngress.State {
+		updater.createStatusChangeEvent(
+			"JobManager ingress",
+			oldStatus.Components.JobManagerIngress.State,
+			newStatus.Components.JobManagerIngress.State)
+	}
+
 	// TaskManager.
 	if oldStatus.Components.TaskManagerDeployment.State !=
 		newStatus.Components.TaskManagerDeployment.State {
@@ -197,6 +211,85 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		status.Components.JobManagerService =
 			flinkoperatorv1alpha1.FlinkClusterComponentState{
 				Name:  recordedClusterStatus.Components.JobManagerService.Name,
+				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			}
+	}
+
+	// (Optional) JobManager ingress.
+	var observedJmIngress = updater.observedState.jmIngress
+	if observedJmIngress != nil {
+		var state string
+		var urls []string
+		var useTLS bool
+		var useHost bool
+		var loadbalancerReady bool
+
+		if len(observedJmIngress.Spec.TLS) > 0 {
+			useTLS = true
+		}
+
+		if useTLS {
+			for _, tls := range observedJmIngress.Spec.TLS {
+				for _, host := range tls.Hosts {
+					if host != "" {
+						urls = append(urls, "https://"+host)
+					}
+				}
+			}
+		} else {
+			for _, rule := range observedJmIngress.Spec.Rules {
+				if rule.Host != "" {
+					urls = append(urls, "http://"+rule.Host)
+				}
+			}
+		}
+		if len(urls) > 0 {
+			useHost = true
+		}
+
+		// Check loadbalancer is ready.
+		if len(observedJmIngress.Status.LoadBalancer.Ingress) > 0 {
+			var addr string
+			for _, ingress := range observedJmIngress.Status.LoadBalancer.Ingress {
+				// Get loadbalancer address.
+				if ingress.Hostname != "" {
+					addr = ingress.Hostname
+				} else if ingress.IP != "" {
+					addr = ingress.IP
+				}
+				// If ingress spec does not have host, get ip or hostname of loadbalancer.
+				if !useHost && addr != "" {
+					if useTLS {
+						urls = append(urls, "https://"+addr)
+					} else {
+						urls = append(urls, "http://"+addr)
+					}
+				}
+			}
+			// If any ready LB found, state is ready.
+			if addr != "" {
+				loadbalancerReady = true
+			}
+		}
+
+		// Jobmanager ingress state become ready when LB for ingress is specified.
+		if loadbalancerReady {
+			state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+		} else {
+			state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+		}
+
+		status.Components.JobManagerIngress =
+			&flinkoperatorv1alpha1.JobManagerIngressStatus{
+				Name:  observedJmIngress.ObjectMeta.Name,
+				State: state,
+				URLs:  urls,
+			}
+	} else if recordedClusterStatus.Components.JobManagerIngress != nil &&
+		recordedClusterStatus.Components.JobManagerIngress.Name != "" {
+		status.Components.JobManagerIngress =
+			&flinkoperatorv1alpha1.JobManagerIngressStatus{
+				Name:  recordedClusterStatus.Components.JobManagerIngress.Name,
 				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
 			}
 	}
@@ -334,6 +427,26 @@ func (updater *_ClusterStatusUpdater) isStatusChanged(
 			currentStatus.Components.JobManagerService,
 			"new", newStatus.Components.JobManagerService)
 		changed = true
+	}
+	if currentStatus.Components.JobManagerIngress == nil {
+		if newStatus.Components.JobManagerIngress != nil {
+			updater.log.Info(
+				"JobManager ingress status changed",
+				"current",
+				"nil",
+				"new", *newStatus.Components.JobManagerIngress)
+			changed = true
+		}
+	} else {
+		if newStatus.Components.JobManagerIngress.State != currentStatus.Components.JobManagerIngress.State {
+			updater.log.Info(
+				"JobManager ingress status changed",
+				"current",
+				*currentStatus.Components.JobManagerIngress,
+				"new",
+				*newStatus.Components.JobManagerIngress)
+			changed = true
+		}
 	}
 	if newStatus.Components.TaskManagerDeployment !=
 		currentStatus.Components.TaskManagerDeployment {

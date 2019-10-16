@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -53,6 +54,11 @@ func (reconciler *_ClusterReconciler) reconcile() (ctrl.Result, error) {
 	}
 
 	err = reconciler.reconcileJobManagerService()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = reconciler.reconcileJobManagerIngress()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -204,6 +210,60 @@ func (reconciler *_ClusterReconciler) deleteService(
 		log.Error(err, "Failed to delete service")
 	} else {
 		log.Info("service deleted")
+	}
+	return err
+}
+
+func (reconciler *_ClusterReconciler) reconcileJobManagerIngress() error {
+	var desiredJmIngress = reconciler.desiredState.JmIngress
+	var observedJmIngress = reconciler.observedState.jmIngress
+
+	if desiredJmIngress != nil && observedJmIngress == nil {
+		return reconciler.createIngress(desiredJmIngress, "JobManager")
+	}
+
+	if desiredJmIngress != nil && observedJmIngress != nil {
+		reconciler.log.Info("JobManager ingress already exists, no action")
+		return nil
+		// TODO: compare and update if needed.
+	}
+
+	if desiredJmIngress == nil && observedJmIngress != nil {
+		return reconciler.deleteIngress(observedJmIngress, "JobManager")
+	}
+
+	return nil
+}
+
+func (reconciler *_ClusterReconciler) createIngress(
+	ingress *extensionsv1beta1.Ingress, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Creating ingress", "resource", *ingress)
+	var err = k8sClient.Create(context, ingress)
+	if err != nil {
+		log.Info("Failed to create ingress", "error", err)
+	} else {
+		log.Info("Ingress created")
+	}
+	return err
+}
+
+func (reconciler *_ClusterReconciler) deleteIngress(
+	ingress *extensionsv1beta1.Ingress, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Deleting ingress", "ingress", ingress)
+	var err = k8sClient.Delete(context, ingress)
+	err = client.IgnoreNotFound(err)
+	if err != nil {
+		log.Error(err, "Failed to delete ingress")
+	} else {
+		log.Info("Ingress deleted")
 	}
 	return err
 }

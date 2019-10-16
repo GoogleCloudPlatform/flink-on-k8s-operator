@@ -27,6 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,6 +46,7 @@ type _ObservedClusterState struct {
 	cluster            *flinkoperatorv1alpha1.FlinkCluster
 	jmDeployment       *appsv1.Deployment
 	jmService          *corev1.Service
+	jmIngress          *extensionsv1beta1.Ingress
 	tmDeployment       *appsv1.Deployment
 	job                *batchv1.Job
 	flinkJobStatusList *flinkclient.JobStatusList
@@ -112,6 +114,21 @@ func (observer *_ClusterStateObserver) observe(
 	} else {
 		log.Info("Observed JobManager service", "state", *observedJmService)
 		observedState.jmService = observedJmService
+	}
+
+	// JobManager ingress.
+	var observedJmIngress = new(extensionsv1beta1.Ingress)
+	err = observer.observeJobManagerIngress(observedJmIngress)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get JobManager ingress")
+			return err
+		}
+		log.Info("Observed JobManager ingress", "state", "nil")
+		observedJmIngress = nil
+	} else {
+		log.Info("Observed JobManager ingress", "state", *observedJmIngress)
+		observedState.jmIngress = observedJmIngress
 	}
 
 	// TaskManager deployment.
@@ -297,6 +314,20 @@ func (observer *_ClusterStateObserver) observeJobManagerService(
 			Name:      getJobManagerServiceName(clusterName),
 		},
 		observedService)
+}
+
+func (observer *_ClusterStateObserver) observeJobManagerIngress(
+	observedIngress *extensionsv1beta1.Ingress) error {
+	var clusterNamespace = observer.request.Namespace
+	var clusterName = observer.request.Name
+
+	return observer.k8sClient.Get(
+		observer.context,
+		types.NamespacedName{
+			Namespace: clusterNamespace,
+			Name:      getJobManagerIngressName(clusterName),
+		},
+		observedIngress)
 }
 
 func (observer *_ClusterStateObserver) observeJobResource(

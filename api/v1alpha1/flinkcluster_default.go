@@ -42,6 +42,12 @@ func _SetJobManagerDefault(jmSpec *JobManagerSpec) {
 	if len(jmSpec.AccessScope) == 0 {
 		jmSpec.AccessScope = AccessScope.Cluster
 	}
+	if jmSpec.Ingress != nil {
+		if jmSpec.Ingress.UseTLS == nil {
+			jmSpec.Ingress.UseTLS = new(bool)
+			*jmSpec.Ingress.UseTLS = false
+		}
+	}
 	if jmSpec.Ports.RPC == nil {
 		jmSpec.Ports.RPC = new(int32)
 		*jmSpec.Ports.RPC = 6123

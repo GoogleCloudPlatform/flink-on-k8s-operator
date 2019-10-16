@@ -26,6 +26,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -39,12 +40,14 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var jmBlobPort int32 = 6124
 	var jmQueryPort int32 = 6125
 	var jmUIPort int32 = 8081
+	var useTLS bool = true
 	var tmDataPort int32 = 6121
 	var tmRPCPort int32 = 6122
 	var tmQueryPort int32 = 6125
 	var replicas int32 = 42
 	var restartPolicy = corev1.RestartPolicy("OnFailure")
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
+	var hostFormat = "{{$clusterName}}.example.com"
 
 	// Setup.
 	var cluster = &flinkoperatorv1alpha1.FlinkCluster{
@@ -67,6 +70,15 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			JobManagerSpec: flinkoperatorv1alpha1.JobManagerSpec{
 				AccessScope: flinkoperatorv1alpha1.AccessScope.VPC,
+				Ingress: &flinkoperatorv1alpha1.JobManagerIngressSpec{
+					HostFormat: &hostFormat,
+					Annotations: map[string]string{
+						"kubernetes.io/ingress.class":                "nginx",
+						"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
+						"nginx.ingress.kubernetes.io/rewrite-target": "/",
+					},
+					UseTLS: &useTLS,
+				},
 				Ports: flinkoperatorv1alpha1.JobManagerPorts{
 					RPC:   &jmRPCPort,
 					Blob:  &jmBlobPort,
@@ -273,6 +285,57 @@ func TestGetDesiredClusterState(t *testing.T) {
 		t,
 		*desiredState.JmService,
 		expectedDesiredJmService)
+
+	// JmIngress
+	var expectedDesiredJmIngress = extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "flinkjobcluster-sample-jobmanager",
+			Namespace: "default",
+			Labels: map[string]string{
+				"app":       "flink",
+				"cluster":   "flinkjobcluster-sample",
+				"component": "jobmanager",
+			},
+			Annotations: map[string]string{
+				"kubernetes.io/ingress.class":                "nginx",
+				"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
+				"nginx.ingress.kubernetes.io/rewrite-target": "/",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					Kind:               "FlinkCluster",
+					Name:               "flinkjobcluster-sample",
+					Controller:         &controller,
+					BlockOwnerDeletion: &blockOwnerDeletion,
+				},
+			},
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			Rules: []extensionsv1beta1.IngressRule{{
+				Host: "flinkjobcluster-sample.example.com",
+				IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+					HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+						Paths: []extensionsv1beta1.HTTPIngressPath{{
+							Path: "/",
+							Backend: extensionsv1beta1.IngressBackend{
+								ServiceName: "flinkjobcluster-sample-jobmanager",
+								ServicePort: intstr.FromString("ui"),
+							}},
+						}},
+				},
+			}},
+			TLS: []extensionsv1beta1.IngressTLS{{
+				Hosts: []string{"flinkjobcluster-sample.example.com"},
+			}},
+		},
+	}
+
+	assert.Assert(t, desiredState.JmIngress != nil)
+	assert.DeepEqual(
+		t,
+		*desiredState.JmIngress,
+		expectedDesiredJmIngress)
 
 	// TmDeployment
 	var expectedDesiredTmDeployment = appsv1.Deployment{
