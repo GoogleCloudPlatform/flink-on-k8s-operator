@@ -159,6 +159,16 @@ Monitoring section on how to setup a proxy to the Flink Web UI.
 
 You can submit jobs through a client Pod in the same cluster, for example:
 
+To submit a flink streaming example job:
+
+```bash
+kubectl run my-job-submitter --image=flink:1.8.1 --generator=run-pod/v1 -- \
+    /opt/flink/bin/flink run -m flinksessioncluster-sample-jobmanager:8081 \
+    /opt/flink/examples/streaming/WordCount.jar --input /opt/flink/README.txt
+```
+
+To submit a flink batch example job:
+
 ```bash
 kubectl run my-job-submitter --image=flink:1.8.1 --generator=run-pod/v1 -- \
     /opt/flink/bin/flink run -m flinksessioncluster-sample-jobmanager:8081 \
