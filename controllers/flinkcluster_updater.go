@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,15 +155,10 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	if observedJmDeployment != nil {
 		status.Components.JobManagerDeployment.Name =
 			observedJmDeployment.ObjectMeta.Name
-		if observedJmDeployment.Status.AvailableReplicas <
-			observedJmDeployment.Status.Replicas ||
-			observedJmDeployment.Status.ReadyReplicas <
-				observedJmDeployment.Status.Replicas {
-			status.Components.JobManagerDeployment.State =
-				flinkoperatorv1alpha1.ClusterComponentState.NotReady
-		} else {
-			status.Components.JobManagerDeployment.State =
-				flinkoperatorv1alpha1.ClusterComponentState.Ready
+		status.Components.JobManagerDeployment.State =
+			getDeploymentState(observedJmDeployment)
+		if status.Components.JobManagerDeployment.State ==
+			flinkoperatorv1alpha1.ClusterComponentState.Ready {
 			runningComponents++
 		}
 	} else if recordedClusterStatus.Components.JobManagerDeployment.Name != "" {
@@ -210,15 +206,10 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	if observedTmDeployment != nil {
 		status.Components.TaskManagerDeployment.Name =
 			observedTmDeployment.ObjectMeta.Name
-		if observedTmDeployment.Status.AvailableReplicas <
-			observedTmDeployment.Status.Replicas ||
-			observedTmDeployment.Status.ReadyReplicas <
-				observedTmDeployment.Status.Replicas {
-			status.Components.TaskManagerDeployment.State =
-				flinkoperatorv1alpha1.ClusterComponentState.NotReady
-		} else {
-			status.Components.TaskManagerDeployment.State =
-				flinkoperatorv1alpha1.ClusterComponentState.Ready
+		status.Components.TaskManagerDeployment.State =
+			getDeploymentState(observedTmDeployment)
+		if status.Components.TaskManagerDeployment.State ==
+			flinkoperatorv1alpha1.ClusterComponentState.Ready {
 			runningComponents++
 		}
 	} else if recordedClusterStatus.Components.TaskManagerDeployment.Name != "" {
@@ -384,4 +375,11 @@ func (updater *_ClusterStatusUpdater) updateClusterStatus(
 	updater.observedState.cluster.DeepCopyInto(&flinkCluster)
 	flinkCluster.Status = status
 	return updater.k8sClient.Update(updater.context, &flinkCluster)
+}
+
+func getDeploymentState(deployment *appsv1.Deployment) string {
+	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
+		return flinkoperatorv1alpha1.ClusterComponentState.Ready
+	}
+	return flinkoperatorv1alpha1.ClusterComponentState.NotReady
 }
