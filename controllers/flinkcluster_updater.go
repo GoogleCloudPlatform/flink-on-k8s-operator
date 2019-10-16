@@ -225,6 +225,8 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 		var state string
 		var urls []string
 		var useTLS bool
+		var useHost bool
+		var loadbalancerReady bool
 
 		if len(observedJmIngress.Spec.TLS) > 0 {
 			useTLS = true
@@ -245,26 +247,37 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 				}
 			}
 		}
+		if len(urls) > 0 {
+			useHost = true
+		}
 
-		// If ingress spec does not have host, get ip or hostname from status
-		if len(urls) == 0 && observedJmIngress.Status.LoadBalancer.Ingress != nil {
-			var scheme string
-			if useTLS {
-				scheme = "https://"
-			} else {
-				scheme = "http://"
-			}
+		// Check loadbalancer is ready.
+		if len(observedJmIngress.Status.LoadBalancer.Ingress) > 0 {
+			var addr string
 			for _, ingress := range observedJmIngress.Status.LoadBalancer.Ingress {
-				if ingress.IP != "" {
-					urls = append(urls, scheme+ingress.IP)
-				}
+				// Get loadbalancer address.
 				if ingress.Hostname != "" {
-					urls = append(urls, scheme+ingress.Hostname)
+					addr = ingress.Hostname
+				} else if ingress.IP != "" {
+					addr = ingress.IP
 				}
+				// If ingress spec does not have host, get ip or hostname of loadbalancer.
+				if !useHost && addr != "" {
+					if useTLS {
+						urls = append(urls, "https://"+addr)
+					} else {
+						urls = append(urls, "http://"+addr)
+					}
+				}
+			}
+			// If any ready LB found, state is ready.
+			if addr != "" {
+				loadbalancerReady = true
 			}
 		}
 
-		if len(urls) > 0 {
+		// Jobmanager ingress state become ready when LB for ingress is specified.
+		if loadbalancerReady {
 			state = flinkoperatorv1alpha1.ClusterComponentState.Ready
 		} else {
 			state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
