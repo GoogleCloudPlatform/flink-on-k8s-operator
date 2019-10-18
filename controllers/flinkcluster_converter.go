@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -34,6 +35,8 @@ import (
 // Converter which converts the FlinkCluster spec to the desired
 // underlying Kubernetes resource specs.
 
+var delayDeleteClusterMinutes int32 = 5
+
 // _DesiredClusterState holds desired state of a cluster.
 type _DesiredClusterState struct {
 	JmDeployment *appsv1.Deployment
@@ -45,26 +48,31 @@ type _DesiredClusterState struct {
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *flinkoperatorv1alpha1.FlinkCluster) _DesiredClusterState {
+	cluster *flinkoperatorv1alpha1.FlinkCluster,
+	now time.Time) _DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return _DesiredClusterState{}
 	}
 	return _DesiredClusterState{
-		JmDeployment: getDesiredJobManagerDeployment(cluster),
-		JmService:    getDesiredJobManagerService(cluster),
-		JmIngress:    getDesiredJobManagerIngress(cluster),
-		TmDeployment: getDesiredTaskManagerDeployment(cluster),
+		JmDeployment: getDesiredJobManagerDeployment(cluster, now),
+		JmService:    getDesiredJobManagerService(cluster, now),
+		JmIngress:    getDesiredJobManagerIngress(cluster, now),
+		TmDeployment: getDesiredTaskManagerDeployment(cluster, now),
 		Job:          getDesiredJob(cluster),
 	}
 }
 
 // Gets the desired JobManager deployment spec from the FlinkCluster spec.
 func getDesiredJobManagerDeployment(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
-		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -153,10 +161,14 @@ func getDesiredJobManagerDeployment(
 
 // Gets the desired JobManager service spec from a cluster spec.
 func getDesiredJobManagerService(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *corev1.Service {
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	now time.Time) *corev1.Service {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
-		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -219,14 +231,18 @@ func getDesiredJobManagerService(
 
 // Gets the desired JobManager ingress spec from a cluster spec.
 func getDesiredJobManagerIngress(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *extensionsv1beta1.Ingress {
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	now time.Time) *extensionsv1beta1.Ingress {
 	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
 	if jobManagerIngressSpec == nil {
 		return nil
 	}
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
-		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -295,10 +311,14 @@ func getDesiredJobManagerIngress(
 
 // Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopping ||
-		flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -531,4 +551,22 @@ var jobManagerIngressHostRegex = regexp.MustCompile("{{\\s*[$]clusterName\\s*}}"
 func getJobManagerIngressHost(ingressHostFormat string, clusterName string) string {
 	// TODO: Validating webhook should verify hostFormat
 	return jobManagerIngressHostRegex.ReplaceAllString(ingressHostFormat, clusterName)
+}
+
+func isStopDelayExpired(
+	clusterStatus flinkoperatorv1alpha1.FlinkClusterStatus,
+	delayMinutes int32,
+	now time.Time) bool {
+	if clusterStatus.State != flinkoperatorv1alpha1.ClusterState.Stopping {
+		return false
+	}
+
+	lastUpdateTime, err := time.Parse(
+		"2006-01-02T15:04:05Z", clusterStatus.LastUpdateTime)
+	if err != nil {
+		return false
+	}
+
+	return now.After(
+		lastUpdateTime.Add(time.Duration(delayMinutes) * time.Minute))
 }

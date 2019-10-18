@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -287,13 +288,14 @@ func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
 
-		var observedJobStatus = reconciler.observedState.cluster.Status.Components.Job
-		if observedJobStatus != nil && len(observedJobStatus.ID) == 0 {
-			log.Info("Flink job ID is not set yet")
+		if !isJobFinished(reconciler.observedState.cluster.Status.Components.Job) {
+			log.Info("Flink job is not finished yet.")
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
-		log.Info("Job already exists, no action")
+
+		log.Info("Job has finished, no action")
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -310,4 +312,10 @@ func (reconciler *_ClusterReconciler) createJob(job *batchv1.Job) error {
 		log.Info("Job created")
 	}
 	return err
+}
+
+func isJobFinished(jobStatus *flinkoperatorv1alpha1.JobStatus) bool {
+	return jobStatus != nil &&
+		(jobStatus.State == flinkoperatorv1alpha1.JobState.Succeeded ||
+			jobStatus.State == flinkoperatorv1alpha1.JobState.Failed)
 }
