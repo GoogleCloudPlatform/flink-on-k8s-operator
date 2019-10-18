@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -51,7 +51,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var hostFormat = "{{$clusterName}}.example.com"
 
 	// Setup.
-	var cluster = &flinkoperatorv1alpha1.FlinkCluster{
+	var cluster = &v1alpha1.FlinkCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "FlinkCluster",
 			APIVersion: "flinkoperator.k8s.io/v1alpha1",
@@ -60,18 +60,18 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample",
 			Namespace: "default",
 		},
-		Spec: flinkoperatorv1alpha1.FlinkClusterSpec{
-			ImageSpec: flinkoperatorv1alpha1.ImageSpec{Name: "flink:1.8.1"},
-			JobSpec: &flinkoperatorv1alpha1.JobSpec{
+		Spec: v1alpha1.FlinkClusterSpec{
+			Image: v1alpha1.ImageSpec{Name: "flink:1.8.1"},
+			Job: &v1alpha1.JobSpec{
 				Args:          []string{"--input", "./README.txt"},
 				ClassName:     &className,
 				JarFile:       "./examples/batch/WordCount.jar",
 				Parallelism:   &parallelism,
 				RestartPolicy: &restartPolicy,
 			},
-			JobManagerSpec: flinkoperatorv1alpha1.JobManagerSpec{
-				AccessScope: flinkoperatorv1alpha1.AccessScope.VPC,
-				Ingress: &flinkoperatorv1alpha1.JobManagerIngressSpec{
+			JobManager: v1alpha1.JobManagerSpec{
+				AccessScope: v1alpha1.AccessScope.VPC,
+				Ingress: &v1alpha1.JobManagerIngressSpec{
 					HostFormat: &hostFormat,
 					Annotations: map[string]string{
 						"kubernetes.io/ingress.class":                "nginx",
@@ -80,7 +80,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 					UseTLS: &useTLS,
 				},
-				Ports: flinkoperatorv1alpha1.JobManagerPorts{
+				Ports: v1alpha1.JobManagerPorts{
 					RPC:   &jmRPCPort,
 					Blob:  &jmBlobPort,
 					Query: &jmQueryPort,
@@ -97,9 +97,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 			},
-			TaskManagerSpec: flinkoperatorv1alpha1.TaskManagerSpec{
+			TaskManager: v1alpha1.TaskManagerSpec{
 				Replicas: 42,
-				Ports: flinkoperatorv1alpha1.TaskManagerPorts{
+				Ports: v1alpha1.TaskManagerPorts{
 					Data:  &tmDataPort,
 					RPC:   &tmRPCPort,
 					Query: &tmQueryPort,

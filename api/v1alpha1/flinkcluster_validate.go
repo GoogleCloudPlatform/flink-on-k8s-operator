@@ -22,7 +22,7 @@ import (
 )
 
 // Validates update request.
-func _ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
+func validateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 	if !reflect.DeepEqual(new.Spec, old.Spec) {
 		return errors.New(
 			"updating FlinkCluster spec is not allowed," +

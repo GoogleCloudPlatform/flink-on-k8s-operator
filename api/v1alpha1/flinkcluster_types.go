@@ -36,8 +36,8 @@ var ClusterState = struct {
 	Stopped:     "Stopped",
 }
 
-// ClusterComponentState defines states for a cluster component.
-var ClusterComponentState = struct {
+// ComponentState defines states for a cluster component.
+var ComponentState = struct {
 	NotReady string
 	Ready    string
 	Deleted  string
@@ -110,7 +110,7 @@ type JobManagerPorts struct {
 	UI *int32 `json:"ui,omitempty"`
 }
 
-// JobManagerIngress defines ingress of JobManager
+// JobManagerIngressSpec defines ingress of JobManager
 type JobManagerIngressSpec struct {
 	// Ingress host format. ex) {{$clusterName}}.example.com
 	HostFormat *string `json:"hostFormat,omitempty"`
@@ -241,18 +241,18 @@ type FlinkClusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Flink image spec for the cluster's components.
-	ImageSpec ImageSpec `json:"image"`
+	Image ImageSpec `json:"image"`
 
 	// Flink JobManager spec.
-	JobManagerSpec JobManagerSpec `json:"jobManager"`
+	JobManager JobManagerSpec `json:"jobManager"`
 
 	// Flink TaskManager spec.
-	TaskManagerSpec TaskManagerSpec `json:"taskManager"`
+	TaskManager TaskManagerSpec `json:"taskManager"`
 
 	// Optional job spec. If specified, this cluster is an ephemeral Job
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
-	JobSpec *JobSpec `json:"job,omitempty"`
+	Job *JobSpec `json:"job,omitempty"`
 
 	// Flink properties which are appened to flink-conf.yaml of the image.
 	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`

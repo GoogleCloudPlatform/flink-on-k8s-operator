@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,8 +37,8 @@ import (
 
 var delayDeleteClusterMinutes int32 = 5
 
-// _DesiredClusterState holds desired state of a cluster.
-type _DesiredClusterState struct {
+// DesiredClusterState holds desired state of a cluster.
+type DesiredClusterState struct {
 	JmDeployment *appsv1.Deployment
 	JmService    *corev1.Service
 	JmIngress    *extensionsv1beta1.Ingress
@@ -48,13 +48,13 @@ type _DesiredClusterState struct {
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *flinkoperatorv1alpha1.FlinkCluster,
-	now time.Time) _DesiredClusterState {
+	cluster *v1alpha1.FlinkCluster,
+	now time.Time) DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
-		return _DesiredClusterState{}
+		return DesiredClusterState{}
 	}
-	return _DesiredClusterState{
+	return DesiredClusterState{
 		JmDeployment: getDesiredJobManagerDeployment(cluster, now),
 		JmService:    getDesiredJobManagerService(cluster, now),
 		JmIngress:    getDesiredJobManagerIngress(cluster, now),
@@ -65,10 +65,10 @@ func getDesiredClusterState(
 
 // Gets the desired JobManager deployment spec from the FlinkCluster spec.
 func getDesiredJobManagerDeployment(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
 		return nil
 	}
 
@@ -78,8 +78,8 @@ func getDesiredJobManagerDeployment(
 
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var imageSpec = flinkCluster.Spec.ImageSpec
-	var jobManagerSpec = flinkCluster.Spec.JobManagerSpec
+	var imageSpec = flinkCluster.Spec.Image
+	var jobManagerSpec = flinkCluster.Spec.JobManager
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
@@ -161,10 +161,10 @@ func getDesiredJobManagerDeployment(
 
 // Gets the desired JobManager service spec from a cluster spec.
 func getDesiredJobManagerService(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.Service {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
 		return nil
 	}
 
@@ -174,7 +174,7 @@ func getDesiredJobManagerService(
 
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var jobManagerSpec = flinkCluster.Spec.JobManagerSpec
+	var jobManagerSpec = flinkCluster.Spec.JobManager
 	var rpcPort = corev1.ServicePort{
 		Name:       "rpc",
 		Port:       *jobManagerSpec.Ports.RPC,
@@ -214,13 +214,13 @@ func getDesiredJobManagerService(
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/internal-load-balancing
 	switch jobManagerSpec.AccessScope {
-	case flinkoperatorv1alpha1.AccessScope.Cluster:
+	case v1alpha1.AccessScope.Cluster:
 		jobManagerService.Spec.Type = corev1.ServiceTypeClusterIP
-	case flinkoperatorv1alpha1.AccessScope.VPC:
+	case v1alpha1.AccessScope.VPC:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 		jobManagerService.Annotations =
 			map[string]string{"cloud.google.com/load-balancer-type": "Internal"}
-	case flinkoperatorv1alpha1.AccessScope.External:
+	case v1alpha1.AccessScope.External:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 	default:
 		panic(fmt.Sprintf(
@@ -231,14 +231,14 @@ func getDesiredJobManagerService(
 
 // Gets the desired JobManager ingress spec from a cluster spec.
 func getDesiredJobManagerIngress(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *extensionsv1beta1.Ingress {
-	var jobManagerIngressSpec = flinkCluster.Spec.JobManagerSpec.Ingress
+	var jobManagerIngressSpec = flinkCluster.Spec.JobManager.Ingress
 	if jobManagerIngressSpec == nil {
 		return nil
 	}
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
 		return nil
 	}
 
@@ -311,10 +311,10 @@ func getDesiredJobManagerIngress(
 
 // Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster,
+	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == flinkoperatorv1alpha1.ClusterState.Stopped {
+	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
 		return nil
 	}
 
@@ -324,8 +324,8 @@ func getDesiredTaskManagerDeployment(
 
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var imageSpec = flinkCluster.Spec.ImageSpec
-	var taskManagerSpec = flinkCluster.Spec.TaskManagerSpec
+	var imageSpec = flinkCluster.Spec.Image
+	var taskManagerSpec = flinkCluster.Spec.TaskManager
 	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
@@ -408,14 +408,14 @@ func getDesiredTaskManagerDeployment(
 
 // Gets the desired job spec from a cluster spec.
 func getDesiredJob(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) *batchv1.Job {
-	var jobSpec = flinkCluster.Spec.JobSpec
+	flinkCluster *v1alpha1.FlinkCluster) *batchv1.Job {
+	var jobSpec = flinkCluster.Spec.Job
 	if jobSpec == nil {
 		return nil
 	}
 
-	var imageSpec = flinkCluster.Spec.ImageSpec
-	var jobManagerSpec = flinkCluster.Spec.JobManagerSpec
+	var imageSpec = flinkCluster.Spec.Image
+	var jobManagerSpec = flinkCluster.Spec.JobManager
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobName = getJobName(clusterName)
@@ -501,7 +501,7 @@ func getDesiredJob(
 
 // Converts the FlinkCluster as owner reference for its child resources.
 func toOwnerReference(
-	flinkCluster *flinkoperatorv1alpha1.FlinkCluster) metav1.OwnerReference {
+	flinkCluster *v1alpha1.FlinkCluster) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         flinkCluster.APIVersion,
 		Kind:               flinkCluster.Kind,
@@ -554,10 +554,10 @@ func getJobManagerIngressHost(ingressHostFormat string, clusterName string) stri
 }
 
 func isStopDelayExpired(
-	clusterStatus flinkoperatorv1alpha1.FlinkClusterStatus,
+	clusterStatus v1alpha1.FlinkClusterStatus,
 	delayMinutes int32,
 	now time.Time) bool {
-	if clusterStatus.State != flinkoperatorv1alpha1.ClusterState.Stopping {
+	if clusterStatus.State != v1alpha1.ClusterState.Stopping {
 		return false
 	}
 

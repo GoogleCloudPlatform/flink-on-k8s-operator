@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,9 +32,9 @@ import (
 
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
-	client.Client
-	Log logr.Logger
-	mgr ctrl.Manager
+	Client client.Client
+	Log    logr.Logger
+	Mgr    ctrl.Manager
 }
 
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
@@ -55,14 +55,14 @@ type FlinkClusterReconciler struct {
 // Reconcile the observed state towards the desired state for a FlinkCluster custom resource.
 func (reconciler *FlinkClusterReconciler) Reconcile(
 	request ctrl.Request) (ctrl.Result, error) {
-	var handler = _FlinkClusterHandler{
-		k8sClient: reconciler,
+	var handler = FlinkClusterHandler{
+		k8sClient: reconciler.Client,
 		request:   request,
 		context:   context.Background(),
 		log: reconciler.Log.WithValues(
 			"flinkcluster", request.NamespacedName),
-		eventRecorder: reconciler.mgr.GetEventRecorderFor("FlinkOperator"),
-		observedState: _ObservedClusterState{},
+		recorder: reconciler.Mgr.GetEventRecorderFor("FlinkOperator"),
+		observed: ObservedClusterState{},
 	}
 	return handler.reconcile(request)
 }
@@ -71,42 +71,42 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 // starts watching FlinkCluster, Deployment and Service resources.
 func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	mgr ctrl.Manager) error {
-	reconciler.mgr = mgr
+	reconciler.Mgr = mgr
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&flinkoperatorv1alpha1.FlinkCluster{}).
+		For(&v1alpha1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
 		Complete(reconciler)
 }
 
-// _FlinkClusterHandler holds the context and state for a
+// FlinkClusterHandler holds the context and state for a
 // reconcile request.
-type _FlinkClusterHandler struct {
-	k8sClient     client.Client
-	request       ctrl.Request
-	context       context.Context
-	log           logr.Logger
-	eventRecorder record.EventRecorder
-	observedState _ObservedClusterState
-	desiredState  _DesiredClusterState
+type FlinkClusterHandler struct {
+	k8sClient client.Client
+	request   ctrl.Request
+	context   context.Context
+	log       logr.Logger
+	recorder  record.EventRecorder
+	observed  ObservedClusterState
+	desired   DesiredClusterState
 }
 
-func (handler *_FlinkClusterHandler) reconcile(
+func (handler *FlinkClusterHandler) reconcile(
 	request ctrl.Request) (ctrl.Result, error) {
 	var k8sClient = handler.k8sClient
 	var log = handler.log
 	var context = handler.context
-	var observedState = &handler.observedState
-	var desiredState = &handler.desiredState
+	var observed = &handler.observed
+	var desired = &handler.desired
 	var err error
 
 	log.Info("============================================================")
 	log.Info("---------- 1. Observe the current state ----------")
 
-	var observer = _ClusterStateObserver{
+	var observer = ClusterStateObserver{
 		k8sClient: k8sClient, request: request, context: context, log: log}
-	err = observer.observe(observedState)
+	err = observer.observe(observed)
 	if err != nil {
 		log.Error(err, "Failed to observe the current state")
 		return ctrl.Result{}, err
@@ -114,41 +114,41 @@ func (handler *_FlinkClusterHandler) reconcile(
 
 	log.Info("---------- 2. Compute the desired state ----------")
 
-	*desiredState = getDesiredClusterState(observedState.cluster, time.Now())
-	if desiredState.JmDeployment != nil {
-		log.Info("Desired state", "JobManager deployment", *desiredState.JmDeployment)
+	*desired = getDesiredClusterState(observed.cluster, time.Now())
+	if desired.JmDeployment != nil {
+		log.Info("Desired state", "JobManager deployment", *desired.JmDeployment)
 	} else {
 		log.Info("Desired state", "JobManager deployment", "nil")
 	}
-	if desiredState.JmService != nil {
-		log.Info("Desired state", "JobManager service", *desiredState.JmService)
+	if desired.JmService != nil {
+		log.Info("Desired state", "JobManager service", *desired.JmService)
 	} else {
 		log.Info("Desired state", "JobManager service", "nil")
 	}
-	if desiredState.JmIngress != nil {
-		log.Info("Desired state", "JobManager ingress", *desiredState.JmIngress)
+	if desired.JmIngress != nil {
+		log.Info("Desired state", "JobManager ingress", *desired.JmIngress)
 	} else {
 		log.Info("Desired state", "JobManager ingress", "nil")
 	}
-	if desiredState.TmDeployment != nil {
-		log.Info("Desired state", "TaskManager deployment", *desiredState.TmDeployment)
+	if desired.TmDeployment != nil {
+		log.Info("Desired state", "TaskManager deployment", *desired.TmDeployment)
 	} else {
 		log.Info("Desired state", "TaskManager deployment", "nil")
 	}
-	if desiredState.Job != nil {
-		log.Info("Desired state", "Job", *desiredState.Job)
+	if desired.Job != nil {
+		log.Info("Desired state", "Job", *desired.Job)
 	} else {
 		log.Info("Desired state", "Job", "nil")
 	}
 
 	log.Info("---------- 3. Update cluster status ----------")
 
-	var updater = _ClusterStatusUpdater{
-		k8sClient:     handler.k8sClient,
-		context:       handler.context,
-		log:           handler.log,
-		eventRecorder: handler.eventRecorder,
-		observedState: handler.observedState,
+	var updater = ClusterStatusUpdater{
+		k8sClient: handler.k8sClient,
+		context:   handler.context,
+		log:       handler.log,
+		recorder:  handler.recorder,
+		observed:  handler.observed,
 	}
 	err = updater.updateClusterStatusIfChanged()
 	if err != nil {
@@ -158,12 +158,12 @@ func (handler *_FlinkClusterHandler) reconcile(
 
 	log.Info("---------- 4. Take actions ----------")
 
-	var reconciler = _ClusterReconciler{
-		k8sClient:     handler.k8sClient,
-		context:       handler.context,
-		log:           handler.log,
-		observedState: handler.observedState,
-		desiredState:  handler.desiredState,
+	var reconciler = ClusterReconciler{
+		k8sClient: handler.k8sClient,
+		context:   handler.context,
+		log:       handler.log,
+		observed:  handler.observed,
+		desired:   handler.desired,
 	}
 	result, err := reconciler.reconcile()
 	if err != nil {

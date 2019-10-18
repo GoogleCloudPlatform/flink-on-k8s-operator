@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	"github.com/googlecloudplatform/flink-operator/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -33,46 +33,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// _ClusterStateObserver gets the observed state of the cluster.
-type _ClusterStateObserver struct {
+// ClusterStateObserver gets the observed state of the cluster.
+type ClusterStateObserver struct {
 	k8sClient client.Client
 	request   ctrl.Request
 	context   context.Context
 	log       logr.Logger
 }
 
-// _ObservedClusterState holds observed state of a cluster.
-type _ObservedClusterState struct {
-	cluster            *flinkoperatorv1alpha1.FlinkCluster
-	jmDeployment       *appsv1.Deployment
-	jmService          *corev1.Service
-	jmIngress          *extensionsv1beta1.Ingress
-	tmDeployment       *appsv1.Deployment
-	job                *batchv1.Job
-	flinkJobStatusList *flinkclient.JobStatusList
-	flinkJobID         *string
-}
-
-// Flink job status.
-type _JobStatus struct {
-	ID     string
-	Status string
-}
-
-// Flink job status list.
-type _JobStatusList struct {
-	Jobs []_JobStatus
+// ObservedClusterState holds observed state of a cluster.
+type ObservedClusterState struct {
+	cluster      *v1alpha1.FlinkCluster
+	jmDeployment *appsv1.Deployment
+	jmService    *corev1.Service
+	jmIngress    *extensionsv1beta1.Ingress
+	tmDeployment *appsv1.Deployment
+	job          *batchv1.Job
+	flinkJobList *flinkclient.JobStatusList
+	flinkJobID   *string
 }
 
 // Observes the state of the cluster and its components.
 // NOT_FOUND error is ignored because it is normal, other errors are returned.
-func (observer *_ClusterStateObserver) observe(
-	observedState *_ObservedClusterState) error {
+func (observer *ClusterStateObserver) observe(
+	observed *ObservedClusterState) error {
 	var err error
 	var log = observer.log
 
 	// Cluster state.
-	var observedCluster = new(flinkoperatorv1alpha1.FlinkCluster)
+	var observedCluster = new(v1alpha1.FlinkCluster)
 	err = observer.observeCluster(observedCluster)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -83,7 +72,7 @@ func (observer *_ClusterStateObserver) observe(
 		observedCluster = nil
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
-		observedState.cluster = observedCluster
+		observed.cluster = observedCluster
 	}
 
 	// JobManager deployment.
@@ -98,7 +87,7 @@ func (observer *_ClusterStateObserver) observe(
 		observedJmDeployment = nil
 	} else {
 		log.Info("Observed JobManager deployment", "state", *observedJmDeployment)
-		observedState.jmDeployment = observedJmDeployment
+		observed.jmDeployment = observedJmDeployment
 	}
 
 	// JobManager service.
@@ -113,7 +102,7 @@ func (observer *_ClusterStateObserver) observe(
 		observedJmService = nil
 	} else {
 		log.Info("Observed JobManager service", "state", *observedJmService)
-		observedState.jmService = observedJmService
+		observed.jmService = observedJmService
 	}
 
 	// JobManager ingress.
@@ -128,7 +117,7 @@ func (observer *_ClusterStateObserver) observe(
 		observedJmIngress = nil
 	} else {
 		log.Info("Observed JobManager ingress", "state", *observedJmIngress)
-		observedState.jmIngress = observedJmIngress
+		observed.jmIngress = observedJmIngress
 	}
 
 	// TaskManager deployment.
@@ -143,29 +132,28 @@ func (observer *_ClusterStateObserver) observe(
 		observedTmDeployment = nil
 	} else {
 		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
-		observedState.tmDeployment = observedTmDeployment
+		observed.tmDeployment = observedTmDeployment
 	}
 
 	// (Optional) job.
-	err = observer.observeJob(observedState)
+	err = observer.observeJob(observed)
 
 	return err
 }
 
-func (observer *_ClusterStateObserver) observeJob(
-	observedState *_ObservedClusterState) error {
+func (observer *ClusterStateObserver) observeJob(
+	observed *ObservedClusterState) error {
 	var err error
 	var log = observer.log
 
 	// Either the cluster has been deleted or it is a session cluster.
-	if observedState.cluster == nil ||
-		observedState.cluster.Spec.JobSpec == nil {
+	if observed.cluster == nil || observed.cluster.Spec.Job == nil {
 		return nil
 	}
 
 	// Flink job status list can be available before there is any job
 	// submitted.
-	observer.observeFlinkJobs(observedState)
+	observer.observeFlinkJobs(observed)
 
 	// Job resource.
 	var observedJob = new(batchv1.Job)
@@ -179,7 +167,7 @@ func (observer *_ClusterStateObserver) observeJob(
 		observedJob = nil
 	} else {
 		log.Info("Observed job", "state", *observedJob)
-		observedState.job = observedJob
+		observed.job = observedJob
 	}
 
 	return nil
@@ -191,13 +179,13 @@ func (observer *_ClusterStateObserver) observeJob(
 // This needs to be done after the cluster is running and before the job is
 // submitted, because we use it to detect whether the Flink API server is up
 // and running.
-func (observer *_ClusterStateObserver) observeFlinkJobs(
-	observed *_ObservedClusterState) {
+func (observer *ClusterStateObserver) observeFlinkJobs(
+	observed *ObservedClusterState) {
 	var log = observer.log
 
 	// Wait until the cluster is running.
 	if observed.cluster.Status.State !=
-		flinkoperatorv1alpha1.ClusterState.Running {
+		v1alpha1.ClusterState.Running {
 		log.Info(
 			"Skip getting Flink job status.",
 			"clusterState",
@@ -220,14 +208,14 @@ func (observer *_ClusterStateObserver) observeFlinkJobs(
 	var url = getFlinkJobsAPIUrl(
 		observed.jmService.GetName(),
 		observed.jmService.GetNamespace(),
-		*observed.cluster.Spec.JobManagerSpec.Ports.UI)
+		*observed.cluster.Spec.JobManager.Ports.UI)
 	var err = flinkclient.GetJobStatusList(url, jobList)
 	if err != nil {
 		// It is normal in many cases, not an error.
 		log.Info("Failed to get Flink job status list.", "error", err)
 		jobList = nil
 	}
-	observed.flinkJobStatusList = jobList
+	observed.flinkJobList = jobList
 
 	// Extract Flink job ID.
 	if jobList != nil {
@@ -255,13 +243,13 @@ func getFlinkJobsAPIUrl(
 		uiPort)
 }
 
-func (observer *_ClusterStateObserver) observeCluster(
-	cluster *flinkoperatorv1alpha1.FlinkCluster) error {
+func (observer *ClusterStateObserver) observeCluster(
+	cluster *v1alpha1.FlinkCluster) error {
 	return observer.k8sClient.Get(
 		observer.context, observer.request.NamespacedName, cluster)
 }
 
-func (observer *_ClusterStateObserver) observeJobManagerDeployment(
+func (observer *ClusterStateObserver) observeJobManagerDeployment(
 	observedDeployment *appsv1.Deployment) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
@@ -270,7 +258,7 @@ func (observer *_ClusterStateObserver) observeJobManagerDeployment(
 		clusterNamespace, jmDeploymentName, "JobManager", observedDeployment)
 }
 
-func (observer *_ClusterStateObserver) observeTaskManagerDeployment(
+func (observer *ClusterStateObserver) observeTaskManagerDeployment(
 	observedDeployment *appsv1.Deployment) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
@@ -279,7 +267,7 @@ func (observer *_ClusterStateObserver) observeTaskManagerDeployment(
 		clusterNamespace, tmDeploymentName, "TaskManager", observedDeployment)
 }
 
-func (observer *_ClusterStateObserver) observeDeployment(
+func (observer *ClusterStateObserver) observeDeployment(
 	namespace string,
 	name string,
 	component string,
@@ -302,7 +290,7 @@ func (observer *_ClusterStateObserver) observeDeployment(
 	return err
 }
 
-func (observer *_ClusterStateObserver) observeJobManagerService(
+func (observer *ClusterStateObserver) observeJobManagerService(
 	observedService *corev1.Service) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
@@ -316,7 +304,7 @@ func (observer *_ClusterStateObserver) observeJobManagerService(
 		observedService)
 }
 
-func (observer *_ClusterStateObserver) observeJobManagerIngress(
+func (observer *ClusterStateObserver) observeJobManagerIngress(
 	observedIngress *extensionsv1beta1.Ingress) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
@@ -330,7 +318,7 @@ func (observer *_ClusterStateObserver) observeJobManagerIngress(
 		observedIngress)
 }
 
-func (observer *_ClusterStateObserver) observeJobResource(
+func (observer *ClusterStateObserver) observeJobResource(
 	observedJob *batchv1.Job) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
