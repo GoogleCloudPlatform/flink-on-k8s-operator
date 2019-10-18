@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
@@ -113,7 +114,7 @@ func (handler *_FlinkClusterHandler) reconcile(
 
 	log.Info("---------- 2. Compute the desired state ----------")
 
-	*desiredState = getDesiredClusterState(observedState.cluster)
+	*desiredState = getDesiredClusterState(observedState.cluster, time.Now())
 	if desiredState.JmDeployment != nil {
 		log.Info("Desired state", "JobManager deployment", *desiredState.JmDeployment)
 	} else {

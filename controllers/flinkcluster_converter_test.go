@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
@@ -132,7 +133,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	}
 
 	// Run.
-	var desiredState = getDesiredClusterState(cluster)
+	var desiredState = getDesiredClusterState(cluster, time.Now())
 
 	// Verify.
 
