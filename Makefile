@@ -14,7 +14,7 @@ build: generate fmt vet
 
 # Run tests.
 test: generate fmt vet manifests
-	go test ./api/... ./controllers/... -coverprofile cover.out
+	go test ./... -coverprofile cover.out
 	go mod tidy
 
 # Run tests in the builder container.

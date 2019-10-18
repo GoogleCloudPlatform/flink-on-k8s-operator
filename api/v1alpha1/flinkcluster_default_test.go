@@ -28,8 +28,8 @@ import (
 func TestSetDefault(t *testing.T) {
 	var cluster = FlinkCluster{
 		Spec: FlinkClusterSpec{
-			JobSpec: &JobSpec{},
-			JobManagerSpec: JobManagerSpec{
+			Job: &JobSpec{},
+			JobManager: JobManagerSpec{
 				Ingress: &JobManagerIngressSpec{},
 			},
 		},
@@ -53,12 +53,12 @@ func TestSetDefault(t *testing.T) {
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: FlinkClusterSpec{
-			ImageSpec: ImageSpec{
+			Image: ImageSpec{
 				Name:        "",
 				PullPolicy:  "Always",
 				PullSecrets: nil,
 			},
-			JobManagerSpec: JobManagerSpec{
+			JobManager: JobManagerSpec{
 				Replicas:    &defaultJmReplicas,
 				AccessScope: "Cluster",
 				Ingress: &JobManagerIngressSpec{
@@ -74,7 +74,7 @@ func TestSetDefault(t *testing.T) {
 				Volumes:   nil,
 				Mounts:    nil,
 			},
-			TaskManagerSpec: TaskManagerSpec{
+			TaskManager: TaskManagerSpec{
 				Replicas: 0,
 				Ports: TaskManagerPorts{
 					Data:  &defaultTmDataPort,
@@ -84,7 +84,7 @@ func TestSetDefault(t *testing.T) {
 				Resources: corev1.ResourceRequirements{},
 				Volumes:   nil,
 			},
-			JobSpec: &JobSpec{
+			Job: &JobSpec{
 				AllowNonRestoredState: &defaultJobAllowNonRestoredState,
 				Parallelism:           &defaultJobParallelism,
 				NoLoggingToStdout:     &defaultJobNoLoggingToStdout,
@@ -118,12 +118,12 @@ func TestSetNonDefault(t *testing.T) {
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: FlinkClusterSpec{
-			ImageSpec: ImageSpec{
+			Image: ImageSpec{
 				Name:        "",
 				PullPolicy:  "Always",
 				PullSecrets: nil,
 			},
-			JobManagerSpec: JobManagerSpec{
+			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
 				AccessScope: "Cluster",
 				Ingress: &JobManagerIngressSpec{
@@ -139,7 +139,7 @@ func TestSetNonDefault(t *testing.T) {
 				Volumes:   nil,
 				Mounts:    nil,
 			},
-			TaskManagerSpec: TaskManagerSpec{
+			TaskManager: TaskManagerSpec{
 				Replicas: 0,
 				Ports: TaskManagerPorts{
 					Data:  &tmDataPort,
@@ -149,7 +149,7 @@ func TestSetNonDefault(t *testing.T) {
 				Resources: corev1.ResourceRequirements{},
 				Volumes:   nil,
 			},
-			JobSpec: &JobSpec{
+			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
@@ -167,12 +167,12 @@ func TestSetNonDefault(t *testing.T) {
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: FlinkClusterSpec{
-			ImageSpec: ImageSpec{
+			Image: ImageSpec{
 				Name:        "",
 				PullPolicy:  "Always",
 				PullSecrets: nil,
 			},
-			JobManagerSpec: JobManagerSpec{
+			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
 				AccessScope: "Cluster",
 				Ingress: &JobManagerIngressSpec{
@@ -188,7 +188,7 @@ func TestSetNonDefault(t *testing.T) {
 				Volumes:   nil,
 				Mounts:    nil,
 			},
-			TaskManagerSpec: TaskManagerSpec{
+			TaskManager: TaskManagerSpec{
 				Replicas: 0,
 				Ports: TaskManagerPorts{
 					Data:  &tmDataPort,
@@ -198,7 +198,7 @@ func TestSetNonDefault(t *testing.T) {
 				Resources: corev1.ResourceRequirements{},
 				Volumes:   nil,
 			},
-			JobSpec: &JobSpec{
+			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,

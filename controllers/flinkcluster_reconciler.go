@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,21 +30,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type _ClusterReconciler struct {
-	k8sClient     client.Client
-	context       context.Context
-	log           logr.Logger
-	observedState _ObservedClusterState
-	desiredState  _DesiredClusterState
+// ClusterReconciler takes actions to drive the observed state towards the
+// desired state.
+type ClusterReconciler struct {
+	k8sClient client.Client
+	context   context.Context
+	log       logr.Logger
+	observed  ObservedClusterState
+	desired   DesiredClusterState
 }
 
 // Compares the desired state and the observed state, if there is a difference,
 // takes actions to drive the observed state towards the desired state.
-func (reconciler *_ClusterReconciler) reconcile() (ctrl.Result, error) {
+func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	var err error
 
 	// Child resources of the cluster CR will be automatically reclaimed by K8S.
-	if reconciler.observedState.cluster == nil {
+	if reconciler.observed.cluster == nil {
 		reconciler.log.Info("The cluster has been deleted, no action to take")
 		return ctrl.Result{}, nil
 	}
@@ -74,21 +76,21 @@ func (reconciler *_ClusterReconciler) reconcile() (ctrl.Result, error) {
 	return result, nil
 }
 
-func (reconciler *_ClusterReconciler) reconcileJobManagerDeployment() error {
+func (reconciler *ClusterReconciler) reconcileJobManagerDeployment() error {
 	return reconciler.reconcileDeployment(
 		"JobManager",
-		reconciler.desiredState.JmDeployment,
-		reconciler.observedState.jmDeployment)
+		reconciler.desired.JmDeployment,
+		reconciler.observed.jmDeployment)
 }
 
-func (reconciler *_ClusterReconciler) reconcileTaskManagerDeployment() error {
+func (reconciler *ClusterReconciler) reconcileTaskManagerDeployment() error {
 	return reconciler.reconcileDeployment(
 		"TaskManager",
-		reconciler.desiredState.TmDeployment,
-		reconciler.observedState.tmDeployment)
+		reconciler.desired.TmDeployment,
+		reconciler.observed.tmDeployment)
 }
 
-func (reconciler *_ClusterReconciler) reconcileDeployment(
+func (reconciler *ClusterReconciler) reconcileDeployment(
 	component string,
 	desiredDeployment *appsv1.Deployment,
 	observedDeployment *appsv1.Deployment) error {
@@ -111,7 +113,7 @@ func (reconciler *_ClusterReconciler) reconcileDeployment(
 	return nil
 }
 
-func (reconciler *_ClusterReconciler) createDeployment(
+func (reconciler *ClusterReconciler) createDeployment(
 	deployment *appsv1.Deployment, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -127,7 +129,7 @@ func (reconciler *_ClusterReconciler) createDeployment(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) updateDeployment(
+func (reconciler *ClusterReconciler) updateDeployment(
 	deployment *appsv1.Deployment, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -143,7 +145,7 @@ func (reconciler *_ClusterReconciler) updateDeployment(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) deleteDeployment(
+func (reconciler *ClusterReconciler) deleteDeployment(
 	deployment *appsv1.Deployment, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -160,9 +162,9 @@ func (reconciler *_ClusterReconciler) deleteDeployment(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) reconcileJobManagerService() error {
-	var desiredJmService = reconciler.desiredState.JmService
-	var observedJmService = reconciler.observedState.jmService
+func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
+	var desiredJmService = reconciler.desired.JmService
+	var observedJmService = reconciler.observed.jmService
 
 	if desiredJmService != nil && observedJmService == nil {
 		return reconciler.createService(desiredJmService, "JobManager")
@@ -182,7 +184,7 @@ func (reconciler *_ClusterReconciler) reconcileJobManagerService() error {
 	return nil
 }
 
-func (reconciler *_ClusterReconciler) createService(
+func (reconciler *ClusterReconciler) createService(
 	service *corev1.Service, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -198,7 +200,7 @@ func (reconciler *_ClusterReconciler) createService(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) deleteService(
+func (reconciler *ClusterReconciler) deleteService(
 	service *corev1.Service, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -215,9 +217,9 @@ func (reconciler *_ClusterReconciler) deleteService(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) reconcileJobManagerIngress() error {
-	var desiredJmIngress = reconciler.desiredState.JmIngress
-	var observedJmIngress = reconciler.observedState.jmIngress
+func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
+	var desiredJmIngress = reconciler.desired.JmIngress
+	var observedJmIngress = reconciler.observed.jmIngress
 
 	if desiredJmIngress != nil && observedJmIngress == nil {
 		return reconciler.createIngress(desiredJmIngress, "JobManager")
@@ -236,7 +238,7 @@ func (reconciler *_ClusterReconciler) reconcileJobManagerIngress() error {
 	return nil
 }
 
-func (reconciler *_ClusterReconciler) createIngress(
+func (reconciler *ClusterReconciler) createIngress(
 	ingress *extensionsv1beta1.Ingress, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -252,7 +254,7 @@ func (reconciler *_ClusterReconciler) createIngress(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) deleteIngress(
+func (reconciler *ClusterReconciler) deleteIngress(
 	ingress *extensionsv1beta1.Ingress, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
@@ -269,10 +271,10 @@ func (reconciler *_ClusterReconciler) deleteIngress(
 	return err
 }
 
-func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
+func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var log = reconciler.log
-	var desiredJob = reconciler.desiredState.Job
-	var observed = reconciler.observedState
+	var desiredJob = reconciler.desired.Job
+	var observed = reconciler.observed
 	var observedJob = observed.job
 
 	if desiredJob != nil {
@@ -280,7 +282,7 @@ func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			// If the observed Flink job status list is not nil (e.g., emtpy list), it means
 			// Flink REST API server is up and running. It is the source of truth of whether
 			// we can submit a job.
-			if reconciler.observedState.flinkJobStatusList != nil {
+			if reconciler.observed.flinkJobList != nil {
 				var err = reconciler.createJob(desiredJob)
 				return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
 			}
@@ -288,7 +290,7 @@ func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
 
-		if !isJobFinished(reconciler.observedState.cluster.Status.Components.Job) {
+		if !isJobFinished(reconciler.observed.cluster.Status.Components.Job) {
 			log.Info("Flink job is not finished yet.")
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
@@ -299,7 +301,7 @@ func (reconciler *_ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (reconciler *_ClusterReconciler) createJob(job *batchv1.Job) error {
+func (reconciler *ClusterReconciler) createJob(job *batchv1.Job) error {
 	var context = reconciler.context
 	var log = reconciler.log
 	var k8sClient = reconciler.k8sClient
@@ -314,8 +316,8 @@ func (reconciler *_ClusterReconciler) createJob(job *batchv1.Job) error {
 	return err
 }
 
-func isJobFinished(jobStatus *flinkoperatorv1alpha1.JobStatus) bool {
+func isJobFinished(jobStatus *v1alpha1.JobStatus) bool {
 	return jobStatus != nil &&
-		(jobStatus.State == flinkoperatorv1alpha1.JobState.Succeeded ||
-			jobStatus.State == flinkoperatorv1alpha1.JobState.Failed)
+		(jobStatus.State == v1alpha1.JobState.Succeeded ||
+			jobStatus.State == v1alpha1.JobState.Failed)
 }

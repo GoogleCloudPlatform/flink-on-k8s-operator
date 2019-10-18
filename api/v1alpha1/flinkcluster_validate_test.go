@@ -26,15 +26,15 @@ import (
 func TestUpdateStatusAllowed(t *testing.T) {
 	var oldCluster = FlinkCluster{Status: FlinkClusterStatus{State: "NoReady"}}
 	var newCluster = FlinkCluster{Status: FlinkClusterStatus{State: "Running"}}
-	var err = _ValidateUpdate(&oldCluster, &newCluster)
+	var err = validateUpdate(&oldCluster, &newCluster)
 	assert.NilError(t, err, "updating status failed unexpectedly")
 }
 
 // Tests updating spec is not allowed.
 func TestUpdateSpecNotAllowed(t *testing.T) {
-	var oldCluster = FlinkCluster{Spec: FlinkClusterSpec{ImageSpec: ImageSpec{Name: "flink:1.8.1"}}}
-	var newCluster = FlinkCluster{Spec: FlinkClusterSpec{ImageSpec: ImageSpec{Name: "flink:1.9.0"}}}
-	var err = _ValidateUpdate(&oldCluster, &newCluster)
+	var oldCluster = FlinkCluster{Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.8.1"}}}
+	var newCluster = FlinkCluster{Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
+	var err = validateUpdate(&oldCluster, &newCluster)
 	var expectedErr = "updating FlinkCluster spec is not allowed," +
 		" please delete the resouce and recreate"
 	assert.Equal(t, err.Error(), expectedErr)

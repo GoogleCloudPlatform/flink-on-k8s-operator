@@ -25,37 +25,39 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	flinkoperatorv1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type _ClusterStatusUpdater struct {
-	k8sClient     client.Client
-	context       context.Context
-	log           logr.Logger
-	eventRecorder record.EventRecorder
-	observedState _ObservedClusterState
+// ClusterStatusUpdater updates the status of the FlinkCluster CR.
+type ClusterStatusUpdater struct {
+	k8sClient client.Client
+	context   context.Context
+	log       logr.Logger
+	recorder  record.EventRecorder
+	observed  ObservedClusterState
 }
 
 // Compares the current status recorded in the cluster's status field and the
 // new status derived from the status of the components, updates the cluster
 // status if it is changed.
-func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
-	if updater.observedState.cluster == nil {
+func (updater *ClusterStatusUpdater) updateClusterStatusIfChanged() error {
+	if updater.observed.cluster == nil {
 		updater.log.Info("The cluster has been deleted, no status to update")
 		return nil
 	}
 
 	// Current status recorded in the cluster's status field.
-	var oldStatus = flinkoperatorv1alpha1.FlinkClusterStatus{}
-	updater.observedState.cluster.Status.DeepCopyInto(&oldStatus)
+	var oldStatus = v1alpha1.FlinkClusterStatus{}
+	updater.observed.cluster.Status.DeepCopyInto(&oldStatus)
 	oldStatus.LastUpdateTime = ""
 
 	// New status derived from the cluster's components.
-	var newStatus = updater.deriveClusterStatus()
+	var newStatus = updater.deriveClusterStatus(
+		&updater.observed.cluster.Status, &updater.observed)
 
 	// Compare
 	var changed = updater.isStatusChanged(oldStatus, newStatus)
@@ -65,7 +67,7 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 		updater.log.Info(
 			"Status changed",
 			"old",
-			updater.observedState.cluster.Status,
+			updater.observed.cluster.Status,
 			"new", newStatus)
 		updater.createStatusChangeEvents(oldStatus, newStatus)
 		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
@@ -76,9 +78,9 @@ func (updater *_ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 	return nil
 }
 
-func (updater *_ClusterStatusUpdater) createStatusChangeEvents(
-	oldStatus flinkoperatorv1alpha1.FlinkClusterStatus,
-	newStatus flinkoperatorv1alpha1.FlinkClusterStatus) {
+func (updater *ClusterStatusUpdater) createStatusChangeEvents(
+	oldStatus v1alpha1.FlinkClusterStatus,
+	newStatus v1alpha1.FlinkClusterStatus) {
 	if oldStatus.Components.JobManagerDeployment.State !=
 		newStatus.Components.JobManagerDeployment.State {
 		updater.createStatusChangeEvent(
@@ -138,17 +140,17 @@ func (updater *_ClusterStatusUpdater) createStatusChangeEvents(
 	}
 }
 
-func (updater *_ClusterStatusUpdater) createStatusChangeEvent(
+func (updater *ClusterStatusUpdater) createStatusChangeEvent(
 	name string, oldStatus string, newStatus string) {
 	if len(oldStatus) == 0 {
-		updater.eventRecorder.Event(
-			updater.observedState.cluster,
+		updater.recorder.Event(
+			updater.observed.cluster,
 			"Normal",
 			"StatusUpdate",
 			fmt.Sprintf("%v status: %v", name, newStatus))
 	} else {
-		updater.eventRecorder.Event(
-			updater.observedState.cluster,
+		updater.recorder.Event(
+			updater.observed.cluster,
 			"Normal",
 			"StatusUpdate",
 			fmt.Sprintf(
@@ -156,67 +158,67 @@ func (updater *_ClusterStatusUpdater) createStatusChangeEvent(
 	}
 }
 
-func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha1.FlinkClusterStatus {
-	var status = flinkoperatorv1alpha1.FlinkClusterStatus{}
+func (updater *ClusterStatusUpdater) deriveClusterStatus(
+	recorded *v1alpha1.FlinkClusterStatus,
+	observed *ObservedClusterState) v1alpha1.FlinkClusterStatus {
+	var status = v1alpha1.FlinkClusterStatus{}
 	var runningComponents = 0
-	var recordedClusterStatus = &updater.observedState.cluster.Status
-
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
 
 	// JobManager deployment.
-	var observedJmDeployment = updater.observedState.jmDeployment
+	var observedJmDeployment = observed.jmDeployment
 	if observedJmDeployment != nil {
 		status.Components.JobManagerDeployment.Name =
 			observedJmDeployment.ObjectMeta.Name
 		status.Components.JobManagerDeployment.State =
 			getDeploymentState(observedJmDeployment)
 		if status.Components.JobManagerDeployment.State ==
-			flinkoperatorv1alpha1.ClusterComponentState.Ready {
+			v1alpha1.ComponentState.Ready {
 			runningComponents++
 		}
-	} else if recordedClusterStatus.Components.JobManagerDeployment.Name != "" {
+	} else if recorded.Components.JobManagerDeployment.Name != "" {
 		status.Components.JobManagerDeployment =
-			flinkoperatorv1alpha1.FlinkClusterComponentState{
-				Name:  recordedClusterStatus.Components.JobManagerDeployment.Name,
-				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			v1alpha1.FlinkClusterComponentState{
+				Name:  recorded.Components.JobManagerDeployment.Name,
+				State: v1alpha1.ComponentState.Deleted,
 			}
 	}
 
 	// JobManager service.
-	var observedJmService = updater.observedState.jmService
+	var observedJmService = observed.jmService
 	if observedJmService != nil {
 		var state string
 		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
 			if observedJmService.Spec.ClusterIP != "" {
-				state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+				state = v1alpha1.ComponentState.Ready
 				runningComponents++
 			} else {
-				state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+				state = v1alpha1.ComponentState.NotReady
 			}
 		} else if observedJmService.Spec.Type == corev1.ServiceTypeLoadBalancer {
 			if len(observedJmService.Status.LoadBalancer.Ingress) > 0 {
-				state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+				state = v1alpha1.ComponentState.Ready
 				runningComponents++
 			} else {
-				state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+				state = v1alpha1.ComponentState.NotReady
 			}
 		}
 		status.Components.JobManagerService =
-			flinkoperatorv1alpha1.FlinkClusterComponentState{
+			v1alpha1.FlinkClusterComponentState{
 				Name:  observedJmService.ObjectMeta.Name,
 				State: state,
 			}
-	} else if recordedClusterStatus.Components.JobManagerService.Name != "" {
+	} else if recorded.Components.JobManagerService.Name != "" {
 		status.Components.JobManagerService =
-			flinkoperatorv1alpha1.FlinkClusterComponentState{
-				Name:  recordedClusterStatus.Components.JobManagerService.Name,
-				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			v1alpha1.FlinkClusterComponentState{
+				Name:  recorded.Components.JobManagerService.Name,
+				State: v1alpha1.ComponentState.Deleted,
 			}
 	}
 
 	// (Optional) JobManager ingress.
-	var observedJmIngress = updater.observedState.jmIngress
+	var observedJmIngress = observed.jmIngress
 	if observedJmIngress != nil {
 		var state string
 		var urls []string
@@ -274,50 +276,50 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 
 		// Jobmanager ingress state become ready when LB for ingress is specified.
 		if loadbalancerReady {
-			state = flinkoperatorv1alpha1.ClusterComponentState.Ready
+			state = v1alpha1.ComponentState.Ready
 		} else {
-			state = flinkoperatorv1alpha1.ClusterComponentState.NotReady
+			state = v1alpha1.ComponentState.NotReady
 		}
 
 		status.Components.JobManagerIngress =
-			&flinkoperatorv1alpha1.JobManagerIngressStatus{
+			&v1alpha1.JobManagerIngressStatus{
 				Name:  observedJmIngress.ObjectMeta.Name,
 				State: state,
 				URLs:  urls,
 			}
-	} else if recordedClusterStatus.Components.JobManagerIngress != nil &&
-		recordedClusterStatus.Components.JobManagerIngress.Name != "" {
+	} else if recorded.Components.JobManagerIngress != nil &&
+		recorded.Components.JobManagerIngress.Name != "" {
 		status.Components.JobManagerIngress =
-			&flinkoperatorv1alpha1.JobManagerIngressStatus{
-				Name:  recordedClusterStatus.Components.JobManagerIngress.Name,
-				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			&v1alpha1.JobManagerIngressStatus{
+				Name:  recorded.Components.JobManagerIngress.Name,
+				State: v1alpha1.ComponentState.Deleted,
 			}
 	}
 
 	// TaskManager deployment.
-	var observedTmDeployment = updater.observedState.tmDeployment
+	var observedTmDeployment = observed.tmDeployment
 	if observedTmDeployment != nil {
 		status.Components.TaskManagerDeployment.Name =
 			observedTmDeployment.ObjectMeta.Name
 		status.Components.TaskManagerDeployment.State =
 			getDeploymentState(observedTmDeployment)
 		if status.Components.TaskManagerDeployment.State ==
-			flinkoperatorv1alpha1.ClusterComponentState.Ready {
+			v1alpha1.ComponentState.Ready {
 			runningComponents++
 		}
-	} else if recordedClusterStatus.Components.TaskManagerDeployment.Name != "" {
+	} else if recorded.Components.TaskManagerDeployment.Name != "" {
 		status.Components.TaskManagerDeployment =
-			flinkoperatorv1alpha1.FlinkClusterComponentState{
-				Name:  recordedClusterStatus.Components.TaskManagerDeployment.Name,
-				State: flinkoperatorv1alpha1.ClusterComponentState.Deleted,
+			v1alpha1.FlinkClusterComponentState{
+				Name:  recorded.Components.TaskManagerDeployment.Name,
+				State: v1alpha1.ComponentState.Deleted,
 			}
 	}
 
 	// (Optional) Job.
 	var jobFinished = false
-	var observedJob = updater.observedState.job
+	var observedJob = observed.job
 	if observedJob != nil {
-		status.Components.Job = new(flinkoperatorv1alpha1.JobStatus)
+		status.Components.Job = new(v1alpha1.JobStatus)
 		status.Components.Job.Name = observedJob.ObjectMeta.Name
 
 		var flinkJobID = updater.getFlinkJobID()
@@ -330,15 +332,15 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 			// Pending (for scheduling), so we use Flink job ID to determine
 			// the actual state.
 			if flinkJobID == nil {
-				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Pending
+				status.Components.Job.State = v1alpha1.JobState.Pending
 			} else {
-				status.Components.Job.State = flinkoperatorv1alpha1.JobState.Running
+				status.Components.Job.State = v1alpha1.JobState.Running
 			}
 		} else if observedJob.Status.Failed > 0 {
-			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Failed
+			status.Components.Job.State = v1alpha1.JobState.Failed
 			jobFinished = true
 		} else if observedJob.Status.Succeeded > 0 {
-			status.Components.Job.State = flinkoperatorv1alpha1.JobState.Succeeded
+			status.Components.Job.State = v1alpha1.JobState.Succeeded
 			jobFinished = true
 		} else {
 			status.Components.Job = nil
@@ -346,32 +348,32 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 	}
 
 	// Derive the new cluster state.
-	switch recordedClusterStatus.State {
-	case "", flinkoperatorv1alpha1.ClusterState.Creating:
+	switch recorded.State {
+	case "", v1alpha1.ClusterState.Creating:
 		if runningComponents < totalComponents {
-			status.State = flinkoperatorv1alpha1.ClusterState.Creating
+			status.State = v1alpha1.ClusterState.Creating
 		} else {
-			status.State = flinkoperatorv1alpha1.ClusterState.Running
+			status.State = v1alpha1.ClusterState.Running
 		}
-	case flinkoperatorv1alpha1.ClusterState.Running,
-		flinkoperatorv1alpha1.ClusterState.Reconciling:
+	case v1alpha1.ClusterState.Running,
+		v1alpha1.ClusterState.Reconciling:
 		if jobFinished {
-			status.State = flinkoperatorv1alpha1.ClusterState.Stopping
+			status.State = v1alpha1.ClusterState.Stopping
 		} else if runningComponents < totalComponents {
-			status.State = flinkoperatorv1alpha1.ClusterState.Reconciling
+			status.State = v1alpha1.ClusterState.Reconciling
 		} else {
-			status.State = flinkoperatorv1alpha1.ClusterState.Running
+			status.State = v1alpha1.ClusterState.Running
 		}
-	case flinkoperatorv1alpha1.ClusterState.Stopping:
+	case v1alpha1.ClusterState.Stopping:
 		if runningComponents == 0 {
-			status.State = flinkoperatorv1alpha1.ClusterState.Stopped
+			status.State = v1alpha1.ClusterState.Stopped
 		} else {
-			status.State = flinkoperatorv1alpha1.ClusterState.Stopping
+			status.State = v1alpha1.ClusterState.Stopping
 		}
-	case flinkoperatorv1alpha1.ClusterState.Stopped:
-		status.State = flinkoperatorv1alpha1.ClusterState.Stopped
+	case v1alpha1.ClusterState.Stopped:
+		status.State = v1alpha1.ClusterState.Stopped
 	default:
-		panic(fmt.Sprintf("Unknown cluster state: %v", recordedClusterStatus.State))
+		panic(fmt.Sprintf("Unknown cluster state: %v", recorded.State))
 	}
 
 	return status
@@ -381,15 +383,15 @@ func (updater *_ClusterStatusUpdater) deriveClusterStatus() flinkoperatorv1alpha
 //
 // It is possible that the recorded is not nil, but the observed is, due
 // to transient error or being skiped as an optimization.
-func (updater *_ClusterStatusUpdater) getFlinkJobID() *string {
+func (updater *ClusterStatusUpdater) getFlinkJobID() *string {
 	// Observed.
-	var observedID = updater.observedState.flinkJobID
+	var observedID = updater.observed.flinkJobID
 	if observedID != nil && len(*observedID) > 0 {
 		return observedID
 	}
 
 	// Recorded.
-	var recordedJobStatus = updater.observedState.cluster.Status.Components.Job
+	var recordedJobStatus = updater.observed.cluster.Status.Components.Job
 	if recordedJobStatus != nil && len(recordedJobStatus.ID) > 0 {
 		return &recordedJobStatus.ID
 	}
@@ -397,9 +399,9 @@ func (updater *_ClusterStatusUpdater) getFlinkJobID() *string {
 	return nil
 }
 
-func (updater *_ClusterStatusUpdater) isStatusChanged(
-	currentStatus flinkoperatorv1alpha1.FlinkClusterStatus,
-	newStatus flinkoperatorv1alpha1.FlinkClusterStatus) bool {
+func (updater *ClusterStatusUpdater) isStatusChanged(
+	currentStatus v1alpha1.FlinkClusterStatus,
+	newStatus v1alpha1.FlinkClusterStatus) bool {
 	var changed = false
 	if newStatus.State != currentStatus.State {
 		changed = true
@@ -482,17 +484,17 @@ func (updater *_ClusterStatusUpdater) isStatusChanged(
 	return changed
 }
 
-func (updater *_ClusterStatusUpdater) updateClusterStatus(
-	status flinkoperatorv1alpha1.FlinkClusterStatus) error {
-	var flinkCluster = flinkoperatorv1alpha1.FlinkCluster{}
-	updater.observedState.cluster.DeepCopyInto(&flinkCluster)
+func (updater *ClusterStatusUpdater) updateClusterStatus(
+	status v1alpha1.FlinkClusterStatus) error {
+	var flinkCluster = v1alpha1.FlinkCluster{}
+	updater.observed.cluster.DeepCopyInto(&flinkCluster)
 	flinkCluster.Status = status
 	return updater.k8sClient.Update(updater.context, &flinkCluster)
 }
 
 func getDeploymentState(deployment *appsv1.Deployment) string {
 	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
-		return flinkoperatorv1alpha1.ClusterComponentState.Ready
+		return v1alpha1.ComponentState.Ready
 	}
-	return flinkoperatorv1alpha1.ClusterComponentState.NotReady
+	return v1alpha1.ComponentState.NotReady
 }
