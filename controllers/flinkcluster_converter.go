@@ -35,6 +35,8 @@ import (
 // Converter which converts the FlinkCluster spec to the desired
 // underlying Kubernetes resource specs.
 
+var delayDeleteClusterMinutes int32 = 5
+
 // _DesiredClusterState holds desired state of a cluster.
 type _DesiredClusterState struct {
 	JmDeployment *appsv1.Deployment
@@ -70,7 +72,7 @@ func getDesiredJobManagerDeployment(
 		return nil
 	}
 
-	if isStopDelayExpired(flinkCluster.Status, 5, now) {
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -166,7 +168,7 @@ func getDesiredJobManagerService(
 		return nil
 	}
 
-	if isStopDelayExpired(flinkCluster.Status, 5, now) {
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -240,7 +242,7 @@ func getDesiredJobManagerIngress(
 		return nil
 	}
 
-	if isStopDelayExpired(flinkCluster.Status, 5, now) {
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
@@ -316,7 +318,7 @@ func getDesiredTaskManagerDeployment(
 		return nil
 	}
 
-	if isStopDelayExpired(flinkCluster.Status, 5, now) {
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
 		return nil
 	}
 
