@@ -19,11 +19,10 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
-	"github.com/googlecloudplatform/flink-operator/flinkclient"
+	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,10 +34,11 @@ import (
 
 // ClusterStateObserver gets the observed state of the cluster.
 type ClusterStateObserver struct {
-	k8sClient client.Client
-	request   ctrl.Request
-	context   context.Context
-	log       logr.Logger
+	k8sClient   client.Client
+	flinkClient flinkclient.FlinkClient
+	request     ctrl.Request
+	context     context.Context
+	log         logr.Logger
 }
 
 // ObservedClusterState holds observed state of a cluster.
@@ -205,11 +205,8 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 
 	// Get Flink job status list.
 	var jobList = &flinkclient.JobStatusList{}
-	var url = getFlinkJobsAPIUrl(
-		observed.jmService.GetName(),
-		observed.jmService.GetNamespace(),
-		*observed.cluster.Spec.JobManager.Ports.UI)
-	var err = flinkclient.GetJobStatusList(url, jobList)
+	var err = observer.flinkClient.GetJobStatusList(
+		getFlinkAPIBaseURL(observed.cluster), jobList)
 	if err != nil {
 		// It is normal in many cases, not an error.
 		log.Info("Failed to get Flink job status list.", "error", err)
@@ -232,15 +229,6 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 			log.Info("Observed Flink job ID", "ID", observed.flinkJobID)
 		}
 	}
-}
-
-func getFlinkJobsAPIUrl(
-	jmServiceName string, jmServiceNamespace string, uiPort int32) string {
-	return fmt.Sprintf(
-		"http://%s.%s.svc.cluster.local:%d/jobs",
-		jmServiceName,
-		jmServiceNamespace,
-		uiPort)
 }
 
 func (observer *ClusterStateObserver) observeCluster(

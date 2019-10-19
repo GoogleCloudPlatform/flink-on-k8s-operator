@@ -33,9 +33,11 @@ spec:
         memory: "1024Mi"
         cpu: "200m"
   job:
-    jarFile: ./examples/batch/WordCount.jar
-    className: org.apache.flink.examples.java.wordcount.WordCount
+    jarFile: ./examples/streaming/WordCount.jar
+    className: org.apache.flink.streaming.examples.wordcount.WordCount
     args: ["--input", "./README.txt"]
     parallelism: 2
+    savepointsDir: /tmp
+    autoSavepointSeconds: 30
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"

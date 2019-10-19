@@ -216,6 +216,12 @@ type JobSpec struct {
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
+	// Automatically take a savepoint to the savepoints dir every n seconds.
+	AutoSavepointSeconds *int32 `json:"autoSavepointSeconds,omitempty"`
+
+	// Savepoints dir where to store automatically taken savepoints.
+	SavepointsDir *string `json:"savepointsDir,omitempty"`
+
 	// Job parallelism, default: 1.
 	Parallelism *int32 `json:"parallelism,omitempty"`
 
@@ -301,6 +307,15 @@ type JobStatus struct {
 
 	// The state of the Kubernetes job.
 	State string `json:"state"`
+
+	// Savepoint URLs.
+	Savepoints []string `json:"savepoints,omitempty"`
+
+	// Last savepoint trigger ID.
+	LastSavepointTriggerID string `json:"lastSavepointTriggerID,omitempty"`
+
+	// Last successful or failed savepoint operation timestamp.
+	LastSavepointTime string `json:"lastSavepointTime,omitempty"`
 }
 
 // JobManagerIngressStatus defines the status of a JobManager ingress.

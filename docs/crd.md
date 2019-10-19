@@ -126,6 +126,8 @@ FlinkCluster
       * **ClassName** (required): Fully qualified Java class name of the job.
       * **Args** (optional): Command-line args of the job.
       * **Savepoint** (optional): Savepoint where to restore the job from.
+      * **AutoSavepointSeconds** (optional): Automatically take a savepoint to the savepoints dir every n seconds.
+      * **SavepointDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **AllowNonRestoredState** (optional):  Allow non-restored state, default: false.
       * **Parallelism** (optional):  Parallelism of the job, default: 1.
       * **NoLoggingToStdout** (optional):  No logging output to STDOUT, default: false.
@@ -156,4 +158,7 @@ FlinkCluster
         * **Name**: The resource name of the job.
         * **ID**: The ID of the Flink job.
         * **State**: The state of the job.
+        * **Savepoints**: Savepoint URLs.
+        * **LastSavepointTriggerID**: Last savepoint trigger ID.
+        * **LastSavepointTime**: Last successful or failed savepoint operation timestamp.
     * **LastUpdateTime**: Last update timestamp of this status.

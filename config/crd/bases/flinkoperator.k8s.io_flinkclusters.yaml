@@ -525,6 +525,11 @@ spec:
                   items:
                     type: string
                   type: array
+                autoSavepointSeconds:
+                  description: Automatically take a savepoint to the savepoints dir
+                    every n seconds.
+                  format: int32
+                  type: integer
                 className:
                   description: Fully qualified Java class name of the job.
                   type: string
@@ -581,6 +586,9 @@ spec:
                   type: string
                 savepoint:
                   description: Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
+                  type: string
+                savepointsDir:
+                  description: Savepoints dir where to store automatically taken savepoints.
                   type: string
                 volumes:
                   description: Volumes in the Job pod.
@@ -5280,9 +5288,20 @@ spec:
                     id:
                       description: The ID of the Flink job.
                       type: string
+                    lastSavepointTime:
+                      description: Last successful or failed savepoint operation timestamp.
+                      type: string
+                    lastSavepointTriggerID:
+                      description: Last savepoint trigger ID.
+                      type: string
                     name:
                       description: The name of the Kubernetes job resource.
                       type: string
+                    savepoints:
+                      description: Savepoint URLs.
+                      items:
+                        type: string
+                      type: array
                     state:
                       description: The state of the Kubernetes job.
                       type: string
