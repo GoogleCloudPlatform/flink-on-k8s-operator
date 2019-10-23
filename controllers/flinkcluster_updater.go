@@ -22,6 +22,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -43,11 +44,12 @@ type ClusterStatusUpdater struct {
 
 // Compares the current status recorded in the cluster's status field and the
 // new status derived from the status of the components, updates the cluster
-// status if it is changed.
-func (updater *ClusterStatusUpdater) updateClusterStatusIfChanged() error {
+// status if it is changed, returns the new status.
+func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
+	bool, error) {
 	if updater.observed.cluster == nil {
 		updater.log.Info("The cluster has been deleted, no status to update")
-		return nil
+		return false, nil
 	}
 
 	// Current status recorded in the cluster's status field.
@@ -70,12 +72,13 @@ func (updater *ClusterStatusUpdater) updateClusterStatusIfChanged() error {
 			updater.observed.cluster.Status,
 			"new", newStatus)
 		updater.createStatusChangeEvents(oldStatus, newStatus)
-		newStatus.LastUpdateTime = time.Now().Format(time.RFC3339)
-		return updater.updateClusterStatus(newStatus)
+		var tc = &TimeConverter{}
+		newStatus.LastUpdateTime = tc.ToString(time.Now())
+		return true, updater.updateClusterStatus(newStatus)
 	}
 
 	updater.log.Info("No status change", "state", oldStatus.State)
-	return nil
+	return false, nil
 }
 
 func (updater *ClusterStatusUpdater) createStatusChangeEvents(
@@ -319,7 +322,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var jobFinished = false
 	var observedJob = observed.job
 	if observedJob != nil {
-		status.Components.Job = new(v1alpha1.JobStatus)
+		status.Components.Job = &v1alpha1.JobStatus{}
+		var recordedJobStatus = observed.cluster.Status.Components.Job
+		if recordedJobStatus != nil {
+			recordedJobStatus.DeepCopyInto(status.Components.Job)
+		}
 		status.Components.Job.Name = observedJob.ObjectMeta.Name
 
 		var flinkJobID = updater.getFlinkJobID()
@@ -471,7 +478,9 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			changed = true
 		}
 	} else {
-		if *newStatus.Components.Job != *currentStatus.Components.Job {
+		var isEqual = reflect.DeepEqual(
+			newStatus.Components.Job, currentStatus.Components.Job)
+		if !isEqual {
 			updater.log.Info(
 				"Job status changed",
 				"current",

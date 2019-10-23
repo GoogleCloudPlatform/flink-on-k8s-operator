@@ -512,31 +512,6 @@ func toOwnerReference(
 	}
 }
 
-// Gets JobManager deployment name
-func getJobManagerDeploymentName(clusterName string) string {
-	return clusterName + "-jobmanager"
-}
-
-// Gets JobManager service name
-func getJobManagerServiceName(clusterName string) string {
-	return clusterName + "-jobmanager"
-}
-
-// Gets JobManager ingress name
-func getJobManagerIngressName(clusterName string) string {
-	return clusterName + "-jobmanager"
-}
-
-// Gets TaskManager name
-func getTaskManagerDeploymentName(clusterName string) string {
-	return clusterName + "-taskmanager"
-}
-
-// Gets Job name
-func getJobName(clusterName string) string {
-	return clusterName + "-job"
-}
-
 // Gets Flink properties
 func getFlinkProperties(properties map[string]string) string {
 	var builder strings.Builder
@@ -557,16 +532,12 @@ func isStopDelayExpired(
 	clusterStatus v1alpha1.FlinkClusterStatus,
 	delayMinutes int32,
 	now time.Time) bool {
-	if clusterStatus.State != v1alpha1.ClusterState.Stopping {
+	if clusterStatus.State != v1alpha1.ClusterState.Stopping ||
+		len(clusterStatus.LastUpdateTime) == 0 {
 		return false
 	}
-
-	lastUpdateTime, err := time.Parse(
-		"2006-01-02T15:04:05Z", clusterStatus.LastUpdateTime)
-	if err != nil {
-		return false
-	}
-
+	var tc = &TimeConverter{}
+	var lastUpdateTime = tc.FromString(clusterStatus.LastUpdateTime)
 	return now.After(
 		lastUpdateTime.Add(time.Duration(delayMinutes) * time.Minute))
 }
