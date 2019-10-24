@@ -5297,11 +5297,9 @@ spec:
                     name:
                       description: The name of the Kubernetes job resource.
                       type: string
-                    savepoints:
-                      description: Savepoint URLs.
-                      items:
-                        type: string
-                      type: array
+                    savepointLocation:
+                      description: Savepoint location.
+                      type: string
                     state:
                       description: The state of the Kubernetes job.
                       type: string

@@ -64,7 +64,15 @@ type SavepointStateID struct {
 
 // SavepointStatus defines savepoint status of a job.
 type SavepointStatus struct {
-	State        string
+	// Flink job ID.
+	JobID string
+	// Savepoint operation trigger ID.
+	TriggerID string
+	// Completed or not.
+	Completed bool
+	// Savepoint location URI, non-empty when savepoint succeeded.
+	Location string
+	// Cause of the failure, non-empyt when savepoint failed
 	FailureCause SavepointFailureCause
 }
 
@@ -88,11 +96,34 @@ func (c *FlinkClient) TriggerSavepoint(
 }
 
 // GetSavepointStatus returns savepoint status.
+//
+// Flink API response examples:
+//
+// 1) success:
+//
+// {
+//    "status":{"id":"COMPLETED"},
+//    "operation":{
+//      "location":"file:/tmp/savepoint-ad4025-dd46c1bd1c80"
+//    }
+// }
+//
+// 2) failure:
+//
+// {
+//    "status":{"id":"COMPLETED"},
+//    "operation":{
+//      "failure-cause":{
+//        "class": "java.util.concurrent.CompletionException",
+//        "stack-trace": "..."
+//      }
+//    }
+// }
 func (c *FlinkClient) GetSavepointStatus(
 	apiBaseURL string, jobID string, triggerID string) (SavepointStatus, error) {
 	var url = fmt.Sprintf(
 		"%s/jobs/%s/savepoints/%s", apiBaseURL, jobID, triggerID)
-	var status = SavepointStatus{}
+	var status = SavepointStatus{JobID: jobID, TriggerID: triggerID}
 	var rootJSON map[string]*json.RawMessage
 	var stateID SavepointStateID
 	var opJSON map[string]*json.RawMessage
@@ -106,13 +137,25 @@ func (c *FlinkClient) GetSavepointStatus(
 		if err != nil {
 			return status, err
 		}
-		status.State = stateID.ID
+		if stateID.ID == savepointStateCompleted {
+			status.Completed = true
+		} else {
+			status.Completed = false
+		}
 	}
 	if op, ok := rootJSON["operation"]; ok && op != nil {
 		err = json.Unmarshal(*op, &opJSON)
 		if err != nil {
 			return status, err
 		}
+		// Success
+		if location, ok := opJSON["location"]; ok && location != nil {
+			err = json.Unmarshal(*location, &status.Location)
+			if err != nil {
+				return status, err
+			}
+		}
+		// Failure
 		if failureCause, ok := opJSON["failure-cause"]; ok && failureCause != nil {
 			err = json.Unmarshal(*failureCause, &status.FailureCause)
 			if err != nil {
@@ -125,24 +168,23 @@ func (c *FlinkClient) GetSavepointStatus(
 
 // TakeSavepoint takes savepoint, blocks until it suceeds or fails.
 func (c *FlinkClient) TakeSavepoint(
-	apiBaseURL string, jobID string, dir string) (
-	SavepointTriggerID, SavepointStatus, error) {
+	apiBaseURL string, jobID string, dir string) (SavepointStatus, error) {
 	var triggerID = SavepointTriggerID{}
-	var status = SavepointStatus{}
+	var status = SavepointStatus{JobID: jobID}
 	var err error
 
 	triggerID, err = c.TriggerSavepoint(apiBaseURL, jobID, dir)
 	if err != nil {
-		return triggerID, SavepointStatus{}, err
+		return SavepointStatus{}, err
 	}
 
-	for i := 0; i < 10; i = i + 1 {
+	for i := 0; i < 12; i++ {
 		status, err = c.GetSavepointStatus(apiBaseURL, jobID, triggerID.RequestID)
-		if err == nil && status.State == savepointStateCompleted {
-			return triggerID, status, nil
+		if err == nil && status.Completed {
+			return status, nil
 		}
 		time.Sleep(5 * time.Second)
 	}
 
-	return triggerID, status, err
+	return status, err
 }
