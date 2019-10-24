@@ -308,8 +308,8 @@ type JobStatus struct {
 	// The state of the Kubernetes job.
 	State string `json:"state"`
 
-	// Savepoint URLs.
-	Savepoints []string `json:"savepoints,omitempty"`
+	// Savepoint location.
+	SavepointLocation string `json:"savepointLocation,omitempty"`
 
 	// Last savepoint trigger ID.
 	LastSavepointTriggerID string `json:"lastSavepointTriggerID,omitempty"`

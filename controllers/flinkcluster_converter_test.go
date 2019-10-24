@@ -483,7 +483,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name:  "main",
 							Image: "flink:1.8.1",
 							Args: []string{
-								"./bin/flink",
+								"/opt/flink/bin/flink",
 								"run",
 								"--jobmanager",
 								"flinkjobcluster-sample-jobmanager:8081",

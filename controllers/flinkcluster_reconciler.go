@@ -297,30 +297,22 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	if desiredJob != nil && observedJob != nil {
 		var jobID = reconciler.getFlinkJobID()
 		if reconciler.shouldTakeSavepoint() {
-			var triggerID string
-			var err error
-			for i := 0; i < 3; i++ {
-				log.Info("Taking savepoint.", "jobID", jobID, "i", i)
-				triggerID, _, err = reconciler.takeSavepoint(jobID)
-				if err == nil {
-					break
-				}
-				log.Info("Failed to take savepoint.", "jobID", jobID, "i", i)
-			}
-
-			if err == nil {
-				err = reconciler.updateSavepointStatus(triggerID, err)
+			log.Info("Taking savepoint.", "jobID", jobID)
+			var savepointStatus, err = reconciler.takeSavepoint(jobID)
+			if savepointStatus.Completed && err == nil {
+				err = reconciler.updateSavepointStatus(savepointStatus)
 				if err != nil {
 					log.Error(
 						err, "Failed to update savepoint status.", "error", err)
 				}
+			} else {
+				log.Info("Failed to take savepoint.", "jobID", jobID)
 			}
 		} else {
 			log.Info("Skip taking savepoint.", "jobID", jobID)
 		}
 
 		if !reconciler.isJobFinished() {
-			log.Info("Flink job is not finished.")
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
 
@@ -410,24 +402,21 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() bool {
 	return time.Now().After(nextTime)
 }
 
-// Takes savepoint for a job, returns (TriggerID, SavepointStatus, error).
+// Takes savepoint for a job.
 func (reconciler *ClusterReconciler) takeSavepoint(jobID string) (
-	string, flinkclient.SavepointStatus, error) {
+	flinkclient.SavepointStatus, error) {
 	var log = reconciler.log
 	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
-	var triggerID, status, err = reconciler.flinkClient.TakeSavepoint(
+	var status, err = reconciler.flinkClient.TakeSavepoint(
 		apiBaseURL, jobID, *reconciler.observed.cluster.Spec.Job.SavepointsDir)
 	log.Info(
 		"Savepoint status.",
-		"jobID", jobID,
-		"triggerID", triggerID.RequestID,
-		"state", status.State,
-		"failureCause", status.FailureCause,
+		"status", status,
 		"error", err)
 	if err == nil && len(status.FailureCause.StackTrace) > 0 {
 		err = fmt.Errorf("%s", status.FailureCause.StackTrace)
 	}
-	return triggerID.RequestID, status, err
+	return status, err
 }
 
 func (reconciler *ClusterReconciler) isJobFinished() bool {
@@ -438,12 +427,14 @@ func (reconciler *ClusterReconciler) isJobFinished() bool {
 }
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
-	triggerID string, savepointErr error) error {
+	savepointStatus flinkclient.SavepointStatus) error {
 	var cluster = v1alpha1.FlinkCluster{}
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
 	cluster.Status = reconciler.observed.cluster.Status
-	cluster.Status.Components.Job.LastSavepointTriggerID = triggerID
+	var jobStatus = cluster.Status.Components.Job
+	jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
+	jobStatus.SavepointLocation = savepointStatus.Location
 	var tc = &TimeConverter{}
-	cluster.Status.Components.Job.LastSavepointTime = tc.ToString(time.Now())
+	jobStatus.LastSavepointTime = tc.ToString(time.Now())
 	return reconciler.k8sClient.Update(reconciler.context, &cluster)
 }

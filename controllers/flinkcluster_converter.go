@@ -426,7 +426,7 @@ func getDesiredJob(
 		"cluster": clusterName,
 		"app":     "flink",
 	}
-	var jobArgs = []string{"./bin/flink", "run"}
+	var jobArgs = []string{"/opt/flink/bin/flink", "run"}
 	jobArgs = append(jobArgs, "--jobmanager", jobManagerAddress)
 	if jobSpec.ClassName != nil {
 		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
