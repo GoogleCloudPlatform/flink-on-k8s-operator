@@ -62,7 +62,7 @@ type TimeConverter struct{}
 // FromString converts string to time.Time.
 func (tc *TimeConverter) FromString(timeStr string) time.Time {
 	timestamp, err := time.Parse(
-		"2006-01-02T15:04:05Z", timeStr)
+		time.RFC3339, timeStr)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to parse time string: %s", timeStr))
 	}
