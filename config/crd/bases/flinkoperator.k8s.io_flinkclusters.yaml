@@ -5281,6 +5281,19 @@ spec:
             components:
               description: The status of the components.
               properties:
+                configMap:
+                  description: The state of configMap.
+                  properties:
+                    name:
+                      description: The resource name of the component.
+                      type: string
+                    state:
+                      description: The state of the component.
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
                 job:
                   description: The status of the job, available only when JobSpec
                     is provided.
@@ -5366,6 +5379,7 @@ spec:
                   - state
                   type: object
               required:
+              - configMap
               - jobManagerDeployment
               - jobManagerService
               - taskManagerDeployment
