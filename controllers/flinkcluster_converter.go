@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"regexp"
 	"sort"
 	"strconv"
@@ -103,6 +104,29 @@ func getDesiredJobManagerDeployment(
 	confVol, confMount = getFlinkConfRsc(clusterName)
 	volumes = append(jobManagerSpec.Volumes, *confVol)
 	volumeMounts = append(jobManagerSpec.Mounts, *confMount)
+	var envVars = []corev1.EnvVar{
+		{
+			Name: "JOB_MANAGER_CPU_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "jobmanager",
+					Resource:      "limits.cpu",
+					Divisor:       resource.MustParse("1m"),
+				},
+			},
+		},
+		{
+			Name: "JOB_MANAGER_MEMORY_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "jobmanager",
+					Resource:      "limits.memory",
+					Divisor:       resource.MustParse("1Mi"),
+				},
+			},
+		},
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -127,7 +151,7 @@ func getDesiredJobManagerDeployment(
 							Ports: []corev1.ContainerPort{
 								rpcPort, blobPort, queryPort, uiPort},
 							Resources:    jobManagerSpec.Resources,
-							Env:          flinkCluster.Spec.EnvVars,
+							Env:          envVars,
 							VolumeMounts: volumeMounts,
 						},
 					},
@@ -317,7 +341,7 @@ func getDesiredTaskManagerDeployment(
 		"app":       "flink",
 		"component": "taskmanager",
 	}
-	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
+	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
 	var confVol *corev1.Volume
@@ -325,6 +349,29 @@ func getDesiredTaskManagerDeployment(
 	confVol, confMount = getFlinkConfRsc(clusterName)
 	volumes = append(taskManagerSpec.Volumes, *confVol)
 	volumeMounts = append(taskManagerSpec.Mounts, *confMount)
+	var envVars = []corev1.EnvVar{
+		{
+			Name: "TASK_MANAGER_CPU_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "taskmanager",
+					Resource:      "limits.cpu",
+					Divisor:       resource.MustParse("1m"),
+				},
+			},
+		},
+		{
+			Name: "TASK_MANAGER_MEMORY_LIMIT",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					ContainerName: "taskmanager",
+					Resource:      "limits.memory",
+					Divisor:       resource.MustParse("1Mi"),
+				},
+			},
+		},
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var containers = []corev1.Container{corev1.Container{
 		Name:            "taskmanager",
 		Image:           imageSpec.Name,
@@ -333,7 +380,7 @@ func getDesiredTaskManagerDeployment(
 		Ports: []corev1.ContainerPort{
 			dataPort, rpcPort, queryPort},
 		Resources:    taskManagerSpec.Resources,
-		Env:          flinkCluster.Spec.EnvVars,
+		Env:          envVars,
 		VolumeMounts: volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
