@@ -524,6 +524,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 jobmanager.rpc.address: flinkjobcluster-sample-jobmanager
 jobmanager.rpc.port: 6123
 query.server.port: 6125
+rest.port: 8081
 taskmanager.numberOfTaskSlots: 1
 `
 	var expectedConfigMap = corev1.ConfigMap{
