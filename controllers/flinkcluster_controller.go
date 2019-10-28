@@ -154,6 +154,11 @@ func (handler *FlinkClusterHandler) reconcile(
 	log.Info("---------- 3. Compute the desired state ----------")
 
 	*desired = getDesiredClusterState(observed.cluster, time.Now())
+	if desired.ConfigMap != nil {
+		log.Info("Desired state", "ConfigMap", *desired.ConfigMap)
+	} else {
+		log.Info("Desired state", "ConfigMap", "nil")
+	}
 	if desired.JmDeployment != nil {
 		log.Info("Desired state", "JobManager deployment", *desired.JmDeployment)
 	} else {
@@ -173,11 +178,6 @@ func (handler *FlinkClusterHandler) reconcile(
 		log.Info("Desired state", "TaskManager deployment", *desired.TmDeployment)
 	} else {
 		log.Info("Desired state", "TaskManager deployment", "nil")
-	}
-	if desired.ConfigMap != nil {
-		log.Info("Desired state", "ConfigMap", *desired.ConfigMap)
-	} else {
-		log.Info("Desired state", "ConfigMap", "nil")
 	}
 	if desired.Job != nil {
 		log.Info("Desired state", "Job", *desired.Job)

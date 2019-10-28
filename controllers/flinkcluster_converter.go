@@ -60,11 +60,11 @@ func getDesiredClusterState(
 		return DesiredClusterState{}
 	}
 	return DesiredClusterState{
+		ConfigMap:    getDesiredConfigMap(cluster, now),
 		JmDeployment: getDesiredJobManagerDeployment(cluster, now),
 		JmService:    getDesiredJobManagerService(cluster, now),
 		JmIngress:    getDesiredJobManagerIngress(cluster, now),
 		TmDeployment: getDesiredTaskManagerDeployment(cluster, now),
-		ConfigMap:    getDesiredConfigMap(cluster, now),
 		Job:          getDesiredJob(cluster),
 	}
 }

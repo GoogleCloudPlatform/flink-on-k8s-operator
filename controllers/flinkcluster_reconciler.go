@@ -54,6 +54,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	err = reconciler.reconcileConfigMap()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	err = reconciler.reconcileJobManagerDeployment()
 	if err != nil {
 		return ctrl.Result{}, err
@@ -70,11 +75,6 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	}
 
 	err = reconciler.reconcileTaskManagerDeployment()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	err = reconciler.reconcileConfigMap()
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -76,6 +76,21 @@ func (observer *ClusterStateObserver) observe(
 		observed.cluster = observedCluster
 	}
 
+	// ConfigMap.
+	var observedConfigMap = new(corev1.ConfigMap)
+	err = observer.observeConfigMap(observedConfigMap)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get configMap")
+			return err
+		}
+		log.Info("Observed configMap", "state", "nil")
+		observedConfigMap = nil
+	} else {
+		log.Info("Observed configMap", "state", *observedConfigMap)
+		observed.configMap = observedConfigMap
+	}
+
 	// JobManager deployment.
 	var observedJmDeployment = new(appsv1.Deployment)
 	err = observer.observeJobManagerDeployment(observedJmDeployment)
@@ -134,21 +149,6 @@ func (observer *ClusterStateObserver) observe(
 	} else {
 		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
 		observed.tmDeployment = observedTmDeployment
-	}
-
-	// (Optional) configMap.
-	var observedConfigMap = new(corev1.ConfigMap)
-	err = observer.observeConfigMap(observedConfigMap)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get configMap")
-			return err
-		}
-		log.Info("Observed configMap", "state", "nil")
-		observedConfigMap = nil
-	} else {
-		log.Info("Observed configMap", "state", *observedConfigMap)
-		observed.configMap = observedConfigMap
 	}
 
 	// (Optional) job.
