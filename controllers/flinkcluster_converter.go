@@ -40,6 +40,13 @@ import (
 var delayDeleteClusterMinutes int32 = 5
 var flinkConfigMapPath = "/opt/flink/conf"
 var flinkConfigMapVolume = "flink-config-volume"
+var flinkSystemProps = map[string]struct{}{
+	"jobmanager.rpc.address": {},
+	"jobmanager.rpc.port":    {},
+	"blob.server.port":       {},
+	"query.server.port":      {},
+	"rest.port":              {},
+}
 
 // DesiredClusterState holds desired state of a cluster.
 type DesiredClusterState struct {
@@ -438,8 +445,14 @@ func getDesiredConfigMap(
 		"jobmanager.rpc.port":    strconv.FormatInt(int64(*jmPorts.RPC), 10),
 		"blob.server.port":       strconv.FormatInt(int64(*jmPorts.Blob), 10),
 		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
+		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
 	}
+	// Merge Flink properties.
 	for k, v := range flinkProperties {
+		// Do not allow to override properties in flinkSystemProps
+		if _, ok := flinkSystemProps[k]; ok {
+			continue
+		}
 		flinkProps[k] = v
 	}
 	// TODO: Provide logging options: log4j-console.properties and log4j.properties
