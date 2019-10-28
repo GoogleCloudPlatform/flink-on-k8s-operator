@@ -18,7 +18,10 @@ package controllers
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,7 +30,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -36,6 +38,15 @@ import (
 // underlying Kubernetes resource specs.
 
 var delayDeleteClusterMinutes int32 = 5
+var flinkConfigMapPath = "/opt/flink/conf"
+var flinkConfigMapVolume = "flink-config-volume"
+var flinkSystemProps = map[string]struct{}{
+	"jobmanager.rpc.address": {},
+	"jobmanager.rpc.port":    {},
+	"blob.server.port":       {},
+	"query.server.port":      {},
+	"rest.port":              {},
+}
 
 // DesiredClusterState holds desired state of a cluster.
 type DesiredClusterState struct {
@@ -43,6 +54,7 @@ type DesiredClusterState struct {
 	JmService    *corev1.Service
 	JmIngress    *extensionsv1beta1.Ingress
 	TmDeployment *appsv1.Deployment
+	ConfigMap    *corev1.ConfigMap
 	Job          *batchv1.Job
 }
 
@@ -55,6 +67,7 @@ func getDesiredClusterState(
 		return DesiredClusterState{}
 	}
 	return DesiredClusterState{
+		ConfigMap:    getDesiredConfigMap(cluster, now),
 		JmDeployment: getDesiredJobManagerDeployment(cluster, now),
 		JmService:    getDesiredJobManagerService(cluster, now),
 		JmIngress:    getDesiredJobManagerIngress(cluster, now),
@@ -90,11 +103,15 @@ func getDesiredJobManagerDeployment(
 		"app":       "flink",
 		"component": "jobmanager",
 	}
+	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+	var confVol *corev1.Volume
+	var confMount *corev1.VolumeMount
+	confVol, confMount = getFlinkConfRsc(clusterName)
+	volumes = append(jobManagerSpec.Volumes, *confVol)
+	volumeMounts = append(jobManagerSpec.Mounts, *confMount)
 	var envVars = []corev1.EnvVar{
-		{
-			Name:  "JOB_MANAGER_RPC_ADDRESS",
-			Value: jobManagerDeploymentName,
-		},
 		{
 			Name: "JOB_MANAGER_CPU_LIMIT",
 			ValueFrom: &corev1.EnvVarSource{
@@ -114,10 +131,6 @@ func getDesiredJobManagerDeployment(
 					Divisor:       resource.MustParse("1Mi"),
 				},
 			},
-		},
-		{
-			Name:  "FLINK_PROPERTIES",
-			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
@@ -146,10 +159,10 @@ func getDesiredJobManagerDeployment(
 								rpcPort, blobPort, queryPort, uiPort},
 							Resources:    jobManagerSpec.Resources,
 							Env:          envVars,
-							VolumeMounts: jobManagerSpec.Mounts,
+							VolumeMounts: volumeMounts,
 						},
 					},
-					Volumes:          jobManagerSpec.Volumes,
+					Volumes:          volumes,
 					NodeSelector:     jobManagerSpec.NodeSelector,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},
@@ -330,17 +343,20 @@ func getDesiredTaskManagerDeployment(
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
 	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
-	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
 		"app":       "flink",
 		"component": "taskmanager",
 	}
+	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+	var confVol *corev1.Volume
+	var confMount *corev1.VolumeMount
+	confVol, confMount = getFlinkConfRsc(clusterName)
+	volumes = append(taskManagerSpec.Volumes, *confVol)
+	volumeMounts = append(taskManagerSpec.Mounts, *confMount)
 	var envVars = []corev1.EnvVar{
-		{
-			Name:  "JOB_MANAGER_RPC_ADDRESS",
-			Value: jobManagerDeploymentName,
-		},
 		{
 			Name: "TASK_MANAGER_CPU_LIMIT",
 			ValueFrom: &corev1.EnvVarSource{
@@ -361,10 +377,6 @@ func getDesiredTaskManagerDeployment(
 				},
 			},
 		},
-		{
-			Name:  "FLINK_PROPERTIES",
-			Value: getFlinkProperties(flinkCluster.Spec.FlinkProperties),
-		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var containers = []corev1.Container{corev1.Container{
@@ -376,7 +388,7 @@ func getDesiredTaskManagerDeployment(
 			dataPort, rpcPort, queryPort},
 		Resources:    taskManagerSpec.Resources,
 		Env:          envVars,
-		VolumeMounts: taskManagerSpec.Mounts,
+		VolumeMounts: volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var taskManagerDeployment = &appsv1.Deployment{
@@ -396,7 +408,7 @@ func getDesiredTaskManagerDeployment(
 				},
 				Spec: corev1.PodSpec{
 					Containers:       containers,
-					Volumes:          taskManagerSpec.Volumes,
+					Volumes:          volumes,
 					NodeSelector:     taskManagerSpec.NodeSelector,
 					ImagePullSecrets: imageSpec.PullSecrets,
 				},
@@ -404,6 +416,64 @@ func getDesiredTaskManagerDeployment(
 		},
 	}
 	return taskManagerDeployment
+}
+
+// Gets the desired configMap.
+func getDesiredConfigMap(
+	flinkCluster *v1alpha1.FlinkCluster,
+	now time.Time) *corev1.ConfigMap {
+
+	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
+		return nil
+	}
+
+	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+		return nil
+	}
+
+	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
+	var clusterName = flinkCluster.ObjectMeta.Name
+	var flinkProperties = flinkCluster.Spec.FlinkProperties
+	var jmPorts = flinkCluster.Spec.JobManager.Ports
+	var configMapName = getConfigMapName(clusterName)
+	var labels = map[string]string{
+		"cluster": clusterName,
+		"app":     "flink",
+	}
+	var flinkProps = map[string]string{
+		"jobmanager.rpc.address": getJobManagerServiceName(clusterName),
+		"jobmanager.rpc.port":    strconv.FormatInt(int64(*jmPorts.RPC), 10),
+		"blob.server.port":       strconv.FormatInt(int64(*jmPorts.Blob), 10),
+		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
+		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
+	}
+	// Merge Flink properties.
+	for k, v := range flinkProperties {
+		// Do not allow to override properties in flinkSystemProps
+		if _, ok := flinkSystemProps[k]; ok {
+			continue
+		}
+		flinkProps[k] = v
+	}
+	// TODO: Provide logging options: log4j-console.properties and log4j.properties
+	var log4jPropName = "log4j-console.properties"
+	var logbackXmlName = "logback-console.xml"
+	var configMap = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      configMapName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkCluster)},
+			Labels: labels,
+		},
+		Data: map[string]string{
+			"flink-conf.yaml": getFlinkProperties(flinkProps),
+			log4jPropName:     getLogConf()[log4jPropName],
+			logbackXmlName:    getLogConf()[logbackXmlName],
+		},
+	}
+
+	return configMap
 }
 
 // Gets the desired job spec from a cluster spec.
@@ -514,9 +584,16 @@ func toOwnerReference(
 
 // Gets Flink properties
 func getFlinkProperties(properties map[string]string) string {
+	var keys = make([]string, len(properties))
+	i := 0
+	for k, _ := range properties {
+		keys[i] = k
+		i = i + 1
+	}
+	sort.Strings(keys)
 	var builder strings.Builder
-	for key, value := range properties {
-		builder.WriteString(fmt.Sprintf("%s: %s\n", key, value))
+	for _, key := range keys {
+		builder.WriteString(fmt.Sprintf("%s: %s\n", key, properties[key]))
 	}
 	return builder.String()
 }
@@ -540,4 +617,68 @@ func isStopDelayExpired(
 	var lastUpdateTime = tc.FromString(clusterStatus.LastUpdateTime)
 	return now.After(
 		lastUpdateTime.Add(time.Duration(delayMinutes) * time.Minute))
+}
+
+func getFlinkConfRsc(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {
+	var confVol *corev1.Volume
+	var confMount *corev1.VolumeMount
+	confVol = &corev1.Volume{
+		Name: flinkConfigMapVolume,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: getConfigMapName(clusterName),
+				},
+			},
+		},
+	}
+	confMount = &corev1.VolumeMount{
+		Name:      flinkConfigMapVolume,
+		MountPath: flinkConfigMapPath,
+	}
+	return confVol, confMount
+}
+
+// TODO: Wouldn't it be better to create a file, put it in an operator image, and read from them?.
+// Provide logging profiles
+func getLogConf() map[string]string {
+	var log4jConsoleProperties = `log4j.rootLogger=INFO, console
+log4j.logger.akka=INFO
+log4j.logger.org.apache.kafka=INFO
+log4j.logger.org.apache.hadoop=INFO
+log4j.logger.org.apache.zookeeper=INFO
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
+log4j.logger.org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline=ERROR, console`
+	var logbackConsoleXml = `<configuration>
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{60} %X{sourceThread} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="console"/>
+    </root>
+    <logger name="akka" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <logger name="org.apache.kafka" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <logger name="org.apache.hadoop" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <logger name="org.apache.zookeeper" level="INFO">
+        <appender-ref ref="console"/>
+    </logger>
+    <logger name="org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline" level="ERROR">
+        <appender-ref ref="console"/>
+    </logger>
+</configuration>`
+
+	return map[string]string{
+		"log4j-console.properties": log4jConsoleProperties,
+		"logback-console.xml":      logbackConsoleXml,
+	}
 }

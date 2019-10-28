@@ -92,6 +92,15 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 			newStatus.Components.JobManagerDeployment.State)
 	}
 
+	// ConfigMap.
+	if oldStatus.Components.ConfigMap.State !=
+		newStatus.Components.ConfigMap.State {
+		updater.createStatusChangeEvent(
+			"ConfigMap",
+			oldStatus.Components.ConfigMap.State,
+			newStatus.Components.ConfigMap.State)
+	}
+
 	// JobManager service.
 	if oldStatus.Components.JobManagerService.State !=
 		newStatus.Components.JobManagerService.State {
@@ -168,6 +177,21 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var runningComponents = 0
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
+
+	// ConfigMap.
+	var observedConfigMap = observed.configMap
+	if observedConfigMap != nil {
+		status.Components.ConfigMap.Name =
+			observedConfigMap.ObjectMeta.Name
+		status.Components.ConfigMap.State =
+			v1alpha1.ComponentState.Ready
+	} else if recorded.Components.ConfigMap.Name != "" {
+		status.Components.ConfigMap =
+			v1alpha1.FlinkClusterComponentState{
+				Name:  recorded.Components.ConfigMap.Name,
+				State: v1alpha1.ComponentState.Deleted,
+			}
+	}
 
 	// JobManager deployment.
 	var observedJmDeployment = observed.jmDeployment
@@ -418,6 +442,16 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			currentStatus.State,
 			"new",
 			newStatus.State)
+	}
+	if newStatus.Components.ConfigMap !=
+		currentStatus.Components.ConfigMap {
+		updater.log.Info(
+			"ConfigMap status changed",
+			"current",
+			currentStatus.Components.ConfigMap,
+			"new",
+			newStatus.Components.ConfigMap)
+		changed = true
 	}
 	if newStatus.Components.JobManagerDeployment !=
 		currentStatus.Components.JobManagerDeployment {

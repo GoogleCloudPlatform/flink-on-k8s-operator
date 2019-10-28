@@ -48,6 +48,7 @@ type FlinkClusterReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=events/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 // +kubebuilder:rbac:groups=extensions,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -153,6 +154,11 @@ func (handler *FlinkClusterHandler) reconcile(
 	log.Info("---------- 3. Compute the desired state ----------")
 
 	*desired = getDesiredClusterState(observed.cluster, time.Now())
+	if desired.ConfigMap != nil {
+		log.Info("Desired state", "ConfigMap", *desired.ConfigMap)
+	} else {
+		log.Info("Desired state", "ConfigMap", "nil")
+	}
 	if desired.JmDeployment != nil {
 		log.Info("Desired state", "JobManager deployment", *desired.JmDeployment)
 	} else {

@@ -44,6 +44,7 @@ type ClusterStateObserver struct {
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
 	cluster      *v1alpha1.FlinkCluster
+	configMap    *corev1.ConfigMap
 	jmDeployment *appsv1.Deployment
 	jmService    *corev1.Service
 	jmIngress    *extensionsv1beta1.Ingress
@@ -73,6 +74,21 @@ func (observer *ClusterStateObserver) observe(
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observed.cluster = observedCluster
+	}
+
+	// ConfigMap.
+	var observedConfigMap = new(corev1.ConfigMap)
+	err = observer.observeConfigMap(observedConfigMap)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get configMap")
+			return err
+		}
+		log.Info("Observed configMap", "state", "nil")
+		observedConfigMap = nil
+	} else {
+		log.Info("Observed configMap", "state", *observedConfigMap)
+		observed.configMap = observedConfigMap
 	}
 
 	// JobManager deployment.
@@ -105,7 +121,7 @@ func (observer *ClusterStateObserver) observe(
 		observed.jmService = observedJmService
 	}
 
-	// JobManager ingress.
+	// (Optional) JobManager ingress.
 	var observedJmIngress = new(extensionsv1beta1.Ingress)
 	err = observer.observeJobManagerIngress(observedJmIngress)
 	if err != nil {
@@ -235,6 +251,20 @@ func (observer *ClusterStateObserver) observeCluster(
 	cluster *v1alpha1.FlinkCluster) error {
 	return observer.k8sClient.Get(
 		observer.context, observer.request.NamespacedName, cluster)
+}
+
+func (observer *ClusterStateObserver) observeConfigMap(
+	observedConfigMap *corev1.ConfigMap) error {
+	var clusterNamespace = observer.request.Namespace
+	var clusterName = observer.request.Name
+
+	return observer.k8sClient.Get(
+		observer.context,
+		types.NamespacedName{
+			Namespace: clusterNamespace,
+			Name:      getConfigMapName(clusterName),
+		},
+		observedConfigMap)
 }
 
 func (observer *ClusterStateObserver) observeJobManagerDeployment(

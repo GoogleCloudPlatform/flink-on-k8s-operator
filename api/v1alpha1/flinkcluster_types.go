@@ -281,6 +281,9 @@ type FlinkClusterComponentState struct {
 // FlinkClusterComponentsStatus defines the observed status of the
 // components of a FlinkCluster.
 type FlinkClusterComponentsStatus struct {
+	// The state of configMap.
+	ConfigMap FlinkClusterComponentState `json:"configMap"`
+
 	// The state of JobManager deployment.
 	JobManagerDeployment FlinkClusterComponentState `json:"jobManagerDeployment"`
 

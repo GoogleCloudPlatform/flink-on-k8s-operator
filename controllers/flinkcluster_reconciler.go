@@ -54,6 +54,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	err = reconciler.reconcileConfigMap()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	err = reconciler.reconcileJobManagerDeployment()
 	if err != nil {
 		return ctrl.Result{}, err
@@ -270,6 +275,60 @@ func (reconciler *ClusterReconciler) deleteIngress(
 		log.Error(err, "Failed to delete ingress")
 	} else {
 		log.Info("Ingress deleted")
+	}
+	return err
+}
+
+func (reconciler *ClusterReconciler) reconcileConfigMap() error {
+	var desiredConfigMap = reconciler.desired.ConfigMap
+	var observedConfigMap = reconciler.observed.configMap
+
+	if desiredConfigMap != nil && observedConfigMap == nil {
+		return reconciler.createConfigMap(desiredConfigMap, "ConfigMap")
+	}
+
+	if desiredConfigMap != nil && observedConfigMap != nil {
+		reconciler.log.Info("ConfigMap already exists, no action")
+		return nil
+		// TODO: compare and update if needed.
+	}
+
+	if desiredConfigMap == nil && observedConfigMap != nil {
+		return reconciler.deleteConfigMap(observedConfigMap, "ConfigMap")
+	}
+
+	return nil
+}
+
+func (reconciler *ClusterReconciler) createConfigMap(
+	cm *corev1.ConfigMap, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Creating configMap", "configMap", *cm)
+	var err = k8sClient.Create(context, cm)
+	if err != nil {
+		log.Info("Failed to create configMap", "error", err)
+	} else {
+		log.Info("ConfigMap created")
+	}
+	return err
+}
+
+func (reconciler *ClusterReconciler) deleteConfigMap(
+	cm *corev1.ConfigMap, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Deleting configMap", "configMap", cm)
+	var err = k8sClient.Delete(context, cm)
+	err = client.IgnoreNotFound(err)
+	if err != nil {
+		log.Error(err, "Failed to delete configMap")
+	} else {
+		log.Info("ConfigMap deleted")
 	}
 	return err
 }

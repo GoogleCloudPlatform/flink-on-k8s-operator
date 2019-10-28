@@ -187,10 +187,6 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							Env: []corev1.EnvVar{
 								{
-									Name:  "JOB_MANAGER_RPC_ADDRESS",
-									Value: "flinkjobcluster-sample-jobmanager",
-								},
-								{
 									Name: "JOB_MANAGER_CPU_LIMIT",
 									ValueFrom: &corev1.EnvVarSource{
 										ResourceFieldRef: &corev1.ResourceFieldSelector{
@@ -211,10 +207,6 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
-									Name:  "FLINK_PROPERTIES",
-									Value: "taskmanager.numberOfTaskSlots: 1\n",
-								},
-								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -229,7 +221,21 @@ func TestGetDesiredClusterState(t *testing.T) {
 									"Memory": resource.MustParse("512Mi"),
 								},
 							},
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "flink-config-volume",
+								MountPath: "/opt/flink/conf",
+							}},
 						},
+					},
+					Volumes: []corev1.Volume{{
+						Name: "flink-config-volume",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "flinkjobcluster-sample-configmap",
+								},
+							},
+						}},
 					},
 				},
 			},
@@ -388,10 +394,6 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							Env: []corev1.EnvVar{
 								{
-									Name:  "JOB_MANAGER_RPC_ADDRESS",
-									Value: "flinkjobcluster-sample-jobmanager",
-								},
-								{
 									Name: "TASK_MANAGER_CPU_LIMIT",
 									ValueFrom: &corev1.EnvVarSource{
 										ResourceFieldRef: &corev1.ResourceFieldSelector{
@@ -412,10 +414,6 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
-									Name:  "FLINK_PROPERTIES",
-									Value: "taskmanager.numberOfTaskSlots: 1\n",
-								},
-								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -432,6 +430,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
+								{Name: "flink-config-volume", MountPath: "/opt/flink/conf"},
 							},
 						},
 						corev1.Container{Name: "sidecar", Image: "alpine"},
@@ -441,6 +440,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name: "cache-volume",
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "flink-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "flinkjobcluster-sample-configmap",
+									},
+								},
 							},
 						},
 					},
@@ -509,4 +518,41 @@ func TestGetDesiredClusterState(t *testing.T) {
 		t,
 		*desiredState.Job,
 		expectedDesiredJob)
+
+	// ConfigMap
+	var flinkConfYaml = `blob.server.port: 6124
+jobmanager.rpc.address: flinkjobcluster-sample-jobmanager
+jobmanager.rpc.port: 6123
+query.server.port: 6125
+rest.port: 8081
+taskmanager.numberOfTaskSlots: 1
+`
+	var expectedConfigMap = corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "flinkjobcluster-sample-configmap",
+			Namespace: "default",
+			Labels: map[string]string{
+				"app": "flink", "cluster": "flinkjobcluster-sample",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					Kind:               "FlinkCluster",
+					Name:               "flinkjobcluster-sample",
+					Controller:         &controller,
+					BlockOwnerDeletion: &blockOwnerDeletion,
+				},
+			},
+		},
+		Data: map[string]string{
+			"flink-conf.yaml":          flinkConfYaml,
+			"log4j-console.properties": getLogConf()["log4j-console.properties"],
+			"logback-console.xml":      getLogConf()["logback-console.xml"],
+		},
+	}
+	assert.Assert(t, desiredState.ConfigMap != nil)
+	assert.DeepEqual(
+		t,
+		*desiredState.ConfigMap,
+		expectedConfigMap)
 }
