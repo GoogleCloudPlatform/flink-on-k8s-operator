@@ -26,6 +26,7 @@ func _SetDefault(cluster *FlinkCluster) {
 	_SetJobManagerDefault(&cluster.Spec.JobManager)
 	_SetTaskManagerDefault(&cluster.Spec.TaskManager)
 	_SetJobDefault(cluster.Spec.Job)
+	_SetPostJobPolicyDefault(&cluster.Spec)
 }
 
 func _SetImageDefault(imageSpec *ImageSpec) {
@@ -100,5 +101,14 @@ func _SetJobDefault(jobSpec *JobSpec) {
 	if jobSpec.RestartPolicy == nil {
 		jobSpec.RestartPolicy = new(corev1.RestartPolicy)
 		*jobSpec.RestartPolicy = corev1.RestartPolicyOnFailure
+	}
+}
+
+func _SetPostJobPolicyDefault(clusterSpec *FlinkClusterSpec) {
+	if clusterSpec.Job != nil && clusterSpec.PostJobPolicy == nil {
+		clusterSpec.PostJobPolicy = &PostJobPolicy{
+			AfterJobSucceeds: PostJobActionDeleteCluster,
+			AfterJobFails:    PostJobActionKeepCluster,
+		}
 	}
 }

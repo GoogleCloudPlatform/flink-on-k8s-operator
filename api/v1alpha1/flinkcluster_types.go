@@ -23,17 +23,19 @@ import (
 
 // ClusterState defines states for a cluster.
 var ClusterState = struct {
-	Creating    string
-	Running     string
-	Reconciling string
-	Stopping    string
-	Stopped     string
+	Creating         string
+	Running          string
+	Reconciling      string
+	Stopping         string
+	PartiallyStopped string
+	Stopped          string
 }{
-	Creating:    "Creating",
-	Running:     "Running",
-	Reconciling: "Reconciling",
-	Stopping:    "Stopping",
-	Stopped:     "Stopped",
+	Creating:         "Creating",
+	Running:          "Running",
+	Reconciling:      "Reconciling",
+	Stopping:         "Stopping",
+	PartiallyStopped: "PartiallyStopped",
+	Stopped:          "Stopped",
 }
 
 // ComponentState defines states for a cluster component.
@@ -238,8 +240,25 @@ type JobSpec struct {
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// PostJobAction defines the action to take after job finishes.
+type PostJobAction string
+
+const (
+	// PostJobActionKeepCluster - keep the entire cluster.
+	PostJobActionKeepCluster = "KeepCluster"
+	// PostJobActionDeleteCluster - delete the entire cluster.
+	PostJobActionDeleteCluster = "DeleteCluster"
+	// PostJobActionDeleteTaskManagers - delete task managers, keep job manager.
+	PostJobActionDeleteTaskManagers = "DeleteTaskManagers"
+)
+
+// PostJobPolicy defines the action to take after job finishes.
+type PostJobPolicy struct {
+	// Action to take after job succeeds.
+	AfterJobSucceeds PostJobAction `json:"afterJobSucceeds,omitempty"`
+	// Action to take after job fails.
+	AfterJobFails PostJobAction `json:"afterJobFails,omitempty"`
+}
 
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
@@ -255,10 +274,13 @@ type FlinkClusterSpec struct {
 	// Flink TaskManager spec.
 	TaskManager TaskManagerSpec `json:"taskManager"`
 
-	// Optional job spec. If specified, this cluster is an ephemeral Job
+	// (Optional) Job spec. If specified, this cluster is an ephemeral Job
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
 	Job *JobSpec `json:"job,omitempty"`
+
+	// (Optional) The action to take after job finishes.
+	PostJobPolicy *PostJobPolicy `json:"postJobPolicy,omitempty"`
 
 	// Flink properties which are appened to flink-conf.yaml of the image.
 	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`

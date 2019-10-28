@@ -136,6 +136,11 @@ FlinkCluster
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the Job container.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
+    * **PostJobPolicy** (optional): The action to take after job finishes.
+      * **AfterJobSucceeds** (required): The action to take after job succeeds,
+        `enum("KeepCluster", "DeleteCluster", "DeleteTaskManagers")`, default `"DeleteCluster"`.
+      * **AfterJobFails** (required): The action to take after job fails,
+        `enum("KeepCluster", "DeleteCluster", "DeleteTaskManagers")`, default `"KeepCluster"`.
     * **FlinkProperties** (optional): Flink properties which are appened to flink-conf.yaml of the Flink image.
     * **EnvVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
   * **Status**: Flink job or session cluster status.

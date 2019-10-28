@@ -18,12 +18,13 @@ package controllers
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -81,11 +82,7 @@ func getDesiredJobManagerDeployment(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
-		return nil
-	}
-
-	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerDeployment") {
 		return nil
 	}
 
@@ -177,11 +174,7 @@ func getDesiredJobManagerService(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.Service {
 
-	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
-		return nil
-	}
-
-	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerService") {
 		return nil
 	}
 
@@ -251,11 +244,7 @@ func getDesiredJobManagerIngress(
 		return nil
 	}
 
-	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
-		return nil
-	}
-
-	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerIngress") {
 		return nil
 	}
 
@@ -327,11 +316,7 @@ func getDesiredTaskManagerDeployment(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
-		return nil
-	}
-
-	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+	if shouldDeleteAfterJobFinishes(flinkCluster, "TaskManagerDeployment") {
 		return nil
 	}
 
@@ -423,11 +408,7 @@ func getDesiredConfigMap(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.ConfigMap {
 
-	if flinkCluster.Status.State == v1alpha1.ClusterState.Stopped {
-		return nil
-	}
-
-	if isStopDelayExpired(flinkCluster.Status, delayDeleteClusterMinutes, now) {
+	if shouldDeleteAfterJobFinishes(flinkCluster, "ConfigMap") {
 		return nil
 	}
 
@@ -605,18 +586,37 @@ func getJobManagerIngressHost(ingressHostFormat string, clusterName string) stri
 	return jobManagerIngressHostRegex.ReplaceAllString(ingressHostFormat, clusterName)
 }
 
-func isStopDelayExpired(
-	clusterStatus v1alpha1.FlinkClusterStatus,
-	delayMinutes int32,
-	now time.Time) bool {
-	if clusterStatus.State != v1alpha1.ClusterState.Stopping ||
-		len(clusterStatus.LastUpdateTime) == 0 {
+// Checks whether the component should be deleted after job finishes, returns
+// false if the cluster is a session cluster or the job hasn't finished yet.
+func shouldDeleteAfterJobFinishes(
+	cluster *v1alpha1.FlinkCluster, component string) bool {
+	var jobStatus = cluster.Status.Components.Job
+
+	// Session cluster.
+	if jobStatus == nil {
 		return false
 	}
-	var tc = &TimeConverter{}
-	var lastUpdateTime = tc.FromString(clusterStatus.LastUpdateTime)
-	return now.After(
-		lastUpdateTime.Add(time.Duration(delayMinutes) * time.Minute))
+
+	// Job hasn't finished yet.
+	if jobStatus.State != v1alpha1.JobState.Succeeded &&
+		jobStatus.State != v1alpha1.JobState.Failed {
+		return false
+	}
+
+	var action v1alpha1.PostJobAction
+	if jobStatus.State == v1alpha1.JobState.Succeeded {
+		action = cluster.Spec.PostJobPolicy.AfterJobSucceeds
+	} else {
+		action = cluster.Spec.PostJobPolicy.AfterJobFails
+	}
+	switch action {
+	case v1alpha1.PostJobActionDeleteCluster:
+		return true
+	case v1alpha1.PostJobActionDeleteTaskManagers:
+		return component == "TaskManagerDeployment"
+	}
+
+	return false
 }
 
 func getFlinkConfRsc(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {

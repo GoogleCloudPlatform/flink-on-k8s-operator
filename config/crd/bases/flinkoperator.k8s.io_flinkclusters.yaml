@@ -513,7 +513,7 @@ spec:
               - name
               type: object
             job:
-              description: Optional job spec. If specified, this cluster is an ephemeral
+              description: (Optional) Job spec. If specified, this cluster is an ephemeral
                 Job Cluster, which will be automatically terminated after the job
                 finishes; otherwise, it is a long-running Session Cluster.
               properties:
@@ -3108,6 +3108,16 @@ spec:
                   type: array
               required:
               - accessScope
+              type: object
+            postJobPolicy:
+              description: (Optional) The action to take after job finishes.
+              properties:
+                afterJobFails:
+                  description: Action to take after job fails.
+                  type: string
+                afterJobSucceeds:
+                  description: Action to take after job succeeds.
+                  type: string
               type: object
             taskManager:
               description: Flink TaskManager spec.
