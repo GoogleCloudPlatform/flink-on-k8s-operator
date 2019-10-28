@@ -418,7 +418,7 @@ func getDesiredTaskManagerDeployment(
 	return taskManagerDeployment
 }
 
-// Gets the desired TaskManager deployment spec from a cluster spec.
+// Gets the desired configMap.
 func getDesiredConfigMap(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.ConfigMap {
