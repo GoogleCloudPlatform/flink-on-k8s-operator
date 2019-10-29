@@ -391,12 +391,12 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	case v1alpha1.ClusterState.Running,
 		v1alpha1.ClusterState.Reconciling:
 		if jobFinished {
-			var policy = observed.cluster.Spec.PostJobPolicy
+			var policy = observed.cluster.Spec.Job.CleanupPolicy
 			if jobSucceeded &&
-				policy.AfterJobSucceeds != v1alpha1.PostJobActionKeepCluster {
+				policy.AfterJobSucceeds != v1alpha1.CleanupActionKeepCluster {
 				status.State = v1alpha1.ClusterState.Stopping
 			} else if !jobSucceeded &&
-				policy.AfterJobFails != v1alpha1.PostJobActionKeepCluster {
+				policy.AfterJobFails != v1alpha1.CleanupActionKeepCluster {
 				status.State = v1alpha1.ClusterState.Stopping
 			} else {
 				status.State = v1alpha1.ClusterState.Running

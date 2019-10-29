@@ -162,6 +162,9 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 	if *jobSpec.Parallelism < 1 {
 		return fmt.Errorf("job parallelism must be >= 1")
 	}
+	if jobSpec.RestartPolicy == nil {
+		return fmt.Errorf("job restartPolicy is unspecified")
+	}
 	if jobSpec.RestartPolicy != nil {
 		switch *jobSpec.RestartPolicy {
 		case corev1.RestartPolicyNever:
@@ -170,6 +173,22 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 			return fmt.Errorf("invalid job restartPolicy: %v", *jobSpec.RestartPolicy)
 		}
 	}
+	if jobSpec.CleanupPolicy == nil {
+		return fmt.Errorf("job cleanupPolicy is unspecified")
+	}
+	if jobSpec.CleanupPolicy != nil {
+		var err = v.validateCleanupAction(
+			"cleanupPolicy.afterJobSucceeds", jobSpec.CleanupPolicy.AfterJobSucceeds)
+		if err != nil {
+			return err
+		}
+		err = v.validateCleanupAction(
+			"cleanupPolicy.afterJobFails", jobSpec.CleanupPolicy.AfterJobFails)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -181,6 +200,20 @@ func (v *Validator) validatePort(
 	if *port <= 1024 {
 		return fmt.Errorf(
 			"invalid %v %v port: %v, must be > 1024", component, name, *port)
+	}
+	return nil
+}
+
+func (v *Validator) validateCleanupAction(
+	property string, value CleanupAction) error {
+	switch value {
+	case CleanupActionDeleteCluster:
+	case CleanupActionDeleteTaskManager:
+	case CleanupActionKeepCluster:
+	default:
+		return fmt.Errorf(
+			"invalid %v: %v",
+			property, value)
 	}
 	return nil
 }

@@ -201,6 +201,26 @@ type TaskManagerSpec struct {
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
+// CleanupAction defines the action to take after job finishes.
+type CleanupAction string
+
+const (
+	// CleanupActionKeepCluster - keep the entire cluster.
+	CleanupActionKeepCluster = "KeepCluster"
+	// CleanupActionDeleteCluster - delete the entire cluster.
+	CleanupActionDeleteCluster = "DeleteCluster"
+	// CleanupActionDeleteTaskManager - delete task manager, keep job manager.
+	CleanupActionDeleteTaskManager = "DeleteTaskManager"
+)
+
+// CleanupPolicy defines the action to take after job finishes.
+type CleanupPolicy struct {
+	// Action to take after job succeeds.
+	AfterJobSucceeds CleanupAction `json:"afterJobSucceeds,omitempty"`
+	// Action to take after job fails.
+	AfterJobFails CleanupAction `json:"afterJobFails,omitempty"`
+}
+
 // JobSpec defines properties of a Flink job.
 type JobSpec struct {
 	// JAR file of the job.
@@ -230,34 +250,17 @@ type JobSpec struct {
 	// No logging output to STDOUT, default: false.
 	NoLoggingToStdout *bool `json:"noLoggingToStdout,omitempty"`
 
-	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
-	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
-
 	// Volumes in the Job pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// Volume mounts in the Job container.
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
-}
 
-// PostJobAction defines the action to take after job finishes.
-type PostJobAction string
+	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
+	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
 
-const (
-	// PostJobActionKeepCluster - keep the entire cluster.
-	PostJobActionKeepCluster = "KeepCluster"
-	// PostJobActionDeleteCluster - delete the entire cluster.
-	PostJobActionDeleteCluster = "DeleteCluster"
-	// PostJobActionDeleteTaskManagers - delete task managers, keep job manager.
-	PostJobActionDeleteTaskManagers = "DeleteTaskManagers"
-)
-
-// PostJobPolicy defines the action to take after job finishes.
-type PostJobPolicy struct {
-	// Action to take after job succeeds.
-	AfterJobSucceeds PostJobAction `json:"afterJobSucceeds,omitempty"`
-	// Action to take after job fails.
-	AfterJobFails PostJobAction `json:"afterJobFails,omitempty"`
+	// The action to take after job finishes.
+	CleanupPolicy *CleanupPolicy `json:"cleanupPolicy,omitempty"`
 }
 
 // FlinkClusterSpec defines the desired state of FlinkCluster
@@ -278,9 +281,6 @@ type FlinkClusterSpec struct {
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
 	Job *JobSpec `json:"job,omitempty"`
-
-	// (Optional) The action to take after job finishes.
-	PostJobPolicy *PostJobPolicy `json:"postJobPolicy,omitempty"`
 
 	// Flink properties which are appened to flink-conf.yaml of the image.
 	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`

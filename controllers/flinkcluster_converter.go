@@ -82,7 +82,7 @@ func getDesiredJobManagerDeployment(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerDeployment") {
+	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
 		return nil
 	}
 
@@ -174,7 +174,7 @@ func getDesiredJobManagerService(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.Service {
 
-	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerService") {
+	if shouldCleanup(flinkCluster, "JobManagerService") {
 		return nil
 	}
 
@@ -244,7 +244,7 @@ func getDesiredJobManagerIngress(
 		return nil
 	}
 
-	if shouldDeleteAfterJobFinishes(flinkCluster, "JobManagerIngress") {
+	if shouldCleanup(flinkCluster, "JobManagerIngress") {
 		return nil
 	}
 
@@ -316,7 +316,7 @@ func getDesiredTaskManagerDeployment(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *appsv1.Deployment {
 
-	if shouldDeleteAfterJobFinishes(flinkCluster, "TaskManagerDeployment") {
+	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
 		return nil
 	}
 
@@ -408,7 +408,7 @@ func getDesiredConfigMap(
 	flinkCluster *v1alpha1.FlinkCluster,
 	now time.Time) *corev1.ConfigMap {
 
-	if shouldDeleteAfterJobFinishes(flinkCluster, "ConfigMap") {
+	if shouldCleanup(flinkCluster, "ConfigMap") {
 		return nil
 	}
 
@@ -586,9 +586,9 @@ func getJobManagerIngressHost(ingressHostFormat string, clusterName string) stri
 	return jobManagerIngressHostRegex.ReplaceAllString(ingressHostFormat, clusterName)
 }
 
-// Checks whether the component should be deleted after job finishes, returns
-// false if the cluster is a session cluster or the job hasn't finished yet.
-func shouldDeleteAfterJobFinishes(
+// Checks whether the component should be deleted according to the cleanup
+// policy. Always return false for session cluster.
+func shouldCleanup(
 	cluster *v1alpha1.FlinkCluster, component string) bool {
 	var jobStatus = cluster.Status.Components.Job
 
@@ -603,16 +603,17 @@ func shouldDeleteAfterJobFinishes(
 		return false
 	}
 
-	var action v1alpha1.PostJobAction
+	// Check cleanup policy
+	var action v1alpha1.CleanupAction
 	if jobStatus.State == v1alpha1.JobState.Succeeded {
-		action = cluster.Spec.PostJobPolicy.AfterJobSucceeds
+		action = cluster.Spec.Job.CleanupPolicy.AfterJobSucceeds
 	} else {
-		action = cluster.Spec.PostJobPolicy.AfterJobFails
+		action = cluster.Spec.Job.CleanupPolicy.AfterJobFails
 	}
 	switch action {
-	case v1alpha1.PostJobActionDeleteCluster:
+	case v1alpha1.CleanupActionDeleteCluster:
 		return true
-	case v1alpha1.PostJobActionDeleteTaskManagers:
+	case v1alpha1.CleanupActionDeleteTaskManager:
 		return component == "TaskManagerDeployment"
 	}
 
