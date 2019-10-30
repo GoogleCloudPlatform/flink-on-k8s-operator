@@ -513,7 +513,7 @@ spec:
               - name
               type: object
             job:
-              description: Optional job spec. If specified, this cluster is an ephemeral
+              description: (Optional) Job spec. If specified, this cluster is an ephemeral
                 Job Cluster, which will be automatically terminated after the job
                 finishes; otherwise, it is a long-running Session Cluster.
               properties:
@@ -533,6 +533,16 @@ spec:
                 className:
                   description: Fully qualified Java class name of the job.
                   type: string
+                cleanupPolicy:
+                  description: The action to take after job finishes.
+                  properties:
+                    afterJobFails:
+                      description: Action to take after job fails.
+                      type: string
+                    afterJobSucceeds:
+                      description: Action to take after job succeeds.
+                      type: string
+                  type: object
                 jarFile:
                   description: JAR file of the job.
                   type: string

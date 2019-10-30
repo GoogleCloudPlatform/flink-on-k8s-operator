@@ -89,6 +89,9 @@ func TestSetDefault(t *testing.T) {
 				Parallelism:           &defaultJobParallelism,
 				NoLoggingToStdout:     &defaultJobNoLoggingToStdout,
 				RestartPolicy:         &defaultJobRestartPolicy,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: "DeleteCluster", AfterJobFails: "KeepCluster",
+				},
 			},
 			FlinkProperties: nil,
 			EnvVars:         nil,
@@ -154,6 +157,10 @@ func TestSetNonDefault(t *testing.T) {
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: "DeleteTaskManagers",
+					AfterJobFails:    "DeleteCluster",
+				},
 			},
 			FlinkProperties: nil,
 			EnvVars:         nil,
@@ -203,6 +210,10 @@ func TestSetNonDefault(t *testing.T) {
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: "DeleteTaskManagers",
+					AfterJobFails:    "DeleteCluster",
+				},
 			},
 			FlinkProperties: nil,
 			EnvVars:         nil,

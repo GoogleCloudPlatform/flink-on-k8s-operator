@@ -39,5 +39,8 @@ spec:
     parallelism: 2
     savepointsDir: /tmp
     autoSavepointSeconds: 30
+    cleanupPolicy:
+      afterJobSucceeds: DeleteCluster
+      afterJobFails: KeepCluster
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"

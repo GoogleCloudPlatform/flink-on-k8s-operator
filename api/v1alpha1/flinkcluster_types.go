@@ -23,17 +23,19 @@ import (
 
 // ClusterState defines states for a cluster.
 var ClusterState = struct {
-	Creating    string
-	Running     string
-	Reconciling string
-	Stopping    string
-	Stopped     string
+	Creating         string
+	Running          string
+	Reconciling      string
+	Stopping         string
+	PartiallyStopped string
+	Stopped          string
 }{
-	Creating:    "Creating",
-	Running:     "Running",
-	Reconciling: "Reconciling",
-	Stopping:    "Stopping",
-	Stopped:     "Stopped",
+	Creating:         "Creating",
+	Running:          "Running",
+	Reconciling:      "Reconciling",
+	Stopping:         "Stopping",
+	PartiallyStopped: "PartiallyStopped",
+	Stopped:          "Stopped",
 }
 
 // ComponentState defines states for a cluster component.
@@ -199,6 +201,26 @@ type TaskManagerSpec struct {
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
+// CleanupAction defines the action to take after job finishes.
+type CleanupAction string
+
+const (
+	// CleanupActionKeepCluster - keep the entire cluster.
+	CleanupActionKeepCluster = "KeepCluster"
+	// CleanupActionDeleteCluster - delete the entire cluster.
+	CleanupActionDeleteCluster = "DeleteCluster"
+	// CleanupActionDeleteTaskManager - delete task manager, keep job manager.
+	CleanupActionDeleteTaskManager = "DeleteTaskManager"
+)
+
+// CleanupPolicy defines the action to take after job finishes.
+type CleanupPolicy struct {
+	// Action to take after job succeeds.
+	AfterJobSucceeds CleanupAction `json:"afterJobSucceeds,omitempty"`
+	// Action to take after job fails.
+	AfterJobFails CleanupAction `json:"afterJobFails,omitempty"`
+}
+
 // JobSpec defines properties of a Flink job.
 type JobSpec struct {
 	// JAR file of the job.
@@ -228,18 +250,18 @@ type JobSpec struct {
 	// No logging output to STDOUT, default: false.
 	NoLoggingToStdout *bool `json:"noLoggingToStdout,omitempty"`
 
-	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
-	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
-
 	// Volumes in the Job pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// Volume mounts in the Job container.
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
-}
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
+	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
+
+	// The action to take after job finishes.
+	CleanupPolicy *CleanupPolicy `json:"cleanupPolicy,omitempty"`
+}
 
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
@@ -255,7 +277,7 @@ type FlinkClusterSpec struct {
 	// Flink TaskManager spec.
 	TaskManager TaskManagerSpec `json:"taskManager"`
 
-	// Optional job spec. If specified, this cluster is an ephemeral Job
+	// (Optional) Job spec. If specified, this cluster is an ephemeral Job
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
 	Job *JobSpec `json:"job,omitempty"`

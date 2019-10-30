@@ -101,4 +101,10 @@ func _SetJobDefault(jobSpec *JobSpec) {
 		jobSpec.RestartPolicy = new(corev1.RestartPolicy)
 		*jobSpec.RestartPolicy = corev1.RestartPolicyOnFailure
 	}
+	if jobSpec.CleanupPolicy == nil {
+		jobSpec.CleanupPolicy = &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionDeleteCluster,
+			AfterJobFails:    CleanupActionKeepCluster,
+		}
+	}
 }

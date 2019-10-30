@@ -344,6 +344,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// (Optional) Job.
 	var jobFinished = false
+	var jobSucceeded = false
 	var observedJob = observed.job
 	if observedJob != nil {
 		status.Components.Job = &v1alpha1.JobStatus{}
@@ -373,6 +374,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		} else if observedJob.Status.Succeeded > 0 {
 			status.Components.Job.State = v1alpha1.JobState.Succeeded
 			jobFinished = true
+			jobSucceeded = true
 		} else {
 			status.Components.Job = nil
 		}
@@ -389,15 +391,27 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	case v1alpha1.ClusterState.Running,
 		v1alpha1.ClusterState.Reconciling:
 		if jobFinished {
-			status.State = v1alpha1.ClusterState.Stopping
+			var policy = observed.cluster.Spec.Job.CleanupPolicy
+			if jobSucceeded &&
+				policy.AfterJobSucceeds != v1alpha1.CleanupActionKeepCluster {
+				status.State = v1alpha1.ClusterState.Stopping
+			} else if !jobSucceeded &&
+				policy.AfterJobFails != v1alpha1.CleanupActionKeepCluster {
+				status.State = v1alpha1.ClusterState.Stopping
+			} else {
+				status.State = v1alpha1.ClusterState.Running
+			}
 		} else if runningComponents < totalComponents {
 			status.State = v1alpha1.ClusterState.Reconciling
 		} else {
 			status.State = v1alpha1.ClusterState.Running
 		}
-	case v1alpha1.ClusterState.Stopping:
+	case v1alpha1.ClusterState.Stopping,
+		v1alpha1.ClusterState.PartiallyStopped:
 		if runningComponents == 0 {
 			status.State = v1alpha1.ClusterState.Stopped
+		} else if runningComponents < totalComponents {
+			status.State = v1alpha1.ClusterState.PartiallyStopped
 		} else {
 			status.State = v1alpha1.ClusterState.Stopping
 		}

@@ -129,13 +129,18 @@ FlinkCluster
       * **AutoSavepointSeconds** (optional): Automatically take a savepoint to the savepoints dir every n seconds.
       * **SavepointDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **AllowNonRestoredState** (optional):  Allow non-restored state, default: false.
-      * **Parallelism** (optional):  Parallelism of the job, default: 1.
-      * **NoLoggingToStdout** (optional):  No logging output to STDOUT, default: false.
-      * **RestartPolicy** (optional):   Restart policy, `OnFailure` or `Never`, default: `OnFailure`.
+      * **Parallelism** (optional): Parallelism of the job, default: 1.
+      * **NoLoggingToStdout** (optional): No logging output to STDOUT, default: false.
       * **Volumes** (optional): Volumes in the Job pod.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the Job container.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
+      * **RestartPolicy** (optional): Restart policy, `OnFailure` or `Never`, default: `OnFailure`.
+      * **CleanupPolicy** (optional): The action to take after job finishes.
+        * **AfterJobSucceeds** (required): The action to take after job succeeds,
+          `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
+        * **AfterJobFails** (required): The action to take after job fails,
+          `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"KeepCluster"`.
     * **FlinkProperties** (optional): Flink properties which are appened to flink-conf.yaml of the Flink image.
     * **EnvVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
   * **Status**: Flink job or session cluster status.

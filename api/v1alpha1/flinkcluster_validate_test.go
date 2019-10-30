@@ -65,6 +65,10 @@ func TestValidateCreate(t *testing.T) {
 				JarFile:       "gs://my-bucket/myjob.jar",
 				Parallelism:   &parallelism,
 				RestartPolicy: &restartPolicy,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: CleanupActionKeepCluster,
+					AfterJobFails:    CleanupActionDeleteTaskManager,
+				},
 			},
 		},
 	}
@@ -393,6 +397,49 @@ func TestInvalidJobSpec(t *testing.T) {
 	}
 	err = validator.ValidateCreate(&cluster)
 	expectedErr = "invalid job restartPolicy: XXX"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	cluster = FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScope.VPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 3,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+			},
+			Job: &JobSpec{
+				JarFile:       "gs://my-bucket/myjob.jar",
+				Parallelism:   &parallelism,
+				RestartPolicy: &restartPolicy,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: "XXX",
+					AfterJobFails:    CleanupActionDeleteCluster,
+				},
+			},
+		},
+	}
+	err = validator.ValidateCreate(&cluster)
+	expectedErr = "invalid cleanupPolicy.afterJobSucceeds: XXX"
 	assert.Equal(t, err.Error(), expectedErr)
 }
 
