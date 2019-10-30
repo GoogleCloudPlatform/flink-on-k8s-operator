@@ -55,12 +55,14 @@ var JobState = struct {
 	Running   string
 	Succeeded string
 	Failed    string
+	Cancelled string
 	Unknown   string
 }{
 	Pending:   "Pending",
 	Running:   "Running",
 	Succeeded: "Succeeded",
 	Failed:    "Failed",
+	Cancelled: "Cancelled",
 	Unknown:   "Unknown",
 }
 
@@ -219,6 +221,8 @@ type CleanupPolicy struct {
 	AfterJobSucceeds CleanupAction `json:"afterJobSucceeds,omitempty"`
 	// Action to take after job fails.
 	AfterJobFails CleanupAction `json:"afterJobFails,omitempty"`
+	// Action to take after job is cancelled.
+	AfterJobCancelled CleanupAction `json:"afterJobCancelled,omitempty"`
 }
 
 // JobSpec defines properties of a Flink job.
@@ -261,6 +265,11 @@ type JobSpec struct {
 
 	// The action to take after job finishes.
 	CleanupPolicy *CleanupPolicy `json:"cleanupPolicy,omitempty"`
+
+	// Request the job to be cancelled. Only applies to running jobs. If
+	// `savePointsDir` is provided, a savepoint will be taken before stopping the
+	// job.
+	CancelRequested *bool `json:"cancelRequested,omitempty"`
 }
 
 // FlinkClusterSpec defines the desired state of FlinkCluster

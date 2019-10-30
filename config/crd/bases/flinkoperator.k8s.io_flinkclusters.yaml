@@ -530,12 +530,20 @@ spec:
                     every n seconds.
                   format: int32
                   type: integer
+                cancelRequested:
+                  description: Request the job to be cancelled. Only applies to running
+                    jobs. If `savePointsDir` is provided, a savepoint will be taken
+                    before stopping the job.
+                  type: boolean
                 className:
                   description: Fully qualified Java class name of the job.
                   type: string
                 cleanupPolicy:
                   description: The action to take after job finishes.
                   properties:
+                    afterJobCancelled:
+                      description: Action to take after job is cancelled.
+                      type: string
                     afterJobFails:
                       description: Action to take after job fails.
                       type: string

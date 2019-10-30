@@ -461,7 +461,12 @@ func getDesiredConfigMap(
 func getDesiredJob(
 	flinkCluster *v1alpha1.FlinkCluster) *batchv1.Job {
 	var jobSpec = flinkCluster.Spec.Job
+
 	if jobSpec == nil {
+		return nil
+	}
+
+	if jobSpec.CancelRequested != nil && *jobSpec.CancelRequested {
 		return nil
 	}
 
@@ -597,19 +602,18 @@ func shouldCleanup(
 		return false
 	}
 
-	// Job hasn't finished yet.
-	if jobStatus.State != v1alpha1.JobState.Succeeded &&
-		jobStatus.State != v1alpha1.JobState.Failed {
+	var action v1alpha1.CleanupAction
+	switch jobStatus.State {
+	case v1alpha1.JobState.Succeeded:
+		action = cluster.Spec.Job.CleanupPolicy.AfterJobSucceeds
+	case v1alpha1.JobState.Failed:
+		action = cluster.Spec.Job.CleanupPolicy.AfterJobFails
+	case v1alpha1.JobState.Cancelled:
+		action = cluster.Spec.Job.CleanupPolicy.AfterJobCancelled
+	default:
 		return false
 	}
 
-	// Check cleanup policy
-	var action v1alpha1.CleanupAction
-	if jobStatus.State == v1alpha1.JobState.Succeeded {
-		action = cluster.Spec.Job.CleanupPolicy.AfterJobSucceeds
-	} else {
-		action = cluster.Spec.Job.CleanupPolicy.AfterJobFails
-	}
 	switch action {
 	case v1alpha1.CleanupActionDeleteCluster:
 		return true

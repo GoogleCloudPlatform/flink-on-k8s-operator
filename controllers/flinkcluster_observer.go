@@ -237,9 +237,7 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 		log.Info("Observed Flink job status list", "jobs", jobs)
 		if jobCount > 1 {
 			log.Error(
-				errors.New("more than one Flink job is found"),
-				"count",
-				jobCount)
+				errors.New("more than one Flink job were found"), "", "jobs", jobs)
 		} else if jobCount == 1 {
 			observed.flinkJobID = &jobs[0].ID
 			log.Info("Observed Flink job ID", "ID", observed.flinkJobID)

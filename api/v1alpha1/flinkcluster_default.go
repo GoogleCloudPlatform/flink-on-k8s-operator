@@ -103,8 +103,9 @@ func _SetJobDefault(jobSpec *JobSpec) {
 	}
 	if jobSpec.CleanupPolicy == nil {
 		jobSpec.CleanupPolicy = &CleanupPolicy{
-			AfterJobSucceeds: CleanupActionDeleteCluster,
-			AfterJobFails:    CleanupActionKeepCluster,
+			AfterJobSucceeds:  CleanupActionDeleteCluster,
+			AfterJobFails:     CleanupActionKeepCluster,
+			AfterJobCancelled: CleanupActionDeleteCluster,
 		}
 	}
 }
