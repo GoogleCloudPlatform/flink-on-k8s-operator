@@ -82,6 +82,14 @@ func (c *FlinkClient) GetJobStatusList(
 	return c.HTTPClient.Get(apiBaseURL+"/jobs", jobStatusList)
 }
 
+// StopJob stops a job.
+func (c *FlinkClient) StopJob(
+	apiBaseURL string, jobID string) error {
+	var resp = struct{}{}
+	return c.HTTPClient.Patch(
+		fmt.Sprintf("%s/jobs/%s?mode=stop", apiBaseURL, jobID), []byte{}, &resp)
+}
+
 // TriggerSavepoint triggers an async savepoint operation.
 func (c *FlinkClient) TriggerSavepoint(
 	apiBaseURL string, jobID string, dir string) (SavepointTriggerID, error) {

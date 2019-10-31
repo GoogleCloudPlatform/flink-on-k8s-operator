@@ -55,12 +55,43 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
-	if !reflect.DeepEqual(new.Spec, old.Spec) {
-		return fmt.Errorf(
-			"updating FlinkCluster spec is not allowed," +
-				" please delete the resouce and recreate")
+	var cancelRequested, err = v.checkCancelRequested(old, new)
+	if err != nil {
+		return err
 	}
+	if cancelRequested {
+		return nil
+	}
+
+	if !reflect.DeepEqual(new.Spec, old.Spec) {
+		return fmt.Errorf("the cluster properties are not updatable")
+	}
+
 	return nil
+}
+
+func (v *Validator) checkCancelRequested(
+	old *FlinkCluster, new *FlinkCluster) (bool, error) {
+	if old.Spec.Job == nil || new.Spec.Job == nil {
+		return false, nil
+	}
+	var restartJob = (old.Spec.Job.CancelRequested != nil && *old.Spec.Job.CancelRequested) &&
+		(new.Spec.Job.CancelRequested == nil || !*new.Spec.Job.CancelRequested)
+	if restartJob {
+		return false, fmt.Errorf(
+			"updating cancelRequested from true to false is not allowed")
+	}
+
+	var stopJob = (old.Spec.Job.CancelRequested == nil || !*old.Spec.Job.CancelRequested) &&
+		(new.Spec.Job.CancelRequested != nil && *new.Spec.Job.CancelRequested)
+	if stopJob {
+		// Check if only `cancelRequested` changed, no other changes.
+		var oldCopy = old.DeepCopy()
+		oldCopy.Spec.Job.CancelRequested = new.Spec.Job.CancelRequested
+		return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
+	}
+
+	return false, nil
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {
@@ -187,6 +218,11 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 		"cleanupPolicy.afterJobFails", jobSpec.CleanupPolicy.AfterJobFails)
 	if err != nil {
 		return err
+	}
+
+	if jobSpec.CancelRequested != nil && *jobSpec.CancelRequested {
+		return fmt.Errorf(
+			"property `cancelRequested` cannot be set to true for a new job")
 	}
 
 	return nil

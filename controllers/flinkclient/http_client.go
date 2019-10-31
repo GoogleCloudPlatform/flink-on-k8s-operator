@@ -42,6 +42,12 @@ func (c *HTTPClient) Post(
 	return c.doHTTP("POST", url, body, outStructPtr)
 }
 
+// Patch - HTTP PATCH.
+func (c *HTTPClient) Patch(
+	url string, body []byte, outStructPtr interface{}) error {
+	return c.doHTTP("PATCH", url, body, outStructPtr)
+}
+
 func (c *HTTPClient) doHTTP(
 	method string, url string, body []byte, outStructPtr interface{}) error {
 	httpClient := &http.Client{Timeout: 30 * time.Second}

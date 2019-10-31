@@ -452,11 +452,12 @@ func TestUpdateStatusAllowed(t *testing.T) {
 }
 
 func TestUpdateSpecNotAllowed(t *testing.T) {
-	var oldCluster = FlinkCluster{Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.8.1"}}}
-	var newCluster = FlinkCluster{Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
+	var oldCluster = FlinkCluster{
+		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.8.1"}}}
+	var newCluster = FlinkCluster{
+		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
 	var validator = &Validator{}
 	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
-	var expectedErr = "updating FlinkCluster spec is not allowed," +
-		" please delete the resouce and recreate"
+	var expectedErr = "the cluster properties are not updatable"
 	assert.Equal(t, err.Error(), expectedErr)
 }
