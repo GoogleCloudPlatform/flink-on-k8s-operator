@@ -343,7 +343,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	}
 
 	// (Optional) Job.
-	var jobFinished = false
+	var jobStopped = false
 	var jobSucceeded = false
 	var jobFailed = false
 	var jobCancelled = false
@@ -373,11 +373,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 		} else if observedJob.Status.Failed > 0 {
 			status.Components.Job.State = v1alpha1.JobState.Failed
-			jobFinished = true
+			jobStopped = true
 			jobFailed = true
 		} else if observedJob.Status.Succeeded > 0 {
 			status.Components.Job.State = v1alpha1.JobState.Succeeded
-			jobFinished = true
+			jobStopped = true
 			jobSucceeded = true
 		} else {
 			status.Components.Job = nil
@@ -385,7 +385,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	} else if recordedJobStatus != nil && len(recordedJobStatus.Name) > 0 {
 		status.Components.Job = recordedJobStatus.DeepCopy()
 		status.Components.Job.State = v1alpha1.JobState.Cancelled
-		jobFinished = true
+		jobStopped = true
 		jobCancelled = true
 	}
 
@@ -399,7 +399,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 	case v1alpha1.ClusterState.Running,
 		v1alpha1.ClusterState.Reconciling:
-		if jobFinished {
+		if jobStopped {
 			var policy = observed.cluster.Spec.Job.CleanupPolicy
 			if jobSucceeded &&
 				policy.AfterJobSucceeds != v1alpha1.CleanupActionKeepCluster {

@@ -359,7 +359,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			reconciler.takeSavepoint(jobID)
 		}
 
-		if !reconciler.isJobFinished() {
+		if !reconciler.isJobStopped() {
 			log.Info("Job is not finished yet, no action", "jobID", jobID)
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
 		}
@@ -424,7 +424,7 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 	return ""
 }
 
-func (reconciler *ClusterReconciler) isJobFinished() bool {
+func (reconciler *ClusterReconciler) isJobStopped() bool {
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	return jobStatus != nil &&
 		(jobStatus.State == v1alpha1.JobState.Succeeded ||
@@ -443,18 +443,13 @@ func (reconciler *ClusterReconciler) cancelJob(jobID string) error {
 	} else {
 		log.Info("Can not take savepoint before stopping job", "jobID", jobID)
 	}
-	if !reconciler.isJobFinished() {
-		return reconciler.stopJob(jobID)
+	if !reconciler.isJobStopped() {
+		var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
+		reconciler.log.Info("Stoping job", "jobID", jobID)
+		return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 	}
 	log.Info("Job has finished, no need to cancel", "jobID", jobID)
 	return nil
-}
-
-// Stops a job through Flink REST API.
-func (reconciler *ClusterReconciler) stopJob(jobID string) error {
-	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
-	reconciler.log.Info("Stoping job", "jobID", jobID)
-	return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 }
 
 func (reconciler *ClusterReconciler) shouldAutoTakeSavepoint(
@@ -488,7 +483,7 @@ func (reconciler *ClusterReconciler) shouldAutoTakeSavepoint(
 func (reconciler *ClusterReconciler) canTakeSavepoint() bool {
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		!reconciler.isJobFinished()
+		!reconciler.isJobStopped()
 }
 
 // Takes savepoint for a job then update job status with the info.
