@@ -382,6 +382,7 @@ type FlinkClusterStatus struct {
 // +kubebuilder:object:root=true
 
 // FlinkCluster is the Schema for the flinkclusters API
+// +kubebuilder:subresource:status
 type FlinkCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

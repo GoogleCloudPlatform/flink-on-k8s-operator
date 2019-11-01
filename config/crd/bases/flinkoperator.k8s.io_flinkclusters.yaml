@@ -11,6 +11,8 @@ spec:
     kind: FlinkCluster
     plural: flinkclusters
   scope: ""
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: FlinkCluster is the Schema for the flinkclusters API
