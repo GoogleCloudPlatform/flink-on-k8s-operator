@@ -555,10 +555,10 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 
 func (updater *ClusterStatusUpdater) updateClusterStatus(
 	status v1alpha1.FlinkClusterStatus) error {
-	var flinkCluster = v1alpha1.FlinkCluster{}
-	updater.observed.cluster.DeepCopyInto(&flinkCluster)
-	flinkCluster.Status = status
-	return updater.k8sClient.Update(updater.context, &flinkCluster)
+	var cluster = v1alpha1.FlinkCluster{}
+	updater.observed.cluster.DeepCopyInto(&cluster)
+	cluster.Status = status
+	return updater.k8sClient.Status().Update(updater.context, &cluster)
 }
 
 func getDeploymentState(deployment *appsv1.Deployment) string {

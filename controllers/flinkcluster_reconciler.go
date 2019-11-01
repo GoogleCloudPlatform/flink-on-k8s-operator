@@ -524,6 +524,8 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
 	jobStatus.SavepointLocation = savepointStatus.Location
 	var tc = &TimeConverter{}
-	jobStatus.LastSavepointTime = tc.ToString(time.Now())
-	return reconciler.k8sClient.Update(reconciler.context, &cluster)
+	var now = time.Now()
+	jobStatus.LastSavepointTime = tc.ToString(now)
+	cluster.Status.LastUpdateTime = tc.ToString(now)
+	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }
