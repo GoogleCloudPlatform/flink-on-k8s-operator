@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "google.com:hadoop-cloud-dev",
+  "private_key_id": "d24610c75b45b610faba566627f8985e62438b09",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCqznA5rtPevu+I\nuB7aMEyg1r/P/Cf+axNJa8RSlBIWVagZm2Qj1LvHK7mF8ElnqhZZBUCIpu5jcg2S\noYuHNkA2kbxmSPkrzV550U0pw0OAeTM3EVLp2bVxJf8dUyTAh8XKIMA4iPMVkYag\nbWR3wcuv2gDAclk8saqT3AJKGZMyokWRVKFKkmRSZN5Un1f9DmGA1bXjb9qkfEhQ\nyKmpF+iBEM5i3YDgyszyAjWX/K4PyS/Rw3tePbosIe4BrRrCbCi+eQ8zl4XcVjoO\nFjjGrQ0a5siThttF/AeSRfQgzRWQoNHK6eVBpUak4zjnxgFhk5VWed+nIHIh7sar\nnyLJ8I0LAgMBAAECggEAIyuPyyjXAnIRU3cKD0ZLuQCPDW3v9ECq/367tX88vDGW\nA/PNql0W7ztvH4erLbfFkz30HE83He3xooQ1/Tjr/vCCOROEjwLiFbZFq7hDsXQD\nWi7sgi9sX2iB/9FLa4NpdCXLPrjgSMwmyujLe6dBYCvE5NuGyWsR4xE1vXlHqHCP\nkyT0JqM4euuIdzQqHbx3t8RPgN4/BSrCqv2v6wM1a3x/CMSCibN8Ec+N9UCofbH3\nxpHx/by7S7/V5soGeLzcKz1iYwAVhFhMGzQHTcI4XRnS5YIXFVubCbGl9HZFJuSL\ndkSxXaThwMfczQXh/7x0UP3t2SmMPg64j0KFOaoIfQKBgQDtKmrqgjhnhFd4DJ0r\nTQT/yDpajq0M3ifbHNpnXR0rtd5Uc42bmt4cm3wiDZXjACJdGIKtM22fpzvvIroH\nfixnpbCut6Ik1JfQop5MiYk6N9P6vfTos2GGDRaTyRnnowC3HstFEKW1UV4rDx6N\n+VrTaPYeZq308wAblw5SA8j21QKBgQC4Xu9rJ3uEF3poRMpdv2uYB56He2PZHu/D\nAKVsN948PDKb1JdOEp4u1qPTpqf7OwKMB1UTCXBxeL7FVJaRuGGeZcPImPmIhOMy\nZ5/T2LfXHINd31cbs73jZNO3dDL5Kup9s/EtzRzoZg1KYkrfmD804bg/9IwmDvU4\nbms5soskXwKBgGC3WZ6EuEfOunTkf/u2jwFYQCPJ51xGBG7gl1hrqoe2xRIfhXId\nd9KmvbqNW8CUv27DnhbP0Da5VkGxIbgIhkdGVIULsf3fDIIyrud7dxDcz3+Dk6qJ\n7I1kLP7blcrWuGX1EuP5Y/pLUmGw6r7vH1Dzjtra+LnZlwOpWFet33h5AoGASKvi\n4vGlFePLM94phdo1pq8aJXzVVneDOfG/QnCjAEsaB6I8IWHlR8ECwiImhDg2QMuD\nFQXbdF6Lk2xMDRQIJk8mZKMneFAo3W1K6k256OgsP4wQ4bJvXnoXmXALx3rLAtEy\nd0Mp6dCP3InxyUBRaZ6u6UaTF00+Cwg663scrTECgYEAmXHg2JDge0rEuPlXsmbj\n4KfRUgt0jXPOUU3c5Is5IsuoN5QXp1f1YLMiDUF12mj7A4t7qG0O3HGUqpXtOWxG\naFdM+xsVWF9Q3I5KmSBd+scWpDRFjZTLjGIMJP3qHTtlK6HMtaYYF+9h/yWND1Ck\nRAbe2l+v/1R4GV9krv4VKg8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "hgong-sa@hadoop-cloud-dev.google.com.iam.gserviceaccount.com",
+  "client_id": "113006965458245930099",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/hgong-sa%40hadoop-cloud-dev.google.com.iam.gserviceaccount.com"
+}
