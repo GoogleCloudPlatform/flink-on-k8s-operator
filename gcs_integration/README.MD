@@ -8,9 +8,9 @@ Note that the job jar needs to be in the same image as GCS connector in order to
 
 After the ${FLINK_JOB_JAR_URI} is set correctly if you also upload job jar in the same way as in example, you can simply run the command below to build the image and push it to GCR.
 
-    ```bash
-    make build push IMAGE_TAG=gcr.io/google.com/<my-project>
-    ```
+```bash
+make build push IMAGE_TAG=gcr.io/google.com/<my-project>
+```
 
 The default flink version or gcs connector version can be modified in properties file as you need.
 
@@ -48,11 +48,11 @@ To resolve this issue, several options are available:
     1. [Create a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) with proper IAM roles assigneds. E.g. Storage Admin
     2. Set [access scope](https://cloud.google.com/iam/docs/service-accounts#access_scopes) of cluster nodes to be full access: -scopes=storage-full, then run the command:
 
-        ```bash
-	$ gcloud container clusters create example-cluster \
-            --zone us-central1-a \
-	    --scopes=storage-full --service-account=[YOUR_SERVICE_ACCOUNT]
-	```
+    ```bash
+    gcloud container clusters create example-cluster \
+	--zone us-central1-a \
+	--scopes=storage-full --service-account=[YOUR_SERVICE_ACCOUNT]
+    ```
 
 2) If you want to grant access per application:
 
