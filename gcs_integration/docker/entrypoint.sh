@@ -21,7 +21,6 @@ set -x
 echo "Flink entrypoint..."
 
 FLINK_CONF_FILE="${FLINK_HOME}/conf/flink-conf.yaml"
-FLINK_JOB_JAR_URI="gs://hgong-test-bucket/flink/flink-playground-clickcountjob-2-FLINK-1.9_2.11.jar"
 
 # Derive the default jobmanager/taskmanager heap size based on the container's
 # memory limit. They could be overriden by FLINK_PROPERTIES.
