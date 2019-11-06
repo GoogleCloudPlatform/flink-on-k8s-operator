@@ -21,8 +21,4 @@
     Whether to use a service account for GCS authorization.
     </description>
   </property>
-  <property>
-       <name>google.cloud.auth.service.account.json.keyfile</name>
-       <value>/etc/hadoop/conf/service_key.json</value>
-  </property>
 </configuration>

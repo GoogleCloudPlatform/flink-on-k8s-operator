@@ -1,5 +1,5 @@
 ARG FLINK_VERSION
-FROM flink:${FLINK_VERSION}
+FROM flink:${FLINK_VERSION}-scala_${SCALA_VERSION}
 ARG FLINK_HADOOP_VERSION
 ARG GCS_CONNECTOR_VERSION
 
@@ -27,10 +27,6 @@ RUN echo "Downloading ${GCS_CONNECTOR_URI}" && \
   wget -q -O /opt/flink/lib/${GCS_CONNECTOR_NAME} ${GCS_CONNECTOR_URI}
 RUN echo "Downloading ${FLINK_HADOOP_JAR_URI}" && \
   wget -q -O /opt/flink/lib/${FLINK_HADOOP_JAR_NAME} ${FLINK_HADOOP_JAR_URI}
-RUN mkdir -p /etc/hadoop/conf
-COPY [YOUR_GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY_FILE_PATH] /etc/hadoop/conf/service_key.json
-RUN  chmod 777 /etc/hadoop/conf/service_key.json
-COPY hadoop/core-site.xml /etc/hadoop/conf/
 
 # Entry point.
 COPY entrypoint.sh /
