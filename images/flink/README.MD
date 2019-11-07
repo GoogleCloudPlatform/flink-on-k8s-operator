@@ -1,6 +1,6 @@
 # Save savepoints to GCS
 
-Flink Operator supports taking savepoints and storeing it into Google Cloud Storage when deploying a job with a custom flink image with GCS connector installed. 
+Flink Operator supports taking savepoints and storeing it into Google Cloud Storage when deploying a job with a custom Flink image with GCS connector installed. 
 
 ## Create custom docker image with GCS connector
 
@@ -9,16 +9,16 @@ Note that there are two ways to provide Flink the job jar. You can directly embe
 After the ${FLINK_JOB_JAR_URI} is set correctly if you also upload job jar in the same way as in example, you can simply run the command below to build the image and push it to GCR.
 
 ```bash
-make build push IMAGE_TAG=gcr.io/google.com/<my-project>
+make build push IMAGE_TAG=gcr.io/google.com/flink:[FLINK_VERSION]-scala_[SCALA_VERSION]-gcs
 ```
 
-The default flink version or gcs connector version can be modified in properties file as you need.
+The default Flink version or GCS connector version can be modified in properties file as you need.
 
-## Create a sample job cluster with the custom flink image
+## Create a sample job cluster with the custom Flink image
 
-Assume the flink operator has been up and running, now you can create a job cluster with a flink job. The operator will automatically take savepoints and save them into GCS.
+Assume the Flink operator has been up and running, now you can create a job cluster with a Flink job. The operator will automatically take savepoints and save them into GCS.
 
-To create a sample flink job cluster, simply fork the [sample Flink job cluster](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and point the image to the IMAG_TAG specified above in spec instead of the default flink version. Then simply run:
+To create a sample Flink job cluster, simply fork the [sample Flink job cluster](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and point the image to the IMAG_TAG specified above in spec instead of the default Flink version. Then simply run:
 
 ```bash
 kubectl apply -f flinkoperator_v1alpha1_flinkjobcluster.yaml
@@ -56,7 +56,7 @@ To resolve this issue, several options are available:
 
 **If you want to grant access per application:**
 
-The steps to mount the service account key file in k8s Secret to flink cluster and also the core-site.xml in ConfigMap in order to grant write access to GCS are:
+The steps to mount the service account key file in k8s Secret to Flink cluster and also the [core-site.xml](https://hadoop.apache.org/docs/r1.2.1/api/org/apache/hadoop/conf/Configuration.html) in ConfigMap in order to grant write access to GCS are:
 Create the k8s Secret with your service account key file.
 
   * Grant the applications running on GKE access to Google Cloud Platform service, e.g. Google Cloud Storage, by [creating service account key file](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and importing as a k8s Secrete resource.
@@ -69,10 +69,10 @@ Create the k8s Secret with your service account key file.
   * Create a configMap with the filename as key and the content of the file as value of the configMap.
 
     ```bash
-    kubectl create configmap core-site --from-file [/PATH/TO/CORE-SITE.XML]
+    kubectl create configmap hadoop-config --from-file [/PATH/TO/CORE-SITE.XML]
     ```
 
-  * Next you are able to add both Secret and ConfigMap data to a Volume and mount them onto the path wherever you want them to be in the container. You can udpate accordingly the sample job cluster YAML file to mount config file and key file to your flink cluster:
+  * Next you are able to add both Secret and ConfigMap data to a Volume and mount them onto the path wherever you want them to be in the container. You can udpate accordingly the sample job cluster YAML file to mount config file and key file to your Flink cluster:
 
     ```yaml
     apiVersion: flinkoperator.k8s.io/v1alpha1
@@ -105,15 +105,15 @@ Create the k8s Secret with your service account key file.
         mounts:
         - name: gcp-service-account-key-volume
           mountPath: /etc/hadoop/keys
-        - name: hadoop-conf
+        - name: hadoop-conf-volume
           mountPath: /etc/hadoop/conf
         volumes:
         - name: gcp-service-account-key-volume
           secret:
             secretName: gcp-service-account-key
-        - name: hadoop-conf
+        - name: hadoop-conf-volume
           configMap:
-            name: core-site
+            name: hadoop-config
       job:
         jarFile: ./examples/streaming/WordCount.jar
         className: org.apache.flink.streaming.examples.wordcount.WordCount
