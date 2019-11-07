@@ -8,7 +8,7 @@ document introduces how to setup such a test environment.
 
 ## Prerequisites
 
-* a running Kubernetes cluster
+* a running Kubernetes cluster with enough capacity
 * [Helm 2+](https://helm.sh/) initialized in the cluster
 * a running Flink Operator in the cluster
 
