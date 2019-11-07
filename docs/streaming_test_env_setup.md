@@ -1,31 +1,22 @@
 # Test environment setup for streaming applications
 
 Often times developers or users want to be able to quickly try out the Flink Operator with a long-running streaming
-application. In this case, they need to have a streaming data source (e.g., a Apache Kafka cluster), a streaming data
-generator and a Flink streaming application for testing purposes. This document introduces how to setup the test
-environment in a Kubernetes cluster.
+application and test features like taking savepoints. The WordCount example including in the Flink release cannot do the
+job, because it exits after processing the input file. In this case, you might need to have a streaming data source
+(e.g., a Apache Kafka cluster), a streaming data generator and a Flink streaming application for testing purposes. This
+document introduces how to setup such a test environment.
 
 ## Prerequisites
 
 * a running Kubernetes cluster
+* [Helm 2+](https://helm.sh/) initialized in the cluster
 * a running Flink Operator in the cluster
-* [Helm 2+](https://helm.sh/)
 
 ## Steps
 
-### 1. Create a Kafka cluster
+### 1. Install Kafka
 
-Create service account `tiller` and initialize Tiller with it:
-
-```bash
-kubectl create serviceaccount --namespace kube-system tiller
-
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-
-helm init --service-account tiller --upgrade
-```
-
-Create namespace `kafka` and install Kafka and Zookeeper in it:
+Create namespace `kafka` and install Kafka including Zookeeper in it:
 
 ```bash
 kubectl create ns kafka
@@ -33,7 +24,20 @@ helm repo add incubator http://storage.googleapis.com/kubernetes-charts-incubato
 helm install --name my-kafka --namespace kafka incubator/kafka
 ```
 
-After that Kafka broker service will be available at `my-kafka.kafka.svc.cluster.local:9092`.
+If you encounter permission related error, you might need to grant Helm Tiller the required permissions, e.g.,
+
+```bash
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+helm init --service-account tiller --upgrade
+```
+
+After that Kafka broker service will be available at `my-kafka.kafka.svc.cluster.local:9092`, run the following command
+to view more details:
+
+```bash
+helm status my-kafka
+```
 
 ### 2. Ingest streaming data into Kafka
 
@@ -127,4 +131,24 @@ After that you can check the Flink cluster and job status with:
 
 ```bash
 kubectl describe flinkclusters flinkcluster-clickcount
+```
+
+### 4. Tear down
+
+Delete the FlinkCluster custom resource:
+
+```bash
+kubectl delete flinkclusters flinkcluster-clickcount
+```
+
+Delete ClickGenerator:
+
+```bash
+kubectl delete deployments kafka-click-generator
+```
+
+Delete Kafka:
+
+```bash
+helm delete --purge my-kafka
 ```
