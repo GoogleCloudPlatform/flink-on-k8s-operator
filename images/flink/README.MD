@@ -9,7 +9,7 @@ Note that there are two ways to provide Flink the job jar. You can directly embe
 After the ${FLINK_JOB_JAR_URI} is set correctly if you also upload job jar in the same way as in example, you can simply run the command below to build the image and push it to GCR.
 
 ```bash
-make build push IMAGE_TAG=gcr.io/google.com/flink:[FLINK_VERSION]-scala_[SCALA_VERSION]-gcs
+make build push IMAGE_TAG=gcr.io/google.com/[MY_PROJECT]/flink:[FLINK_VERSION]-scala_[SCALA_VERSION]-gcs
 ```
 
 The default Flink version or GCS connector version can be modified in properties file as you need.
@@ -56,11 +56,11 @@ To resolve this issue, several options are available:
 
 **If you want to grant access per application:**
 
-The steps to mount the service account key file in k8s Secret to Flink cluster and also the [core-site.xml](https://hadoop.apache.org/docs/r1.2.1/api/org/apache/hadoop/conf/Configuration.html) in ConfigMap in order to grant write access to GCS are:
-Create the k8s Secret with your service account key file.
+The steps to mount the service account key file in Kubernetes Secret to Flink cluster and also the [core-site.xml](https://hadoop.apache.org/docs/r1.2.1/api/org/apache/hadoop/conf/Configuration.html) in ConfigMap in order to grant write access to GCS are:
+Create the Kubernetes Secret with your service account key file.
 
-  * Grant the applications running on GKE access to Google Cloud Platform service, e.g. Google Cloud Storage, by [creating service account key file](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and importing as a k8s Secrete resource.
-  * Create a k8s Secret object with your service account key file stored in it, which can be later accessed by a running pod.
+  * Grant the applications running on GKE access to Google Cloud Platform service, e.g. Google Cloud Storage, by [creating service account key file](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and importing as a Kubernetes Secrete resource.
+  * Create Kubernetes Secret object with your service account key file stored in it, which can be later accessed by a running pod.
 
     ```bash
     kubectl create secret generic gcp-service-account-key --from-file=gcp_service_account_key.json=[/PATH/TO/KEY.json]
@@ -81,7 +81,7 @@ Create the k8s Secret with your service account key file.
       name: flinkjobcluster-sample
     spec:
       image:
-        name: flink:1.8.1
+        name: gcr.io/google.com/[MY_PROJECT]/flink:[FLINK_VERSION]-scala_[SCALA_VERSION]-gcs
       jobManager:
         ports:
           ui: 8081
@@ -119,7 +119,7 @@ Create the k8s Secret with your service account key file.
         className: org.apache.flink.streaming.examples.wordcount.WordCount
         args: ["--input", "./README.txt"]
         parallelism: 2
-        savepointsDir: /tmp
+        savepointsDir: gs://my-bucket/path-to-savepoints
         autoSavepointSeconds: 30
         cleanupPolicy:
           afterJobSucceeds: DeleteCluster
