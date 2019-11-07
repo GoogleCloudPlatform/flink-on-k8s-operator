@@ -24,7 +24,8 @@ helm repo add incubator http://storage.googleapis.com/kubernetes-charts-incubato
 helm install --name my-kafka --namespace kafka incubator/kafka
 ```
 
-If you encounter permission related error, you might need to grant Helm Tiller the required permissions, e.g.,
+If it failed with error like `User "system:serviceaccount:kube-system:default" cannot get resource "namespaces" in API
+group "" in the namespace "kafka"`, you need to grant Helm Tiller the required permissions, for example:
 
 ```bash
 kubectl create serviceaccount --namespace kube-system tiller
