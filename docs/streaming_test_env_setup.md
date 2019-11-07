@@ -107,7 +107,7 @@ spec:
     replicas: 2
     resources:
       limits:
-        memory: "4Gi"
+        memory: "2Gi"
         cpu: "200m"
   job:
     jarFile: /opt/ClickCountJob.jar
