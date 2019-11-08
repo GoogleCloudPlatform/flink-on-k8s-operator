@@ -120,7 +120,7 @@ Create the Kubernetes Secret with your service account key file.
         args: ["--input", "./README.txt"]
         parallelism: 2
         savepointsDir: gs://my-bucket/path-to-savepoints
-        autoSavepointSeconds: 30
+        autoSavepointSeconds: 300
         cleanupPolicy:
           afterJobSucceeds: DeleteCluster
           afterJobFails: KeepCluster

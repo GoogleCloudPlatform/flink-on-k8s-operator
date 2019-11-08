@@ -41,6 +41,7 @@ The operator is still under active development, there is not Helm chart availabl
 
 * [Developer Guide](docs/developer-guide.md)
 * [FlinkCluster Custom Resource Definition](docs/crd.md)
+* [Integrate Flink with GCS](images/flink/README.MD)
 
 ## Contributing
 
