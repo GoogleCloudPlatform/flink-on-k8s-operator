@@ -131,6 +131,17 @@ func getDesiredJobManagerDeployment(
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var probe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*jobManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -154,9 +165,10 @@ func getDesiredJobManagerDeployment(
 							Args:            []string{"jobmanager"},
 							Ports: []corev1.ContainerPort{
 								rpcPort, blobPort, queryPort, uiPort},
-							Resources:    jobManagerSpec.Resources,
-							Env:          envVars,
-							VolumeMounts: volumeMounts,
+							LivenessProbe: &probe,
+							Resources:     jobManagerSpec.Resources,
+							Env:           envVars,
+							VolumeMounts:  volumeMounts,
 						},
 					},
 					Volumes:          volumes,
@@ -364,6 +376,17 @@ func getDesiredTaskManagerDeployment(
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var probe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*taskManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
 	var containers = []corev1.Container{corev1.Container{
 		Name:            "taskmanager",
 		Image:           imageSpec.Name,
@@ -371,9 +394,10 @@ func getDesiredTaskManagerDeployment(
 		Args:            []string{"taskmanager"},
 		Ports: []corev1.ContainerPort{
 			dataPort, rpcPort, queryPort},
-		Resources:    taskManagerSpec.Resources,
-		Env:          envVars,
-		VolumeMounts: volumeMounts,
+		LivenessProbe: &probe,
+		Resources:     taskManagerSpec.Resources,
+		Env:           envVars,
+		VolumeMounts:  volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var taskManagerDeployment = &appsv1.Deployment{
