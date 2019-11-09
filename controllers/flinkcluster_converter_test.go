@@ -206,7 +206,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "query", ContainerPort: jmQueryPort},
 								{Name: "ui", ContainerPort: jmUIPort},
 							},
-							LivenessProbe: &jmProbe,
+							LivenessProbe:  &jmProbe,
+							ReadinessProbe: &jmProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "JOB_MANAGER_CPU_LIMIT",
@@ -414,7 +415,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "rpc", ContainerPort: 6122},
 								{Name: "query", ContainerPort: 6125},
 							},
-							LivenessProbe: &tmProbe,
+							LivenessProbe:  &tmProbe,
+							ReadinessProbe: &tmProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "TASK_MANAGER_CPU_LIMIT",
@@ -549,6 +551,7 @@ jobmanager.rpc.port: 6123
 query.server.port: 6125
 rest.port: 8081
 taskmanager.numberOfTaskSlots: 1
+taskmanager.rpc.port: 6122
 `
 	var expectedConfigMap = corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
