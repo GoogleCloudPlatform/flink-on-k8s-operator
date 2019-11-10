@@ -556,8 +556,8 @@ func getDesiredJob(
 		})
 	}
 	jobArgs = append(jobArgs, jarPath)
-
 	jobArgs = append(jobArgs, jobSpec.Args...)
+
 	var job = &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -572,6 +572,7 @@ func getDesiredJob(
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: getJobInitContainers(jobSpec),
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:            "main",
@@ -590,6 +591,29 @@ func getDesiredJob(
 		},
 	}
 	return job
+}
+
+func getJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
+	var initContainers = []corev1.Container{}
+	// Add jobSpec level volume mounts to each init container if there is no
+	// conflict.
+	for _, initContainer := range jobSpec.InitContainers {
+		for _, jobMount := range jobSpec.Mounts {
+			var conflit = false
+			for _, mount := range initContainer.VolumeMounts {
+				if jobMount.MountPath == mount.MountPath {
+					conflit = true
+					break
+				}
+			}
+			if !conflit {
+				initContainer.VolumeMounts =
+					append(initContainer.VolumeMounts, jobMount)
+			}
+		}
+		initContainers = append(initContainers, initContainer)
+	}
+	return initContainers
 }
 
 // Converts the FlinkCluster as owner reference for its child resources.

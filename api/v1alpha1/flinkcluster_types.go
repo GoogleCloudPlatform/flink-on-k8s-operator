@@ -209,9 +209,11 @@ type TaskManagerSpec struct {
 	MemoryOffHeapMin resource.Quantity `json:"memoryOffHeapMin,omitempty"`
 
 	// Volumes in the TaskManager pods.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// Volume mounts in the TaskManager containers.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
 
 	// Selector which must match a node's labels for the TaskManager pod to be
@@ -276,10 +278,18 @@ type JobSpec struct {
 	NoLoggingToStdout *bool `json:"noLoggingToStdout,omitempty"`
 
 	// Volumes in the Job pod.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// Volume mounts in the Job container.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
 	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+
+	// Init containers of the Job pod. A typical use case could be using an init
+	// container to download a remote job jar to a local path which is
+	// referenced by the `jarFile` property.
+	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
 	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
