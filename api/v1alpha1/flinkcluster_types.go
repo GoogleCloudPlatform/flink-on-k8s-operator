@@ -151,10 +151,10 @@ type JobManagerSpec struct {
 
 	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
 
-	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 25
 	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
 
-	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 600
 	MemoryOffHeapMin *int32 `json:"memoryOffHeapMin,omitempty"`
 
 	// Volumes in the JobManager pod.
@@ -197,10 +197,10 @@ type TaskManagerSpec struct {
 
 	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
 
-	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 25
 	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
 
-	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 600
 	MemoryOffHeapMin *int32 `json:"memoryOffHeapMin,omitempty"`
 
 	// Volumes in the TaskManager pods.

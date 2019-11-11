@@ -637,6 +637,7 @@ func calFlinkHeapSize(cluster *v1alpha1.FlinkCluster) map[string]string {
 	if cluster.Spec.JobManager.MemoryOffHeapRatio == nil || cluster.Spec.TaskManager.MemoryOffHeapMin == nil {
 		return nil
 	}
+	var flinkHeapSize = make(map[string]string)
 	var jmHeapSize, tmHeapSize string
 	var jmOffHeapRatio = *cluster.Spec.JobManager.MemoryOffHeapRatio
 	var jmOffHeapMin = *cluster.Spec.JobManager.MemoryOffHeapMin
@@ -647,17 +648,20 @@ func calFlinkHeapSize(cluster *v1alpha1.FlinkCluster) map[string]string {
 	var tmMemLimit = convertResourceMemoryToInt64(cluster.Spec.TaskManager.Resources.Limits.Memory(), divisor)
 	if jmMemLimit > 0 {
 		heapSize := calHeapSize(jmMemLimit, int64(jmOffHeapMin), int64(jmOffHeapRatio))
-		jmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+		if heapSize > 0 {
+			jmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+			flinkHeapSize["jobmanager.heap.size"] = jmHeapSize
+		}
 	}
 	if tmMemLimit > 0 {
 		heapSize := calHeapSize(tmMemLimit, int64(tmOffHeapMin), int64(tmOffHeapRatio))
-		tmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+		if heapSize > 0 {
+			tmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+			flinkHeapSize["taskmanager.heap.size"] = tmHeapSize
+		}
 	}
 
-	return map[string]string{
-		"jobmanager.heap.size":  jmHeapSize,
-		"taskmanager.heap.size": tmHeapSize,
-	}
+	return flinkHeapSize
 }
 
 // Converts memory value to the format of divisor and returns ceiling of the value.
@@ -666,10 +670,12 @@ func convertResourceMemoryToInt64(memory *resource.Quantity, divisor resource.Qu
 }
 
 func calHeapSize(memSize int64, offHeapMin int64, offHeapRatio int64) int64 {
-	heapSizeCalculated := int64(math.Ceil(float64(memSize*offHeapRatio) / 100))
-	if heapSizeCalculated < offHeapMin {
-		heapSizeCalculated = offHeapMin
+	var heapSizeCalculated int64
+	offHeapSize := int64(math.Ceil(float64(memSize*offHeapRatio) / 100))
+	if offHeapSize < offHeapMin {
+		offHeapSize = offHeapMin
 	}
+	heapSizeCalculated = memSize - offHeapSize
 	return heapSizeCalculated
 }
 

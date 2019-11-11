@@ -156,17 +156,15 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 	}
 
 	// MemoryOffHeapRatio
-	if jmSpec.MemoryOffHeapRatio == nil || *jmSpec.MemoryOffHeapRatio > 100 || *jmSpec.MemoryOffHeapRatio < 0 {
-		return fmt.Errorf("invalid JobManager memoryOffHeapRatio, it must be between 0 and 100")
+	err = v.validateMemoryOffHeapRatio(jmSpec.MemoryOffHeapRatio, "jobmanager")
+	if err != nil {
+		return err
 	}
 
 	// MemoryOffHeapMin
-	divisor := resource.MustParse("1Mi")
-	jmMemLimit := math.Floor(float64(jmSpec.Resources.Limits.Memory().Value()) / float64(divisor.Value()))
-	if jmSpec.MemoryOffHeapMin != nil {
-		return fmt.Errorf("invalid JobManager memory configuration, MemoryOffHeapMin is not specified")
-	} else if *jmSpec.MemoryOffHeapMin > int32(jmMemLimit) {
-		return fmt.Errorf("invalid JobManager memory configuration, memory limit must be larger than MemoryOffHeapMin")
+	err = v.validateMemoryOffHeapMin(jmSpec.MemoryOffHeapMin, jmSpec.Resources.Limits.Memory(), "jobmanager")
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -189,6 +187,18 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 		return err
 	}
 	err = v.validatePort(tmSpec.Ports.Query, "query", "taskmanager")
+	if err != nil {
+		return err
+	}
+
+	// MemoryOffHeapRatio
+	err = v.validateMemoryOffHeapRatio(tmSpec.MemoryOffHeapRatio, "taskmanager")
+	if err != nil {
+		return err
+	}
+
+	// MemoryOffHeapMin
+	err = v.validateMemoryOffHeapMin(tmSpec.MemoryOffHeapMin, tmSpec.Resources.Limits.Memory(), "taskmanager")
 	if err != nil {
 		return err
 	}
@@ -266,6 +276,26 @@ func (v *Validator) validateCleanupAction(
 		return fmt.Errorf(
 			"invalid %v: %v",
 			property, value)
+	}
+	return nil
+}
+
+func (v *Validator) validateMemoryOffHeapRatio(
+	offHeapRatio *int32, component string) error {
+	if offHeapRatio == nil || *offHeapRatio > 100 || *offHeapRatio < 0 {
+		return fmt.Errorf("invalid %v memoryOffHeapRatio, it must be between 0 and 100", component)
+	}
+	return nil
+}
+
+func (v *Validator) validateMemoryOffHeapMin(
+	offHeapMin *int32, memoryLimit *resource.Quantity, component string) error {
+	divisor := resource.MustParse("1Mi")
+	memLimit := math.Floor(float64(memoryLimit.Value()) / float64(divisor.Value()))
+	if offHeapMin == nil {
+		return fmt.Errorf("invalid %v memory configuration, MemoryOffHeapMin is not specified", component)
+	} else if memLimit > 0 && *offHeapMin > int32(memLimit) {
+		return fmt.Errorf("invalid %v memory configuration, memory limit must be larger than MemoryOffHeapMin", component)
 	}
 	return nil
 }

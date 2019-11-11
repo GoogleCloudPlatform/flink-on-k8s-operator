@@ -1839,13 +1839,13 @@ spec:
                       type: boolean
                   type: object
                 memoryOffHeapMin:
-                  description: Minimum amount of off-heap memory in containers, as
-                    a safety margin to avoid OOM kill.
+                  description: 'Minimum amount of off-heap memory in containers, as
+                    a safety margin to avoid OOM kill, default: 600'
                   format: int32
                   type: integer
                 memoryOffHeapRatio:
-                  description: Percentage of off-heap memory in containers, as a safety
-                    margin to avoid OOM kill.
+                  description: 'Percentage of off-heap memory in containers, as a
+                    safety margin to avoid OOM kill, default: 25'
                   format: int32
                   type: integer
                 mounts:
@@ -3143,13 +3143,13 @@ spec:
               description: Flink TaskManager spec.
               properties:
                 memoryOffHeapMin:
-                  description: Minimum amount of off-heap memory in containers, as
-                    a safety margin to avoid OOM kill.
+                  description: 'Minimum amount of off-heap memory in containers, as
+                    a safety margin to avoid OOM kill, default: 600'
                   format: int32
                   type: integer
                 memoryOffHeapRatio:
-                  description: Percentage of off-heap memory in containers, as a safety
-                    margin to avoid OOM kill.
+                  description: 'Percentage of off-heap memory in containers, as a
+                    safety margin to avoid OOM kill, default: 25'
                   format: int32
                   type: integer
                 mounts:

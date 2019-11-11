@@ -49,6 +49,8 @@ func TestSetDefault(t *testing.T) {
 	var defaultJobNoLoggingToStdout = false
 	var defaultJobRestartPolicy = corev1.RestartPolicy("OnFailure")
 	var defatulJobManagerIngressTLSUse = false
+	var defaultMemoryOffHeapRatio = int32(25)
+	var defaultMemoryOffHeapMin = int32(600)
 	var expectedCluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -70,9 +72,11 @@ func TestSetDefault(t *testing.T) {
 					Query: &defaultJmQueryPort,
 					UI:    &defaultJmUIPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
-				Mounts:    nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
+				MemoryOffHeapMin:   &defaultMemoryOffHeapMin,
+				Volumes:            nil,
+				Mounts:             nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -81,8 +85,10 @@ func TestSetDefault(t *testing.T) {
 					RPC:   &defaultTmRPCPort,
 					Query: &defaultTmQueryPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
+				MemoryOffHeapMin:   &defaultMemoryOffHeapMin,
+				Volumes:            nil,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &defaultJobAllowNonRestoredState,
@@ -119,6 +125,8 @@ func TestSetNonDefault(t *testing.T) {
 	var jobNoLoggingToStdout = true
 	var jobRestartPolicy = corev1.RestartPolicy("Never")
 	var jobManagerIngressTLSUse = true
+	var memoryOffHeapRatio = int32(50)
+	var memoryOffHeapMin = int32(1000)
 	var cluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -140,9 +148,11 @@ func TestSetNonDefault(t *testing.T) {
 					Query: &jmQueryPort,
 					UI:    &jmUIPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
-				Mounts:    nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
+				Volumes:            nil,
+				Mounts:             nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -151,8 +161,10 @@ func TestSetNonDefault(t *testing.T) {
 					RPC:   &tmRPCPort,
 					Query: &tmQueryPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
+				Volumes:            nil,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
@@ -194,9 +206,11 @@ func TestSetNonDefault(t *testing.T) {
 					Query: &jmQueryPort,
 					UI:    &jmUIPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
-				Mounts:    nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
+				Volumes:            nil,
+				Mounts:             nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -205,8 +219,10 @@ func TestSetNonDefault(t *testing.T) {
 					RPC:   &tmRPCPort,
 					Query: &tmQueryPort,
 				},
-				Resources: corev1.ResourceRequirements{},
-				Volumes:   nil,
+				Resources:          corev1.ResourceRequirements{},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
+				Volumes:            nil,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,

@@ -33,6 +33,8 @@ func TestValidateCreate(t *testing.T) {
 	var dataPort int32 = 8005
 	var parallelism int32 = 2
 	var restartPolicy = corev1.RestartPolicyOnFailure
+	var memoryOffHeapRatio = int32(25)
+	var memoryOffHeapMin = int32(600)
 	var cluster = FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycluster",
@@ -52,6 +54,8 @@ func TestValidateCreate(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 3,
@@ -60,6 +64,8 @@ func TestValidateCreate(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			Job: &JobSpec{
 				JarFile:       "gs://my-bucket/myjob.jar",
@@ -202,6 +208,8 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 	var queryPort int32 = 8003
 	var uiPort int32 = 8004
 	var dataPort int32 = 8005
+	var memoryOffHeapRatio = int32(25)
+	var memoryOffHeapMin = int32(600)
 
 	var cluster = FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -222,6 +230,8 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -230,6 +240,8 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 		},
 	}
@@ -256,6 +268,8 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 1,
@@ -264,11 +278,50 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: nil,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 		},
 	}
 	err = validator.ValidateCreate(&cluster)
 	expectedErr = "taskmanager query port is unspecified"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	cluster = FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScope.VPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 1,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+			},
+		},
+	}
+	err = validator.ValidateCreate(&cluster)
+	expectedErr = "invalid taskmanager memory configuration, MemoryOffHeapMin is not specified"
 	assert.Equal(t, err.Error(), expectedErr)
 }
 
@@ -283,6 +336,8 @@ func TestInvalidJobSpec(t *testing.T) {
 	var invalidRestartPolicy = corev1.RestartPolicy("XXX")
 	var validator = &Validator{}
 	var parallelism int32 = 2
+	var memoryOffHeapRatio = int32(25)
+	var memoryOffHeapMin = int32(600)
 
 	var cluster = FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -303,6 +358,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 3,
@@ -311,6 +368,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			Job: &JobSpec{
 				JarFile:       "",
@@ -341,6 +400,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 3,
@@ -349,6 +410,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			Job: &JobSpec{
 				JarFile:       "gs://my-bucket/myjob.jar",
@@ -379,6 +442,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 3,
@@ -387,6 +452,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			Job: &JobSpec{
 				JarFile:       "gs://my-bucket/myjob.jar",
@@ -418,6 +485,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Query: &queryPort,
 					UI:    &uiPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 3,
@@ -426,6 +495,8 @@ func TestInvalidJobSpec(t *testing.T) {
 					Data:  &dataPort,
 					Query: &queryPort,
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   &memoryOffHeapMin,
 			},
 			Job: &JobSpec{
 				JarFile:       "gs://my-bucket/myjob.jar",
