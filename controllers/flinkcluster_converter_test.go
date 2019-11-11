@@ -49,7 +49,28 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var restartPolicy = corev1.RestartPolicy("OnFailure")
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
-
+	var jmProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(jmRPCPort)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
+	var tmProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(tmRPCPort)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
 	// Setup.
 	var cluster = &v1alpha1.FlinkCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -185,6 +206,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "query", ContainerPort: jmQueryPort},
 								{Name: "ui", ContainerPort: jmUIPort},
 							},
+							LivenessProbe:  &jmProbe,
+							ReadinessProbe: &jmProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "JOB_MANAGER_CPU_LIMIT",
@@ -392,6 +415,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "rpc", ContainerPort: 6122},
 								{Name: "query", ContainerPort: 6125},
 							},
+							LivenessProbe:  &tmProbe,
+							ReadinessProbe: &tmProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "TASK_MANAGER_CPU_LIMIT",
@@ -526,6 +551,7 @@ jobmanager.rpc.port: 6123
 query.server.port: 6125
 rest.port: 8081
 taskmanager.numberOfTaskSlots: 1
+taskmanager.rpc.port: 6122
 `
 	var expectedConfigMap = corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
