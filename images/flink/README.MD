@@ -54,10 +54,9 @@ To resolve this issue, several options are available:
     	      --scopes=storage-full --service-account=[YOUR_SERVICE_ACCOUNT]
         ```
 
-**If you want to grant access per application:**
+**If you want to grant access per application**
 
 The steps to mount the service account key file in Kubernetes Secret to Flink cluster and also the [core-site.xml](https://hadoop.apache.org/docs/r1.2.1/api/org/apache/hadoop/conf/Configuration.html) in ConfigMap in order to grant write access to GCS are:
-Create the Kubernetes Secret with your service account key file.
 
   * Grant the applications running on GKE access to Google Cloud Platform service, e.g. Google Cloud Storage, by [creating service account key file](https://cloud.google.com/iam/docs/creating-managing-service-account-keys) and importing as a Kubernetes Secrete resource.
   * Create Kubernetes Secret object with your service account key file stored in it, which can be later accessed by a running pod.
