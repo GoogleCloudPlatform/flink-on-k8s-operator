@@ -1,0 +1,23 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: kafka-click-generator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kafka-click-generator
+    spec:
+      containers:
+        - name: kafka-click-generator
+          image: functicons/flink-ops-playground:2-FLINK-1.9-scala_2.11
+          command: ["java"]
+          args:
+            - "-classpath"
+            - "/opt/ClickCountJob.jar:/opt/flink/lib/*"
+            - "org.apache.flink.playgrounds.ops.clickcount.ClickEventGenerator"
+            - "--bootstrap.servers"
+            - "my-kafka.kafka.svc.cluster.local:9092"
+            - "--topic"
+            - "input"
