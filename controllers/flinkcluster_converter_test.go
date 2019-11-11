@@ -88,12 +88,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						"CPU":    resource.MustParse("100m"),
-						"Memory": resource.MustParse("256Mi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
 					},
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						"CPU":    resource.MustParse("200m"),
-						"Memory": resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
@@ -106,12 +106,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						"CPU":    resource.MustParse("200m"),
-						"Memory": resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						"CPU":    resource.MustParse("500m"),
-						"Memory": resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
 					},
 				},
 				Sidecars: []corev1.Container{{Name: "sidecar", Image: "alpine"}},
@@ -213,12 +213,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: map[corev1.ResourceName]resource.Quantity{
-									"CPU":    resource.MustParse("100m"),
-									"Memory": resource.MustParse("256Mi"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
 								},
 								Limits: map[corev1.ResourceName]resource.Quantity{
-									"CPU":    resource.MustParse("200m"),
-									"Memory": resource.MustParse("512Mi"),
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("512Mi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{{
@@ -420,12 +420,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: map[corev1.ResourceName]resource.Quantity{
-									"CPU":    resource.MustParse("200m"),
-									"Memory": resource.MustParse("512Mi"),
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("512Mi"),
 								},
 								Limits: map[corev1.ResourceName]resource.Quantity{
-									"CPU":    resource.MustParse("500m"),
-									"Memory": resource.MustParse("1Gi"),
+									corev1.ResourceCPU:    resource.MustParse("500m"),
+									corev1.ResourceMemory: resource.MustParse("1Gi"),
 								},
 							},
 							VolumeMounts: []v1.VolumeMount{
