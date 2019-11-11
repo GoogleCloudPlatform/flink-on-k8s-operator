@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"math"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -151,6 +153,20 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 	err = v.validatePort(jmSpec.Ports.UI, "ui", "jobmanager")
 	if err != nil {
 		return err
+	}
+
+	// MemoryOffHeapRatio
+	if jmSpec.MemoryOffHeapRatio == nil || *jmSpec.MemoryOffHeapRatio > 100 || *jmSpec.MemoryOffHeapRatio < 0 {
+		return fmt.Errorf("invalid JobManager memoryOffHeapRatio, it must be between 0 and 100")
+	}
+
+	// MemoryOffHeapMin
+	divisor := resource.MustParse("1Mi")
+	jmMemLimit := math.Floor(float64(jmSpec.Resources.Limits.Memory().Value()) / float64(divisor.Value()))
+	if jmSpec.MemoryOffHeapMin != nil {
+		return fmt.Errorf("invalid JobManager memory configuration, MemoryOffHeapMin is not specified")
+	} else if *jmSpec.MemoryOffHeapMin > int32(jmMemLimit) {
+		return fmt.Errorf("invalid JobManager memory configuration, memory limit must be larger than MemoryOffHeapMin")
 	}
 
 	return nil

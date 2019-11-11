@@ -149,6 +149,14 @@ type JobManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
+
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
+
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	MemoryOffHeapMin *int32 `json:"memoryOffHeapMin,omitempty"`
+
 	// Volumes in the JobManager pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
@@ -186,6 +194,14 @@ type TaskManagerSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
+
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
+
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill.
+	MemoryOffHeapMin *int32 `json:"memoryOffHeapMin,omitempty"`
 
 	// Volumes in the TaskManager pods.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`

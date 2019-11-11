@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -41,7 +42,7 @@ import (
 var delayDeleteClusterMinutes int32 = 5
 var flinkConfigMapPath = "/opt/flink/conf"
 var flinkConfigMapVolume = "flink-config-volume"
-var flinkSystemProps = map[string]struct{}{
+var flinkSysProps = map[string]struct{}{
 	"jobmanager.rpc.address": {},
 	"jobmanager.rpc.port":    {},
 	"blob.server.port":       {},
@@ -421,6 +422,8 @@ func getDesiredConfigMap(
 		"cluster": clusterName,
 		"app":     "flink",
 	}
+	var flinkHeapSize = calFlinkHeapSize(flinkCluster)
+	// Properties which should be provided from real deployed environment.
 	var flinkProps = map[string]string{
 		"jobmanager.rpc.address": getJobManagerServiceName(clusterName),
 		"jobmanager.rpc.port":    strconv.FormatInt(int64(*jmPorts.RPC), 10),
@@ -428,10 +431,16 @@ func getDesiredConfigMap(
 		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
 		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
 	}
-	// Merge Flink properties.
+	if flinkHeapSize["jobmanager.heap.size"] != "" {
+		flinkProps["jobmanager.heap.size"] = flinkHeapSize["jobmanager.heap.size"]
+	}
+	if flinkHeapSize["taskmanager.heap.size"] != "" {
+		flinkProps["taskmanager.heap.size"] = flinkHeapSize["taskmanager.heap.size"]
+	}
+	// Add custom Flink properties.
 	for k, v := range flinkProperties {
-		// Do not allow to override properties in flinkSystemProps
-		if _, ok := flinkSystemProps[k]; ok {
+		// Do not allow to override properties from real deployment.
+		if _, ok := flinkSysProps[k]; ok {
 			continue
 		}
 		flinkProps[k] = v
@@ -622,6 +631,46 @@ func shouldCleanup(
 	}
 
 	return false
+}
+
+func calFlinkHeapSize(cluster *v1alpha1.FlinkCluster) map[string]string {
+	if cluster.Spec.JobManager.MemoryOffHeapRatio == nil || cluster.Spec.TaskManager.MemoryOffHeapMin == nil {
+		return nil
+	}
+	var jmHeapSize, tmHeapSize string
+	var jmOffHeapRatio = *cluster.Spec.JobManager.MemoryOffHeapRatio
+	var jmOffHeapMin = *cluster.Spec.JobManager.MemoryOffHeapMin
+	var tmOffHeapRatio = *cluster.Spec.TaskManager.MemoryOffHeapRatio
+	var tmOffHeapMin = *cluster.Spec.TaskManager.MemoryOffHeapMin
+	var divisor = resource.MustParse("1Mi")
+	var jmMemLimit = convertResourceMemoryToInt64(cluster.Spec.JobManager.Resources.Limits.Memory(), divisor)
+	var tmMemLimit = convertResourceMemoryToInt64(cluster.Spec.TaskManager.Resources.Limits.Memory(), divisor)
+	if jmMemLimit > 0 {
+		heapSize := calHeapSize(jmMemLimit, int64(jmOffHeapMin), int64(jmOffHeapRatio))
+		jmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+	}
+	if tmMemLimit > 0 {
+		heapSize := calHeapSize(tmMemLimit, int64(tmOffHeapMin), int64(tmOffHeapRatio))
+		tmHeapSize = strconv.FormatInt(heapSize, 10) + "m"
+	}
+
+	return map[string]string{
+		"jobmanager.heap.size":  jmHeapSize,
+		"taskmanager.heap.size": tmHeapSize,
+	}
+}
+
+// Converts memory value to the format of divisor and returns ceiling of the value.
+func convertResourceMemoryToInt64(memory *resource.Quantity, divisor resource.Quantity) int64 {
+	return int64(math.Ceil(float64(memory.Value()) / float64(divisor.Value())))
+}
+
+func calHeapSize(memSize int64, offHeapMin int64, offHeapRatio int64) int64 {
+	heapSizeCalculated := int64(math.Ceil(float64(memSize*offHeapRatio) / 100))
+	if heapSizeCalculated < offHeapMin {
+		heapSizeCalculated = offHeapMin
+	}
+	return heapSizeCalculated
 }
 
 func getFlinkConfRsc(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {

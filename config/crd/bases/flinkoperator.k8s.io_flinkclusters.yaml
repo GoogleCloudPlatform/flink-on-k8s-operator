@@ -1838,6 +1838,16 @@ spec:
                       description: TLS use.
                       type: boolean
                   type: object
+                memoryOffHeapMin:
+                  description: Minimum amount of off-heap memory in containers, as
+                    a safety margin to avoid OOM kill.
+                  format: int32
+                  type: integer
+                memoryOffHeapRatio:
+                  description: Percentage of off-heap memory in containers, as a safety
+                    margin to avoid OOM kill.
+                  format: int32
+                  type: integer
                 mounts:
                   description: Volume mounts in the JobManager container.
                   items:
@@ -3132,6 +3142,16 @@ spec:
             taskManager:
               description: Flink TaskManager spec.
               properties:
+                memoryOffHeapMin:
+                  description: Minimum amount of off-heap memory in containers, as
+                    a safety margin to avoid OOM kill.
+                  format: int32
+                  type: integer
+                memoryOffHeapRatio:
+                  description: Percentage of off-heap memory in containers, as a safety
+                    margin to avoid OOM kill.
+                  format: int32
+                  type: integer
                 mounts:
                   description: Volume mounts in the TaskManager containers.
                   items:

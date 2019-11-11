@@ -64,6 +64,14 @@ func _SetJobManagerDefault(jmSpec *JobManagerSpec) {
 		jmSpec.Ports.UI = new(int32)
 		*jmSpec.Ports.UI = 8081
 	}
+	if jmSpec.MemoryOffHeapMin == nil {
+		jmSpec.MemoryOffHeapMin = new(int32)
+		*jmSpec.MemoryOffHeapMin = 600
+	}
+	if jmSpec.MemoryOffHeapRatio == nil {
+		jmSpec.MemoryOffHeapRatio = new(int32)
+		*jmSpec.MemoryOffHeapRatio = 25
+	}
 }
 
 func _SetTaskManagerDefault(tmSpec *TaskManagerSpec) {
@@ -78,6 +86,14 @@ func _SetTaskManagerDefault(tmSpec *TaskManagerSpec) {
 	if tmSpec.Ports.Query == nil {
 		tmSpec.Ports.Query = new(int32)
 		*tmSpec.Ports.Query = 6125
+	}
+	if tmSpec.MemoryOffHeapMin == nil {
+		tmSpec.MemoryOffHeapMin = new(int32)
+		*tmSpec.MemoryOffHeapMin = 600
+	}
+	if tmSpec.MemoryOffHeapRatio == nil {
+		tmSpec.MemoryOffHeapRatio = new(int32)
+		*tmSpec.MemoryOffHeapRatio = 25
 	}
 }
 
