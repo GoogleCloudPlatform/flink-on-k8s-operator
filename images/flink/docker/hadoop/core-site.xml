@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>fs.AbstractFileSystem.gs.impl</name>
+    <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS</value>
+    <description>The AbstractFileSystem for gs: uris.</description>
+  </property>
+  <property>
+    <name>fs.gs.project.id</name>
+    <value></value>
+    <description>
+    Optional. Google Cloud Project ID with access to GCS buckets.
+    Required only for list buckets and create bucket operations.
+    </description>
+  </property>
+  <property>
+    <name>google.cloud.auth.service.account.enable</name>
+    <value>true</value>
+    <description>
+    Whether to use a service account for GCS authorization.
+    </description>
+  </property>
+</configuration>

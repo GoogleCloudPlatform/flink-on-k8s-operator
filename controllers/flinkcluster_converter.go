@@ -131,6 +131,17 @@ func getDesiredJobManagerDeployment(
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var probe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*jobManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -154,9 +165,11 @@ func getDesiredJobManagerDeployment(
 							Args:            []string{"jobmanager"},
 							Ports: []corev1.ContainerPort{
 								rpcPort, blobPort, queryPort, uiPort},
-							Resources:    jobManagerSpec.Resources,
-							Env:          envVars,
-							VolumeMounts: volumeMounts,
+							LivenessProbe:  &probe,
+							ReadinessProbe: &probe,
+							Resources:      jobManagerSpec.Resources,
+							Env:            envVars,
+							VolumeMounts:   volumeMounts,
 						},
 					},
 					Volumes:          volumes,
@@ -364,6 +377,17 @@ func getDesiredTaskManagerDeployment(
 		},
 	}
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var probe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*taskManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 30,
+		PeriodSeconds:       60,
+		FailureThreshold:    5,
+	}
 	var containers = []corev1.Container{corev1.Container{
 		Name:            "taskmanager",
 		Image:           imageSpec.Name,
@@ -371,9 +395,11 @@ func getDesiredTaskManagerDeployment(
 		Args:            []string{"taskmanager"},
 		Ports: []corev1.ContainerPort{
 			dataPort, rpcPort, queryPort},
-		Resources:    taskManagerSpec.Resources,
-		Env:          envVars,
-		VolumeMounts: volumeMounts,
+		LivenessProbe:  &probe,
+		ReadinessProbe: &probe,
+		Resources:      taskManagerSpec.Resources,
+		Env:            envVars,
+		VolumeMounts:   volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var taskManagerDeployment = &appsv1.Deployment{
@@ -416,6 +442,7 @@ func getDesiredConfigMap(
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var flinkProperties = flinkCluster.Spec.FlinkProperties
 	var jmPorts = flinkCluster.Spec.JobManager.Ports
+	var tmPorts = flinkCluster.Spec.TaskManager.Ports
 	var configMapName = getConfigMapName(clusterName)
 	var labels = map[string]string{
 		"cluster": clusterName,
@@ -427,6 +454,7 @@ func getDesiredConfigMap(
 		"blob.server.port":       strconv.FormatInt(int64(*jmPorts.Blob), 10),
 		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
 		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
+		"taskmanager.rpc.port":   strconv.FormatInt(int64(*tmPorts.RPC), 10),
 	}
 	// Merge Flink properties.
 	for k, v := range flinkProperties {

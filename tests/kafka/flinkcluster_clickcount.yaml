@@ -1,0 +1,31 @@
+apiVersion: flinkoperator.k8s.io/v1alpha1
+kind: FlinkCluster
+metadata:
+  name: flinkcluster-clickcount
+spec:
+  image:
+    name: functicons/flink-ops-playground:2-FLINK-1.9-scala_2.11
+  jobManager:
+    ports:
+      ui: 8081
+    resources:
+      limits:
+        memory: "2Gi"
+        cpu: "200m"
+  taskManager:
+    replicas: 2
+    resources:
+      limits:
+        memory: "2Gi"
+        cpu: "200m"
+  job:
+    jarFile: /opt/ClickCountJob.jar
+    className: org.apache.flink.playgrounds.ops.clickcount.ClickEventCount
+    args:
+      [
+        "--bootstrap.servers",
+        "my-kafka.kafka.svc.cluster.local:9092",
+        "--checkpointing",
+        "--event-time",
+      ]
+    parallelism: 2
