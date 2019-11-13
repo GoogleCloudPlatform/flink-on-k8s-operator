@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Sets default values for unspecified FlinkCluster properties.
@@ -64,6 +65,13 @@ func _SetJobManagerDefault(jmSpec *JobManagerSpec) {
 		jmSpec.Ports.UI = new(int32)
 		*jmSpec.Ports.UI = 8081
 	}
+	if jmSpec.MemoryOffHeapMin.Format == "" {
+		jmSpec.MemoryOffHeapMin = *resource.NewScaledQuantity(600, 6) // 600MB
+	}
+	if jmSpec.MemoryOffHeapRatio == nil {
+		jmSpec.MemoryOffHeapRatio = new(int32)
+		*jmSpec.MemoryOffHeapRatio = 25
+	}
 }
 
 func _SetTaskManagerDefault(tmSpec *TaskManagerSpec) {
@@ -78,6 +86,13 @@ func _SetTaskManagerDefault(tmSpec *TaskManagerSpec) {
 	if tmSpec.Ports.Query == nil {
 		tmSpec.Ports.Query = new(int32)
 		*tmSpec.Ports.Query = 6125
+	}
+	if tmSpec.MemoryOffHeapMin.Format == "" {
+		tmSpec.MemoryOffHeapMin = *resource.NewScaledQuantity(600, 6) // 600MB
+	}
+	if tmSpec.MemoryOffHeapRatio == nil {
+		tmSpec.MemoryOffHeapRatio = new(int32)
+		*tmSpec.MemoryOffHeapRatio = 25
 	}
 }
 

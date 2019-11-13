@@ -49,6 +49,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var restartPolicy = corev1.RestartPolicy("OnFailure")
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
+	var memoryOffHeapRatio int32 = 25
+	var memoryOffHeapMin = resource.MustParse("600M")
 	var jmProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -117,6 +119,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			TaskManager: v1alpha1.TaskManagerSpec{
 				Replicas: 42,
@@ -135,7 +139,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("1Gi"),
 					},
 				},
-				Sidecars: []corev1.Container{{Name: "sidecar", Image: "alpine"}},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+				Sidecars:           []corev1.Container{{Name: "sidecar", Image: "alpine"}},
 				Volumes: []corev1.Volume{
 					{
 						Name: "cache-volume",
@@ -550,6 +556,7 @@ jobmanager.rpc.address: flinkjobcluster-sample-jobmanager
 jobmanager.rpc.port: 6123
 query.server.port: 6125
 rest.port: 8081
+taskmanager.heap.size: 474m
 taskmanager.numberOfTaskSlots: 1
 taskmanager.rpc.port: 6122
 `
@@ -581,4 +588,74 @@ taskmanager.rpc.port: 6122
 		t,
 		*desiredState.ConfigMap,
 		expectedConfigMap)
+}
+
+func TestCalFlinkHeapSize(t *testing.T) {
+	var memoryOffHeapRatio int32 = 25
+	var memoryOffHeapMin = resource.MustParse("600M")
+
+	// Case 1: Heap sizes are computed from memoryOffHeapMin or memoryOffHeapRatio
+	cluster := &v1alpha1.FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: v1alpha1.FlinkClusterSpec{
+			JobManager: v1alpha1.JobManagerSpec{
+				Resources: corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: v1alpha1.TaskManagerSpec{
+				Resources: corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("4Gi"),
+					},
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+		},
+	}
+
+	flinkHeapSize := calFlinkHeapSize(cluster)
+	expectedFlinkHeapSize := map[string]string{
+		"jobmanager.heap.size":  "474m",  // get values calculated with limit - memoryOffHeapMin
+		"taskmanager.heap.size": "3222m", // get values calculated with limit - limit * memoryOffHeapRatio / 100
+	}
+	assert.Assert(t, len(flinkHeapSize) == 2)
+	assert.DeepEqual(
+		t,
+		flinkHeapSize,
+		expectedFlinkHeapSize)
+
+	// Case 2: No values when memory limits are missing or insufficient
+	cluster = &v1alpha1.FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: v1alpha1.FlinkClusterSpec{
+			JobManager: v1alpha1.JobManagerSpec{
+				Resources: corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
+					},
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: v1alpha1.TaskManagerSpec{
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+		},
+	}
+
+	flinkHeapSize = calFlinkHeapSize(cluster)
+	assert.Assert(t, len(flinkHeapSize) == 0)
 }

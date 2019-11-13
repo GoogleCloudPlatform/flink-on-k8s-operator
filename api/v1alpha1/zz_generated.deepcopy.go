@@ -323,6 +323,12 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 	}
 	in.Ports.DeepCopyInto(&out.Ports)
 	in.Resources.DeepCopyInto(&out.Resources)
+	if in.MemoryOffHeapRatio != nil {
+		in, out := &in.MemoryOffHeapRatio, &out.MemoryOffHeapRatio
+		*out = new(int32)
+		**out = **in
+	}
+	out.MemoryOffHeapMin = in.MemoryOffHeapMin.DeepCopy()
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))
@@ -490,6 +496,12 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
 	in.Resources.DeepCopyInto(&out.Resources)
+	if in.MemoryOffHeapRatio != nil {
+		in, out := &in.MemoryOffHeapRatio, &out.MemoryOffHeapRatio
+		*out = new(int32)
+		**out = **in
+	}
+	out.MemoryOffHeapMin = in.MemoryOffHeapMin.DeepCopy()
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))

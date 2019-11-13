@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -153,6 +154,18 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 		return err
 	}
 
+	// MemoryOffHeapRatio
+	err = v.validateMemoryOffHeapRatio(jmSpec.MemoryOffHeapRatio, "jobmanager")
+	if err != nil {
+		return err
+	}
+
+	// MemoryOffHeapMin
+	err = v.validateMemoryOffHeapMin(&jmSpec.MemoryOffHeapMin, jmSpec.Resources.Limits.Memory(), "jobmanager")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -173,6 +186,18 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 		return err
 	}
 	err = v.validatePort(tmSpec.Ports.Query, "query", "taskmanager")
+	if err != nil {
+		return err
+	}
+
+	// MemoryOffHeapRatio
+	err = v.validateMemoryOffHeapRatio(tmSpec.MemoryOffHeapRatio, "taskmanager")
+	if err != nil {
+		return err
+	}
+
+	// MemoryOffHeapMin
+	err = v.validateMemoryOffHeapMin(&tmSpec.MemoryOffHeapMin, tmSpec.Resources.Limits.Memory(), "taskmanager")
 	if err != nil {
 		return err
 	}
@@ -250,6 +275,27 @@ func (v *Validator) validateCleanupAction(
 		return fmt.Errorf(
 			"invalid %v: %v",
 			property, value)
+	}
+	return nil
+}
+
+func (v *Validator) validateMemoryOffHeapRatio(
+	offHeapRatio *int32, component string) error {
+	if offHeapRatio == nil || *offHeapRatio > 100 || *offHeapRatio < 0 {
+		return fmt.Errorf("invalid %v memoryOffHeapRatio, it must be between 0 and 100", component)
+	}
+	return nil
+}
+
+func (v *Validator) validateMemoryOffHeapMin(
+	offHeapMin *resource.Quantity, memoryLimit *resource.Quantity, component string) error {
+	if offHeapMin == nil {
+		return fmt.Errorf("invalid %v memory configuration, MemoryOffHeapMin is not specified", component)
+	} else if memoryLimit.Value() > 0 {
+		if offHeapMin.Value() > memoryLimit.Value() {
+			return fmt.Errorf("invalid %v memory configuration, memory limit must be larger than MemoryOffHeapMin, "+
+				"memory limit: %d bytes, memoryOffHeapMin: %d bytes", component, memoryLimit.Value(), offHeapMin.Value())
+		}
 	}
 	return nil
 }

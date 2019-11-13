@@ -28,6 +28,8 @@ FlinkCluster
             |__ UseTLS
             |__ TLSSecretName
         |__ Resources
+        |__ MemoryOffHeapRatio
+        |__ MemoryOffHeapMin
         |__ Volumes
         |__ Mounts
     |__ TaskManagerSpec
@@ -37,6 +39,8 @@ FlinkCluster
             |__ RPD
             |__ Query
         |__ Resources
+        |__ MemoryOffHeapRatio
+        |__ MemoryOffHeapMin
         |__ Volumes
         |__ Mounts
     |__ JobSpec
@@ -100,6 +104,13 @@ FlinkCluster
       * **Resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
         More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+      * **MemoryOffHeapRatio** (optional): Percentage of off-heap memory in containers,
+        as a safety margin, default: 25
+      * **MemoryOffHeapMin** (optional): Minimum amount of off-heap memory in containers,
+        as a safety margin, default: 600M.
+        You can express this value like 600M, 572Mi and 600e6.
+        More info about value expression:
+        https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
       * **Volumes** (optional): Volumes in the JobManager pod.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the JobManager container.
@@ -113,6 +124,13 @@ FlinkCluster
       * **Resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
         More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+      * **MemoryOffHeapRatio** (optional): Percentage of off-heap memory in containers,
+        as a safety margin, default: 25
+      * **MemoryOffHeapMin** (optional): Minimum amount of off-heap memory in containers,
+        as a safety margin, default: 600M.
+        You can express this value like 600M, 572Mi and 600e6.
+        More info about value expression:
+        https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
       * **Volumes** (optional): Volumes in the TaskManager pod.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **Mounts** (optional): Volume mounts in the TaskManager containers.

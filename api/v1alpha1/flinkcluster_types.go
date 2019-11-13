@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -149,6 +150,16 @@ type JobManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
+
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 25
+	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
+
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 600M
+	// You can express this value like 600M, 572Mi and 600e6
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
+	MemoryOffHeapMin resource.Quantity `json:"memoryOffHeapMin,omitempty"`
+
 	// Volumes in the JobManager pod.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
@@ -186,6 +197,16 @@ type TaskManagerSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// TODO: Memory calculation would be change. Let's watch the issue FLINK-13980.
+
+	// Percentage of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 25
+	MemoryOffHeapRatio *int32 `json:"memoryOffHeapRatio,omitempty"`
+
+	// Minimum amount of off-heap memory in containers, as a safety margin to avoid OOM kill, default: 600M
+	// You can express this value like 600M, 572Mi and 600e6
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
+	MemoryOffHeapMin resource.Quantity `json:"memoryOffHeapMin,omitempty"`
 
 	// Volumes in the TaskManager pods.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
