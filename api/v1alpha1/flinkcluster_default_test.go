@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 
 	"gotest.tools/assert"
@@ -50,7 +52,7 @@ func TestSetDefault(t *testing.T) {
 	var defaultJobRestartPolicy = corev1.RestartPolicy("OnFailure")
 	var defatulJobManagerIngressTLSUse = false
 	var defaultMemoryOffHeapRatio = int32(25)
-	var defaultMemoryOffHeapMin = int32(600)
+	var defaultMemoryOffHeapMin = resource.MustParse("600M")
 	var expectedCluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -74,7 +76,7 @@ func TestSetDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
-				MemoryOffHeapMin:   &defaultMemoryOffHeapMin,
+				MemoryOffHeapMin:   defaultMemoryOffHeapMin,
 				Volumes:            nil,
 				Mounts:             nil,
 			},
@@ -87,7 +89,7 @@ func TestSetDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
-				MemoryOffHeapMin:   &defaultMemoryOffHeapMin,
+				MemoryOffHeapMin:   defaultMemoryOffHeapMin,
 				Volumes:            nil,
 			},
 			Job: &JobSpec{
@@ -107,7 +109,11 @@ func TestSetDefault(t *testing.T) {
 		Status: FlinkClusterStatus{},
 	}
 
-	assert.DeepEqual(t, cluster, expectedCluster)
+	assert.DeepEqual(
+		t,
+		cluster,
+		expectedCluster,
+		cmpopts.IgnoreUnexported(resource.Quantity{}))
 }
 
 // Tests non-default values are not overwritten unexpectedly.
@@ -126,7 +132,7 @@ func TestSetNonDefault(t *testing.T) {
 	var jobRestartPolicy = corev1.RestartPolicy("Never")
 	var jobManagerIngressTLSUse = true
 	var memoryOffHeapRatio = int32(50)
-	var memoryOffHeapMin = int32(1000)
+	var memoryOffHeapMin = resource.MustParse("600M")
 	var cluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -150,7 +156,7 @@ func TestSetNonDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 				Mounts:             nil,
 			},
@@ -163,7 +169,7 @@ func TestSetNonDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 			},
 			Job: &JobSpec{
@@ -208,7 +214,7 @@ func TestSetNonDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 				Mounts:             nil,
 			},
@@ -221,7 +227,7 @@ func TestSetNonDefault(t *testing.T) {
 				},
 				Resources:          corev1.ResourceRequirements{},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 			},
 			Job: &JobSpec{
@@ -241,5 +247,9 @@ func TestSetNonDefault(t *testing.T) {
 		Status: FlinkClusterStatus{},
 	}
 
-	assert.DeepEqual(t, cluster, expectedCluster)
+	assert.DeepEqual(
+		t,
+		cluster,
+		expectedCluster,
+		cmpopts.IgnoreUnexported(resource.Quantity{}))
 }

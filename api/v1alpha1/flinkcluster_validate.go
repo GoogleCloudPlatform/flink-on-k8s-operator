@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"math"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -162,7 +161,7 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 	}
 
 	// MemoryOffHeapMin
-	err = v.validateMemoryOffHeapMin(jmSpec.MemoryOffHeapMin, jmSpec.Resources.Limits.Memory(), "jobmanager")
+	err = v.validateMemoryOffHeapMin(&jmSpec.MemoryOffHeapMin, jmSpec.Resources.Limits.Memory(), "jobmanager")
 	if err != nil {
 		return err
 	}
@@ -198,7 +197,7 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 	}
 
 	// MemoryOffHeapMin
-	err = v.validateMemoryOffHeapMin(tmSpec.MemoryOffHeapMin, tmSpec.Resources.Limits.Memory(), "taskmanager")
+	err = v.validateMemoryOffHeapMin(&tmSpec.MemoryOffHeapMin, tmSpec.Resources.Limits.Memory(), "taskmanager")
 	if err != nil {
 		return err
 	}
@@ -289,13 +288,14 @@ func (v *Validator) validateMemoryOffHeapRatio(
 }
 
 func (v *Validator) validateMemoryOffHeapMin(
-	offHeapMin *int32, memoryLimit *resource.Quantity, component string) error {
-	divisor := resource.MustParse("1Mi")
-	memLimit := math.Floor(float64(memoryLimit.Value()) / float64(divisor.Value()))
+	offHeapMin *resource.Quantity, memoryLimit *resource.Quantity, component string) error {
 	if offHeapMin == nil {
 		return fmt.Errorf("invalid %v memory configuration, MemoryOffHeapMin is not specified", component)
-	} else if memLimit > 0 && *offHeapMin > int32(memLimit) {
-		return fmt.Errorf("invalid %v memory configuration, memory limit must be larger than MemoryOffHeapMin", component)
+	} else if memoryLimit.Value() > 0 {
+		if offHeapMin.Value() > memoryLimit.Value() {
+			return fmt.Errorf("invalid %v memory configuration, memory limit must be larger than MemoryOffHeapMin, "+
+				"memory limit: %d bytes, memoryOffHeapMin: %d bytes", component, memoryLimit.Value(), offHeapMin.Value())
+		}
 	}
 	return nil
 }

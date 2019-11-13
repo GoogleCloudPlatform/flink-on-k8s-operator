@@ -1840,9 +1840,9 @@ spec:
                   type: object
                 memoryOffHeapMin:
                   description: 'Minimum amount of off-heap memory in containers, as
-                    a safety margin to avoid OOM kill, default: 600'
-                  format: int32
-                  type: integer
+                    a safety margin to avoid OOM kill, default: 600M You can express
+                    this value like 600M, 572Mi and 600e6 More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory'
+                  type: string
                 memoryOffHeapRatio:
                   description: 'Percentage of off-heap memory in containers, as a
                     safety margin to avoid OOM kill, default: 25'
@@ -3144,9 +3144,9 @@ spec:
               properties:
                 memoryOffHeapMin:
                   description: 'Minimum amount of off-heap memory in containers, as
-                    a safety margin to avoid OOM kill, default: 600'
-                  format: int32
-                  type: integer
+                    a safety margin to avoid OOM kill, default: 600M You can express
+                    this value like 600M, 572Mi and 600e6 More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory'
+                  type: string
                 memoryOffHeapRatio:
                   description: 'Percentage of off-heap memory in containers, as a
                     safety margin to avoid OOM kill, default: 25'

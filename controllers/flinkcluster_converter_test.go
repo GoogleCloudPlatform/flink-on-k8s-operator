@@ -50,7 +50,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
 	var memoryOffHeapRatio int32 = 25
-	var memoryOffHeapMin int32 = 600
+	var memoryOffHeapMin = resource.MustParse("600M")
 
 	// Setup.
 	var cluster = &v1alpha1.FlinkCluster{
@@ -99,7 +99,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			TaskManager: v1alpha1.TaskManagerSpec{
 				Replicas: 42,
@@ -119,7 +119,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 				Sidecars:           []corev1.Container{{Name: "sidecar", Image: "alpine"}},
 				Volumes: []corev1.Volume{
 					{
@@ -531,7 +531,7 @@ jobmanager.rpc.address: flinkjobcluster-sample-jobmanager
 jobmanager.rpc.port: 6123
 query.server.port: 6125
 rest.port: 8081
-taskmanager.heap.size: 424m
+taskmanager.heap.size: 474m
 taskmanager.numberOfTaskSlots: 1
 `
 	var expectedConfigMap = corev1.ConfigMap{
@@ -565,8 +565,8 @@ taskmanager.numberOfTaskSlots: 1
 }
 
 func TestCalFlinkHeapSize(t *testing.T) {
-	var memoryOffHeapRatio = int32(25)
-	var memoryOffHeapMin = int32(600)
+	var memoryOffHeapRatio int32 = 25
+	var memoryOffHeapMin = resource.MustParse("600M")
 
 	// Case 1: Heap sizes are computed from memoryOffHeapMin or memoryOffHeapRatio
 	cluster := &v1alpha1.FlinkCluster{
@@ -582,7 +582,7 @@ func TestCalFlinkHeapSize(t *testing.T) {
 					},
 				},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			TaskManager: v1alpha1.TaskManagerSpec{
 				Resources: corev1.ResourceRequirements{
@@ -591,15 +591,15 @@ func TestCalFlinkHeapSize(t *testing.T) {
 					},
 				},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 		},
 	}
 
 	flinkHeapSize := calFlinkHeapSize(cluster)
 	expectedFlinkHeapSize := map[string]string{
-		"jobmanager.heap.size":  "424m",  // get values calculated with limit - memoryOffHeapMin
-		"taskmanager.heap.size": "3072m", // get values calculated with limit - limit * memoryOffHeapRatio / 100
+		"jobmanager.heap.size":  "474m",  // get values calculated with limit - memoryOffHeapMin
+		"taskmanager.heap.size": "3222m", // get values calculated with limit - limit * memoryOffHeapRatio / 100
 	}
 	assert.Assert(t, len(flinkHeapSize) == 2)
 	assert.DeepEqual(
@@ -621,11 +621,11 @@ func TestCalFlinkHeapSize(t *testing.T) {
 					},
 				},
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			TaskManager: v1alpha1.TaskManagerSpec{
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   &memoryOffHeapMin,
+				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 		},
 	}
