@@ -43,15 +43,16 @@ type ClusterStateObserver struct {
 
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
-	cluster      *v1alpha1.FlinkCluster
-	configMap    *corev1.ConfigMap
-	jmDeployment *appsv1.Deployment
-	jmService    *corev1.Service
-	jmIngress    *extensionsv1beta1.Ingress
-	tmDeployment *appsv1.Deployment
-	job          *batchv1.Job
-	flinkJobList *flinkclient.JobStatusList
-	flinkJobID   *string
+	cluster            *v1alpha1.FlinkCluster
+	configMap          *corev1.ConfigMap
+	jmDeployment       *appsv1.Deployment
+	jmService          *corev1.Service
+	jmIngress          *extensionsv1beta1.Ingress
+	tmDeployment       *appsv1.Deployment
+	job                *batchv1.Job
+	flinkJobList       *flinkclient.JobStatusList
+	flinkRunningJobIDs []string
+	flinkJobID         *string
 }
 
 // Observes the state of the cluster and its components.
@@ -230,18 +231,45 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 	}
 	observed.flinkJobList = jobList
 
-	// Extract Flink job ID.
-	if jobList != nil {
-		var jobs = jobList.Jobs
-		var jobCount = len(jobs)
-		log.Info("Observed Flink job status list", "jobs", jobs)
-		if jobCount > 1 {
-			log.Error(
-				errors.New("more than one Flink job were found"), "", "jobs", jobs)
-		} else if jobCount == 1 {
-			observed.flinkJobID = &jobs[0].ID
-			log.Info("Observed Flink job ID", "ID", observed.flinkJobID)
+	if jobList == nil {
+		return
+	}
+
+	log.Info("Observed Flink job status list", "jobs", jobList.Jobs)
+
+	// Get running jobs.
+	for _, job := range jobList.Jobs {
+		if job.Status == "RUNNING" {
+			observed.flinkRunningJobIDs =
+				append(observed.flinkRunningJobIDs, job.ID)
 		}
+	}
+
+	// Extract Flink job ID.
+	// It is okay if there are multiple jobs, but at most one of them is
+	// expected to be running. This is typically caused by job client
+	// timed out and exited but the job submission was actually
+	// successfully. When retrying, it first cancels the existing running
+	// job which it has lost track of, then submit the job again.
+	var flinkJobID *string
+	if len(observed.flinkRunningJobIDs) > 1 {
+		log.Error(
+			errors.New("more than one running job were found"),
+			"", "jobs", observed.flinkRunningJobIDs)
+	} else if len(observed.flinkRunningJobIDs) == 1 {
+		flinkJobID = &observed.flinkRunningJobIDs[0]
+	} else if len(jobList.Jobs) > 1 {
+		log.Error(
+			errors.New("more than one non-running job were found"),
+			"",
+			"jobs",
+			jobList.Jobs)
+	} else if len(jobList.Jobs) == 1 {
+		flinkJobID = &jobList.Jobs[0].ID
+	}
+	observed.flinkJobID = flinkJobID
+	if flinkJobID != nil {
+		log.Info("Observed Flink job ID", "ID", *flinkJobID)
 	}
 }
 
