@@ -81,27 +81,27 @@ Update the default GKE service account associated at the GKE cluster creation ti
 
 ### Grant permission to the application
 
-The steps to mount the service account key file in Kubernetes Secret to Flink cluster and also the Hadoop
-[core-site.xml](https://hadoop.apache.org/docs/r1.2.1/api/org/apache/hadoop/conf/Configuration.html) in ConfigMap in
+The steps to mount the service account key file in Kubernetes Secret to Flink cluster and the Hadoop
+[core-site.xml](./docker/hadoop/core-site.xml) in ConfigMap in
 order to grant write access to GCS are:
 
-* [Creating a service account](https://cloud.google.com/iam/docs/creating-managing-service-account-keys), grant required
+1. [Creating a service account](https://cloud.google.com/iam/docs/creating-managing-service-account-keys), grant required
   GCS role to it, download the key file (JSON).
 
-* Create Kubernetes Secret object with your service account key file stored in it, which can be later accessed by a
+2. Create Kubernetes Secret object with your service account key file stored in it, which can be later accessed by a
   running pod.
 
   ```bash
   kubectl create secret generic gcp-service-account-key --from-file=gcp_service_account_key.json=[/PATH/TO/KEY.json]
   ```
 
-* Create a configMap with the filename as key and the content of the file as value of the configMap.
+3. Create a configMap with the filename as key and the content of the file as value of the configMap.
 
   ```bash
   kubectl create configmap hadoop-config --from-file [/PATH/TO/CORE-SITE.XML]
   ```
 
-* Create Volumes with the Secret and ConfigMap and mount them onto `/etc/hadoop/keys` and `/etc/hadoop/conf`
+4. Create Volumes with the Secret and ConfigMap and mount them onto `/etc/hadoop/keys` and `/etc/hadoop/conf`
   respectively, e.g.:
 
   ```yaml
@@ -143,8 +143,12 @@ order to grant write access to GCS are:
     ...
   ```
 
-* Finally deploy the job to the cluster:
+5. Finally deploy the job to the cluster:
 
   ```bash
   kubectl apply -f my_flinkjobcluster.yaml
   ```
+
+## Reference
+
+[Flink checkpoints to Google Cloud Storage](https://stackoverflow.com/questions/51860988/flink-checkpoints-to-google-cloud-storage)
