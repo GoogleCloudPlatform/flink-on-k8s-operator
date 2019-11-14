@@ -475,7 +475,7 @@ func getDesiredConfigMap(
 	}
 	// TODO: Provide logging options: log4j-console.properties and log4j.properties
 	var log4jPropName = "log4j-console.properties"
-	var logbackXmlName = "logback-console.xml"
+	var logbackXMLName = "logback-console.xml"
 	var configMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -487,7 +487,7 @@ func getDesiredConfigMap(
 		Data: map[string]string{
 			"flink-conf.yaml": getFlinkProperties(flinkProps),
 			log4jPropName:     getLogConf()[log4jPropName],
-			logbackXmlName:    getLogConf()[logbackXmlName],
+			logbackXMLName:    getLogConf()[logbackXMLName],
 		},
 	}
 
@@ -633,7 +633,7 @@ func toOwnerReference(
 func getFlinkProperties(properties map[string]string) string {
 	var keys = make([]string, len(properties))
 	i := 0
-	for k, _ := range properties {
+	for k := range properties {
 		keys[i] = k
 		i = i + 1
 	}
@@ -770,7 +770,7 @@ log4j.appender.console=org.apache.log4j.ConsoleAppender
 log4j.appender.console.layout=org.apache.log4j.PatternLayout
 log4j.appender.console.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
 log4j.logger.org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline=ERROR, console`
-	var logbackConsoleXml = `<configuration>
+	var logbackConsoleXML = `<configuration>
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{60} %X{sourceThread} - %msg%n</pattern>
@@ -798,6 +798,6 @@ log4j.logger.org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannel
 
 	return map[string]string{
 		"log4j-console.properties": log4jConsoleProperties,
-		"logback-console.xml":      logbackConsoleXml,
+		"logback-console.xml":      logbackConsoleXML,
 	}
 }

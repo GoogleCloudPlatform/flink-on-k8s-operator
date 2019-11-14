@@ -344,7 +344,16 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		// If the observed Flink job status list is not nil (e.g., emtpy list), it
 		// means Flink REST API server is up and running. It is the source of
 		// truth of whether we can submit a job.
-		if reconciler.observed.flinkJobList != nil {
+		if observed.flinkJobList != nil {
+			for _, jobID := range observed.flinkRunningJobIDs {
+				log.Info("Cancel unexpected running job", "jobID", jobID)
+				var err = reconciler.cancelJob(jobID)
+				if err != nil {
+					log.Error(err, "Failed to cancel unexpected job", "jobID", jobID)
+					return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
+				}
+			}
+
 			var err = reconciler.createJob(desiredJob)
 			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
 		}
