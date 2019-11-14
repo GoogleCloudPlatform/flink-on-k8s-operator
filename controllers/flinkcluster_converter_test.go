@@ -88,9 +88,30 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Job: &v1alpha1.JobSpec{
 				Args:          []string{"--input", "./README.txt"},
 				ClassName:     &className,
-				JarFile:       "./examples/batch/WordCount.jar",
+				JarFile:       "/cache/my-job.jar",
 				Parallelism:   &parallelism,
 				RestartPolicy: &restartPolicy,
+				Volumes: []corev1.Volume{
+					{
+						Name: "cache-volume",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				Mounts: []corev1.VolumeMount{
+					{Name: "cache-volume", MountPath: "/cache"},
+				},
+				InitContainers: []corev1.Container{
+					{
+						Name:    "gcs-downloader",
+						Image:   "google/cloud-sdk",
+						Command: []string{"gsutil"},
+						Args: []string{
+							"cp", "gs://my-bucket/my-job.jar", "/cache/my-job.jar",
+						},
+					},
+				},
 			},
 			JobManager: v1alpha1.JobManagerSpec{
 				AccessScope: v1alpha1.AccessScope.VPC,
@@ -518,6 +539,19 @@ func TestGetDesiredClusterState(t *testing.T) {
 					Labels: map[string]string{"app": "flink", "cluster": "flinkjobcluster-sample"},
 				},
 				Spec: v1.PodSpec{
+					InitContainers: []v1.Container{
+						{
+							Name:    "gcs-downloader",
+							Image:   "google/cloud-sdk",
+							Command: []string{"gsutil"},
+							Args: []string{
+								"cp", "gs://my-bucket/my-job.jar", "/cache/my-job.jar",
+							},
+							VolumeMounts: []v1.VolumeMount{
+								{Name: "cache-volume", MountPath: "/cache"},
+							},
+						},
+					},
 					Containers: []v1.Container{
 						{
 							Name:  "main",
@@ -531,14 +565,25 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"org.apache.flink.examples.java.wordcount.WordCount",
 								"--parallelism",
 								"2",
-								"./examples/batch/WordCount.jar",
+								"/cache/my-job.jar",
 								"--input",
 								"./README.txt",
 							},
 							Env: []v1.EnvVar{{Name: "FOO", Value: "abc"}},
+							VolumeMounts: []v1.VolumeMount{
+								{Name: "cache-volume", MountPath: "/cache"},
+							},
 						},
 					},
 					RestartPolicy: "OnFailure",
+					Volumes: []corev1.Volume{
+						{
+							Name: "cache-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
 				},
 			},
 		},

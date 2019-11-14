@@ -18,13 +18,13 @@ metadata:
   name: flinkjobcluster-sample
 spec:
   image:
-    name: flink:1.8.1
+    name: flink:1.8.2
   jobManager:
     ports:
       ui: 8081
     resources:
       limits:
-        memory: "512Mi"
+        memory: "1024Mi"
         cpu: "200m"
   taskManager:
     replicas: 2

@@ -12,42 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Example demonstrating downloading remote job jar from GCS.
+# This allows you to reuse the Flink image without requiring you to build a
+# custom image with the job jar inside.
+
 apiVersion: flinkoperator.k8s.io/v1alpha1
 kind: FlinkCluster
 metadata:
-  name: flinksessioncluster-sample
+  name: flinkjobcluster-gcs
 spec:
   image:
     name: flink:1.8.2
-    pullPolicy: Always
   jobManager:
-    accessScope: Cluster
     ports:
       ui: 8081
     resources:
       limits:
         memory: "1024Mi"
-        cpu: "200m"
   taskManager:
-    replicas: 1
+    replicas: 2
     resources:
       limits:
         memory: "1024Mi"
-        cpu: "200m"
+  job:
+    jarFile: /cache/wordcount.jar
+    className: org.apache.flink.streaming.examples.wordcount.WordCount
+    args: ["--input", "./README.txt"]
+    parallelism: 2
     volumes:
       - name: cache-volume
         emptyDir: {}
     mounts:
       - mountPath: /cache
         name: cache-volume
-    sidecars:
-      - name: sidecar
-        image: alpine
-        command:
-          - "sleep"
-          - "10000"
-  envVars:
-    - name: FOO
-      value: bar
-  flinkProperties:
-    taskmanager.numberOfTaskSlots: "1"
+    initContainers:
+      - name: gcs-downloader
+        image: google/cloud-sdk
+        command: ["gsutil"]
+        args:
+          - "cp"
+          - "gs://my-bucket/wordcount.jar"
+          - "/cache/wordcount.jar"

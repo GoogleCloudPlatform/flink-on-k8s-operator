@@ -43,18 +43,23 @@ FlinkCluster
         |__ MemoryOffHeapMin
         |__ Volumes
         |__ Mounts
+        |__ Sidecars
     |__ JobSpec
         |__ JarFile
         |__ ClassName
         |__ Args
         |__ Savepoint
         |__ AllowNonRestoredState
+        |__ AutoSavepointSeconds
+        |__ SavepointsDir
         |__ Parallelism
         |__ NoLoggingToStdout
-        |__ RestartPolicy
         |__ Volumes
         |__ Mounts
-        |__ Sidecars
+        |__ InitContainers
+        |__ RestartPolicy
+        |__ CleanupPolicy
+        |__ CancelRequested
     |__ FlinkProperties
     |__ EnvVars
 |__ Status
@@ -149,9 +154,12 @@ FlinkCluster
       * **AllowNonRestoredState** (optional):  Allow non-restored state, default: false.
       * **Parallelism** (optional): Parallelism of the job, default: 1.
       * **NoLoggingToStdout** (optional): No logging output to STDOUT, default: false.
+      * **InitContainers** (optional): Init containers of the Job pod.
+        More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       * **Volumes** (optional): Volumes in the Job pod.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
-      * **Mounts** (optional): Volume mounts in the Job container.
+      * **Mounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
+        automatically added to init containers; otherwise, the mounts defined in init containers will take precedence.
         More info: https://kubernetes.io/docs/concepts/storage/volumes/
       * **RestartPolicy** (optional): Restart policy, `OnFailure` or `Never`, default: `OnFailure`.
       * **CleanupPolicy** (optional): The action to take after job finishes.
@@ -159,6 +167,8 @@ FlinkCluster
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
         * **AfterJobFails** (required): The action to take after job fails,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"KeepCluster"`.
+      * **CancelRequested** (optional): Request the job to be cancelled. Only applies to running jobs. If
+        `savePointsDir` is provided, a savepoint will be taken before stopping the job.
     * **FlinkProperties** (optional): Flink properties which are appened to flink-conf.yaml of the Flink image.
     * **EnvVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
   * **Status**: Flink job or session cluster status.

@@ -41,8 +41,9 @@ The operator is still under active development, there is not Helm chart availabl
 
 * [Developer Guide](docs/developer-guide.md)
 * [FlinkCluster Custom Resource Definition](docs/crd.md)
-* [Integrate Flink with GCS](images/flink/README.MD)
 * [Test environment setup for streaming applications](docs/streaming_test_env_setup.md)
+* [Use remote job JAR in GCS](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
+* [Use GCS as remote storage with custom Flink images](images/flink/README.MD)
 
 ## Contributing
 
