@@ -430,6 +430,12 @@ func getDesiredTaskManagerDeployment(
 		VolumeMounts:   volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
+	var podSpec = corev1.PodSpec{
+		Containers:       containers,
+		Volumes:          volumes,
+		NodeSelector:     taskManagerSpec.NodeSelector,
+		ImagePullSecrets: imageSpec.PullSecrets,
+	}
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -445,12 +451,7 @@ func getDesiredTaskManagerDeployment(
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: corev1.PodSpec{
-					Containers:       containers,
-					Volumes:          volumes,
-					NodeSelector:     taskManagerSpec.NodeSelector,
-					ImagePullSecrets: imageSpec.PullSecrets,
-				},
+				Spec: podSpec,
 			},
 		},
 	}
@@ -806,7 +807,6 @@ func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.Vo
 		return nil, nil, nil
 	}
 
-	// Service account.
 	var saConfig = gcpConfig.ServiceAccount
 	var saVolume = &corev1.Volume{
 		Name: gcpServiceAccountVolume,
