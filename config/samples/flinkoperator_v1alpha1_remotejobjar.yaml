@@ -53,3 +53,8 @@ spec:
           - "cp"
           - "gs://my-bucket/wordcount.jar"
           - "/cache/wordcount.jar"
+  gcpConfig:
+    serviceAccount:
+      secretName: "gcp-service-account"
+      keyFile: "gcp_service_account_key.json"
+      mountPath: "/etc/gcp_service_account/"

@@ -39,9 +39,13 @@ import (
 // Converter which converts the FlinkCluster spec to the desired
 // underlying Kubernetes resource specs.
 
-var delayDeleteClusterMinutes int32 = 5
-var flinkConfigMapPath = "/opt/flink/conf"
-var flinkConfigMapVolume = "flink-config-volume"
+const (
+	delayDeleteClusterMinutes int32 = 5
+	flinkConfigMapPath              = "/opt/flink/conf"
+	flinkConfigMapVolume            = "flink-config-volume"
+	gcpServiceAccountVolume         = "gcp-service-account-volume"
+)
+
 var flinkSysProps = map[string]struct{}{
 	"jobmanager.rpc.address": {},
 	"jobmanager.rpc.port":    {},
@@ -89,8 +93,9 @@ func getDesiredJobManagerDeployment(
 
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var imageSpec = flinkCluster.Spec.Image
-	var jobManagerSpec = flinkCluster.Spec.JobManager
+	var clusterSpec = flinkCluster.Spec
+	var imageSpec = clusterSpec.Image
+	var jobManagerSpec = clusterSpec.JobManager
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
@@ -106,7 +111,7 @@ func getDesiredJobManagerDeployment(
 	var volumeMounts []corev1.VolumeMount
 	var confVol *corev1.Volume
 	var confMount *corev1.VolumeMount
-	confVol, confMount = getFlinkConfRsc(clusterName)
+	confVol, confMount = convertFlinkConfig(clusterName)
 	volumes = append(jobManagerSpec.Volumes, *confVol)
 	volumeMounts = append(jobManagerSpec.Mounts, *confMount)
 	var envVars = []corev1.EnvVar{
@@ -131,7 +136,6 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 	}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var probe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -142,6 +146,37 @@ func getDesiredJobManagerDeployment(
 		InitialDelaySeconds: 30,
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
+	}
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
+		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
+		volumeMounts = append(volumeMounts, *saMount)
+	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var podSpec = corev1.PodSpec{
+		Containers: []corev1.Container{
+			corev1.Container{
+				Name:            "jobmanager",
+				Image:           imageSpec.Name,
+				ImagePullPolicy: imageSpec.PullPolicy,
+				Args:            []string{"jobmanager"},
+				Ports: []corev1.ContainerPort{
+					rpcPort, blobPort, queryPort, uiPort},
+				LivenessProbe:  &probe,
+				ReadinessProbe: &probe,
+				Resources:      jobManagerSpec.Resources,
+				Env:            envVars,
+				VolumeMounts:   volumeMounts,
+			},
+		},
+		Volumes:          volumes,
+		NodeSelector:     jobManagerSpec.NodeSelector,
+		ImagePullSecrets: imageSpec.PullSecrets,
 	}
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -157,26 +192,7 @@ func getDesiredJobManagerDeployment(
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						corev1.Container{
-							Name:            "jobmanager",
-							Image:           imageSpec.Name,
-							ImagePullPolicy: imageSpec.PullPolicy,
-							Args:            []string{"jobmanager"},
-							Ports: []corev1.ContainerPort{
-								rpcPort, blobPort, queryPort, uiPort},
-							LivenessProbe:  &probe,
-							ReadinessProbe: &probe,
-							Resources:      jobManagerSpec.Resources,
-							Env:            envVars,
-							VolumeMounts:   volumeMounts,
-						},
-					},
-					Volumes:          volumes,
-					NodeSelector:     jobManagerSpec.NodeSelector,
-					ImagePullSecrets: imageSpec.PullSecrets,
-				},
+				Spec: podSpec,
 			},
 		},
 	}
@@ -336,6 +352,7 @@ func getDesiredTaskManagerDeployment(
 
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
+	var clusterSpec = flinkCluster.Spec
 	var imageSpec = flinkCluster.Spec.Image
 	var taskManagerSpec = flinkCluster.Spec.TaskManager
 	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
@@ -352,7 +369,7 @@ func getDesiredTaskManagerDeployment(
 	var volumeMounts []corev1.VolumeMount
 	var confVol *corev1.Volume
 	var confMount *corev1.VolumeMount
-	confVol, confMount = getFlinkConfRsc(clusterName)
+	confVol, confMount = convertFlinkConfig(clusterName)
 	volumes = append(taskManagerSpec.Volumes, *confVol)
 	volumeMounts = append(taskManagerSpec.Mounts, *confMount)
 	var envVars = []corev1.EnvVar{
@@ -377,7 +394,6 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 	}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var probe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -389,6 +405,17 @@ func getDesiredTaskManagerDeployment(
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
+		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
+		volumeMounts = append(volumeMounts, *saMount)
+	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var containers = []corev1.Container{corev1.Container{
 		Name:            "taskmanager",
 		Image:           imageSpec.Name,
@@ -403,6 +430,12 @@ func getDesiredTaskManagerDeployment(
 		VolumeMounts:   volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
+	var podSpec = corev1.PodSpec{
+		Containers:       containers,
+		Volumes:          volumes,
+		NodeSelector:     taskManagerSpec.NodeSelector,
+		ImagePullSecrets: imageSpec.PullSecrets,
+	}
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -418,12 +451,7 @@ func getDesiredTaskManagerDeployment(
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: corev1.PodSpec{
-					Containers:       containers,
-					Volumes:          volumes,
-					NodeSelector:     taskManagerSpec.NodeSelector,
-					ImagePullSecrets: imageSpec.PullSecrets,
-				},
+				Spec: podSpec,
 			},
 		},
 	}
@@ -507,8 +535,9 @@ func getDesiredJob(
 		return nil
 	}
 
-	var imageSpec = flinkCluster.Spec.Image
-	var jobManagerSpec = flinkCluster.Spec.JobManager
+	var clusterSpec = flinkCluster.Spec
+	var imageSpec = clusterSpec.Image
+	var jobManagerSpec = clusterSpec.JobManager
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobName = getJobName(clusterName)
@@ -541,7 +570,6 @@ func getDesiredJob(
 	}
 
 	var envVars = []corev1.EnvVar{}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 
 	// If the JAR file is remote, put the URI in the env variable
 	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
@@ -558,6 +586,39 @@ func getDesiredJob(
 	jobArgs = append(jobArgs, jarPath)
 	jobArgs = append(jobArgs, jobSpec.Args...)
 
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+	volumes = append(volumes, jobSpec.Volumes...)
+	volumeMounts = append(volumeMounts, jobSpec.Mounts...)
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
+		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
+		volumeMounts = append(volumeMounts, *saMount)
+	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+
+	var podSpec = corev1.PodSpec{
+		InitContainers: getJobInitContainers(jobSpec),
+		Containers: []corev1.Container{
+			corev1.Container{
+				Name:            "main",
+				Image:           imageSpec.Name,
+				ImagePullPolicy: imageSpec.PullPolicy,
+				Args:            jobArgs,
+				Env:             envVars,
+				VolumeMounts:    volumeMounts,
+			},
+		},
+		RestartPolicy:    *jobSpec.RestartPolicy,
+		Volumes:          volumes,
+		ImagePullSecrets: imageSpec.PullSecrets,
+	}
+
 	var job = &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -568,25 +629,8 @@ func getDesiredJob(
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					InitContainers: getJobInitContainers(jobSpec),
-					Containers: []corev1.Container{
-						corev1.Container{
-							Name:            "main",
-							Image:           imageSpec.Name,
-							ImagePullPolicy: imageSpec.PullPolicy,
-							Args:            jobArgs,
-							Env:             envVars,
-							VolumeMounts:    jobSpec.Mounts,
-						},
-					},
-					RestartPolicy:    *jobSpec.RestartPolicy,
-					Volumes:          jobSpec.Volumes,
-					ImagePullSecrets: imageSpec.PullSecrets,
-				},
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec:       podSpec,
 			},
 		},
 	}
@@ -738,7 +782,7 @@ func calHeapSize(memSize int64, offHeapMin int64, offHeapRatio int64) int64 {
 	return heapSizeMB
 }
 
-func getFlinkConfRsc(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {
+func convertFlinkConfig(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {
 	var confVol *corev1.Volume
 	var confMount *corev1.VolumeMount
 	confVol = &corev1.Volume{
@@ -756,6 +800,35 @@ func getFlinkConfRsc(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {
 		MountPath: flinkConfigMapPath,
 	}
 	return confVol, confMount
+}
+
+func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.VolumeMount, *corev1.EnvVar) {
+	if gcpConfig == nil {
+		return nil, nil, nil
+	}
+
+	var saConfig = gcpConfig.ServiceAccount
+	var saVolume = &corev1.Volume{
+		Name: gcpServiceAccountVolume,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: gcpConfig.ServiceAccount.SecretName,
+			},
+		},
+	}
+	var saMount = &corev1.VolumeMount{
+		Name:      gcpServiceAccountVolume,
+		MountPath: gcpConfig.ServiceAccount.MountPath,
+		ReadOnly:  true,
+	}
+	if !strings.HasSuffix(saMount.MountPath, "/") {
+		saMount.MountPath = saMount.MountPath + "/"
+	}
+	var saEnv = &corev1.EnvVar{
+		Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+		Value: saMount.MountPath + saConfig.KeyFile,
+	}
+	return saVolume, saMount, saEnv
 }
 
 // TODO: Wouldn't it be better to create a file, put it in an operator image, and read from them?.

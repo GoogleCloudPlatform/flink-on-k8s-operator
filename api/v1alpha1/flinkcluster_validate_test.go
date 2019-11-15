@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -75,6 +76,13 @@ func TestValidateCreate(t *testing.T) {
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds: CleanupActionKeepCluster,
 					AfterJobFails:    CleanupActionDeleteTaskManager,
+				},
+			},
+			GCPConfig: &GCPConfig{
+				ServiceAccount: &GCPServiceAccount{
+					SecretName: "gcp-service-account-secret",
+					KeyFile:    "gcp_service_account_key.json",
+					MountPath:  "/etc/gcp_service_account",
 				},
 			},
 		},
@@ -537,5 +545,20 @@ func TestUpdateSpecNotAllowed(t *testing.T) {
 	var validator = &Validator{}
 	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
 	var expectedErr = "the cluster properties are not updatable"
+	assert.Equal(t, err.Error(), expectedErr)
+}
+
+func TestInvalidGCPConfig(t *testing.T) {
+	var gcpConfig = GCPConfig{
+		ServiceAccount: &GCPServiceAccount{
+			SecretName: "my-secret",
+			KeyFile:    "my_service_account.json",
+			MountPath:  "/etc/gcp/my_service_account.json",
+		},
+	}
+	var validator = &Validator{}
+	var err = validator.validateGCPConfig(&gcpConfig)
+	var expectedErr = "invalid GCP service account volume mount path"
+	assert.Assert(t, err != nil, "err is not expected to be nil")
 	assert.Equal(t, err.Error(), expectedErr)
 }

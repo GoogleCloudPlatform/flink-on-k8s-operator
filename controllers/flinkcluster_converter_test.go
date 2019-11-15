@@ -177,6 +177,13 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
+			GCPConfig: &v1alpha1.GCPConfig{
+				ServiceAccount: &v1alpha1.GCPServiceAccount{
+					SecretName: "gcp-service-account-secret",
+					KeyFile:    "gcp_service_account_key.json",
+					MountPath:  "/etc/gcp_service_account/",
+				},
+			},
 		},
 	}
 
@@ -257,6 +264,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -271,21 +282,38 @@ func TestGetDesiredClusterState(t *testing.T) {
 									corev1.ResourceMemory: resource.MustParse("512Mi"),
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{{
-								Name:      "flink-config-volume",
-								MountPath: "/opt/flink/conf",
-							}},
-						},
-					},
-					Volumes: []corev1.Volume{{
-						Name: "flink-config-volume",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "flinkjobcluster-sample-configmap",
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "flink-config-volume",
+									MountPath: "/opt/flink/conf",
+								},
+								{
+									Name:      "gcp-service-account-volume",
+									MountPath: "/etc/gcp_service_account/",
+									ReadOnly:  true,
 								},
 							},
-						}},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "flink-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "flinkjobcluster-sample-configmap",
+									},
+								},
+							},
+						},
+						{
+							Name: "gcp-service-account-volume",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "gcp-service-account-secret",
+								},
+							},
+						},
 					},
 				},
 			},
@@ -466,6 +494,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -483,6 +515,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
 								{Name: "flink-config-volume", MountPath: "/opt/flink/conf"},
+								{
+									Name:      "gcp-service-account-volume",
+									MountPath: "/etc/gcp_service_account/",
+									ReadOnly:  true,
+								},
 							},
 						},
 						corev1.Container{Name: "sidecar", Image: "alpine"},
@@ -501,6 +538,14 @@ func TestGetDesiredClusterState(t *testing.T) {
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "flinkjobcluster-sample-configmap",
 									},
+								},
+							},
+						},
+						{
+							Name: "gcp-service-account-volume",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "gcp-service-account-secret",
 								},
 							},
 						},
@@ -569,9 +614,20 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"--input",
 								"./README.txt",
 							},
-							Env: []v1.EnvVar{{Name: "FOO", Value: "abc"}},
+							Env: []v1.EnvVar{
+								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{Name: "FOO", Value: "abc"},
+							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
+								{
+									Name:      "gcp-service-account-volume",
+									MountPath: "/etc/gcp_service_account/",
+									ReadOnly:  true,
+								},
 							},
 						},
 					},
@@ -581,6 +637,14 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name: "cache-volume",
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "gcp-service-account-volume",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "gcp-service-account-secret",
+								},
 							},
 						},
 					},

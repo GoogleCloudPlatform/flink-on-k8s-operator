@@ -37,10 +37,5 @@ spec:
     className: org.apache.flink.streaming.examples.wordcount.WordCount
     args: ["--input", "./README.txt"]
     parallelism: 2
-    savepointsDir: /tmp
-    autoSavepointSeconds: 30
-    cleanupPolicy:
-      afterJobSucceeds: DeleteCluster
-      afterJobFails: KeepCluster
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"
