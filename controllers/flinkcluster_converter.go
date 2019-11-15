@@ -136,7 +136,6 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 	}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var probe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -148,11 +147,17 @@ func getDesiredJobManagerDeployment(
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
-	var saVolume, saMount = convertGCPConfig(clusterSpec.GCPConfig)
-	if saVolume != nil && saMount != nil {
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
 		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
 		volumeMounts = append(volumeMounts, *saMount)
 	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var podSpec = corev1.PodSpec{
 		Containers: []corev1.Container{
 			corev1.Container{
@@ -389,7 +394,6 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 	}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var probe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -401,11 +405,17 @@ func getDesiredTaskManagerDeployment(
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
-	var saVolume, saMount = convertGCPConfig(clusterSpec.GCPConfig)
-	if saVolume != nil && saMount != nil {
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
 		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
 		volumeMounts = append(volumeMounts, *saMount)
 	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 	var containers = []corev1.Container{corev1.Container{
 		Name:            "taskmanager",
 		Image:           imageSpec.Name,
@@ -559,7 +569,6 @@ func getDesiredJob(
 	}
 
 	var envVars = []corev1.EnvVar{}
-	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 
 	// If the JAR file is remote, put the URI in the env variable
 	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
@@ -580,11 +589,17 @@ func getDesiredJob(
 	var volumeMounts []corev1.VolumeMount
 	volumes = append(volumes, jobSpec.Volumes...)
 	volumeMounts = append(volumeMounts, jobSpec.Mounts...)
-	var saVolume, saMount = convertGCPConfig(clusterSpec.GCPConfig)
-	if saVolume != nil && saMount != nil {
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
 		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
 		volumeMounts = append(volumeMounts, *saMount)
 	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 
 	var podSpec = corev1.PodSpec{
 		InitContainers: getJobInitContainers(jobSpec),
@@ -786,15 +801,14 @@ func convertFlinkConfig(clusterName string) (*corev1.Volume, *corev1.VolumeMount
 	return confVol, confMount
 }
 
-func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.VolumeMount) {
+func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.VolumeMount, *corev1.EnvVar) {
 	if gcpConfig == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Service account.
-	var saVolume *corev1.Volume
-	var saMount *corev1.VolumeMount
-	saVolume = &corev1.Volume{
+	var saConfig = gcpConfig.ServiceAccount
+	var saVolume = &corev1.Volume{
 		Name: gcpServiceAccountVolume,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -802,12 +816,19 @@ func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.Vo
 			},
 		},
 	}
-	saMount = &corev1.VolumeMount{
+	var saMount = &corev1.VolumeMount{
 		Name:      gcpServiceAccountVolume,
 		MountPath: gcpConfig.ServiceAccount.MountPath,
 		ReadOnly:  true,
 	}
-	return saVolume, saMount
+	if !strings.HasSuffix(saMount.MountPath, "/") {
+		saMount.MountPath = saMount.MountPath + "/"
+	}
+	var saEnv = &corev1.EnvVar{
+		Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+		Value: saMount.MountPath + saConfig.KeyFile,
+	}
+	return saVolume, saMount, saEnv
 }
 
 // TODO: Wouldn't it be better to create a file, put it in an operator image, and read from them?.

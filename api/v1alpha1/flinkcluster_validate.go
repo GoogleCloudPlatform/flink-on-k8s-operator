@@ -18,8 +18,10 @@ package v1alpha1
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +34,10 @@ type Validator struct{}
 func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 	var err error
 	err = v.validateMeta(&cluster.ObjectMeta)
+	if err != nil {
+		return err
+	}
+	err = v.validateGCPConfig(cluster.Spec.GCPConfig)
 	if err != nil {
 		return err
 	}
@@ -101,6 +107,28 @@ func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {
 	}
 	if len(meta.Namespace) == 0 {
 		return fmt.Errorf("cluster namesapce is unspecified")
+	}
+	return nil
+}
+
+func (v *Validator) validateGCPConfig(gcpConfig *GCPConfig) error {
+	if gcpConfig == nil {
+		return nil
+	}
+	var saConfig = gcpConfig.ServiceAccount
+	if saConfig != nil {
+		if len(saConfig.SecretName) == 0 {
+			return fmt.Errorf("GCP service account secret name is unspecified")
+		}
+		if len(saConfig.KeyFile) == 0 {
+			return fmt.Errorf("GCP service account key file name is unspecified")
+		}
+		if len(saConfig.MountPath) == 0 {
+			return fmt.Errorf("GCP service account volume mount path is unspecified")
+		}
+		if strings.HasSuffix(saConfig.MountPath, saConfig.KeyFile) {
+			return fmt.Errorf("invalid GCP service account volume mount path")
+		}
 	}
 	return nil
 }

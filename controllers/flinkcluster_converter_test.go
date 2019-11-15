@@ -264,6 +264,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -490,6 +494,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 									},
 								},
 								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{
 									Name:  "FOO",
 									Value: "abc",
 								},
@@ -606,7 +614,13 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"--input",
 								"./README.txt",
 							},
-							Env: []v1.EnvVar{{Name: "FOO", Value: "abc"}},
+							Env: []v1.EnvVar{
+								{
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
+								},
+								{Name: "FOO", Value: "abc"},
+							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
 								{
