@@ -305,9 +305,6 @@ type JobSpec struct {
 
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Flink image spec for the cluster's components.
 	Image ImageSpec `json:"image"`
 
@@ -328,6 +325,28 @@ type FlinkClusterSpec struct {
 	// Environment variables shared by all JobManager, TaskManager and job
 	// containers.
 	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
+
+	// Config for GCP.
+	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
+}
+
+// GCPConfig defines configs specific to GCP.
+type GCPConfig struct {
+	// GCP service account.
+	ServiceAccount *GCPServiceAccount `json:"serviceAccount,omitempty"`
+}
+
+// GCPServiceAccount defines the config about GCP service account.
+type GCPServiceAccount struct {
+	// The name of the Secret holding the GCP service account key file.
+	// The Secret must be in the same namespace as the FlinkCluster.
+	SecretName string `json:"secretName,omitempty"`
+
+	// The name of the service account key file.
+	KeyFile string `json:"keyFile,omitempty"`
+
+	// The path where to mount the Volume of the Secret.
+	MountPath string `json:"mountPath,omitempty"`
 }
 
 // FlinkClusterComponentState defines the observed state of a component

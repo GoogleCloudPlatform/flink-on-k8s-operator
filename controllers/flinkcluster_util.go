@@ -61,6 +61,11 @@ func getJobName(clusterName string) string {
 	return clusterName + "-job"
 }
 
+// Gets GCP service account volume name
+func getGCPServiceAccountVolumeName(clusterName string) string {
+	return clusterName + "-gcp-sa"
+}
+
 // TimeConverter converts between time.Time and string.
 type TimeConverter struct{}
 

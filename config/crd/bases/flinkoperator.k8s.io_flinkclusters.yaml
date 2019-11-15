@@ -490,6 +490,25 @@ spec:
               description: Flink properties which are appened to flink-conf.yaml of
                 the image.
               type: object
+            gcpConfig:
+              description: Config for GCP.
+              properties:
+                serviceAccount:
+                  description: GCP service account.
+                  properties:
+                    keyFile:
+                      description: The name of the service account key file.
+                      type: string
+                    mountPath:
+                      description: The path where to mount the Volume of the Secret.
+                      type: string
+                    secretName:
+                      description: The name of the Secret holding the GCP service
+                        account key file. The Secret must be in the same namespace
+                        as the FlinkCluster.
+                      type: string
+                  type: object
+              type: object
             image:
               description: Flink image spec for the cluster's components.
               properties:
