@@ -28,8 +28,8 @@ clusters and jobs.
 
 The operator supports creating both [Flink job cluster](https://ci.apache.org/projects/flink/flink-docs-stable/ops/deployment/docker.html#flink-job-cluster)
 and [Flink session cluster](https://ci.apache.org/projects/flink/flink-docs-stable/ops/deployment/docker.html#flink-session-cluster)
-through one custom resource [FlinkCluster](config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml), depending on
-whether a job spec is provided. See samples: [Flink job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml),
+through one custom resource [FlinkCluster](docs/crd.md), depending on whether a job spec is provided. See samples:
+[Flink job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml),
 [Flink session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml).
 
 ## Installation
@@ -40,10 +40,10 @@ The operator is still under active development, there is not Helm chart availabl
 ## Documentation
 
 * [Developer Guide](docs/developer-guide.md)
-* [FlinkCluster Custom Resource Definition](docs/crd.md)
+* [Custom resource definition](docs/crd.md)
+* [Using GCS connector with custom Flink images](images/flink/README.MD)
+* [Using init container to download remote job JAR](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
 * [Test environment setup for streaming applications](docs/streaming_test_env_setup.md)
-* [Use remote job JAR in GCS](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
-* [Use GCS as remote storage with custom Flink images](images/flink/README.MD)
 
 ## Contributing
 
