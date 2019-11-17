@@ -362,9 +362,20 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		return requeueResult, nil
 	}
 
-	// Update
+	// Update or restart
 	var jobID = reconciler.getFlinkJobID()
 	if desiredJob != nil && observedJob != nil {
+		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
+		var observedJobStatus = observed.cluster.Status.Components.Job
+
+		if shouldRestartJob(restartPolicy, observedJobStatus) {
+			var err = reconciler.restartJob()
+			if err != nil {
+				return requeueResult, err
+			}
+			return ctrl.Result{}, nil
+		}
+
 		if len(jobID) > 0 && reconciler.shouldAutoTakeSavepoint(jobID) {
 			reconciler.takeSavepoint(jobID)
 		}
@@ -440,6 +451,36 @@ func (reconciler *ClusterReconciler) isJobStopped() bool {
 		(jobStatus.State == v1alpha1.JobState.Succeeded ||
 			jobStatus.State == v1alpha1.JobState.Failed ||
 			jobStatus.State == v1alpha1.JobState.Cancelled)
+}
+
+func (reconciler *ClusterReconciler) restartJob() error {
+	var err error
+	var log = reconciler.log
+	var observedJob = reconciler.observed.job
+	var desiredJob = reconciler.desired.Job
+
+	if observedJob != nil {
+		err = reconciler.deleteJob(observedJob)
+		if err != nil {
+			log.Error(
+				err, "Failed to delete failed job", "job", observedJob)
+			return err
+		}
+	}
+
+	err = reconciler.createJob(desiredJob)
+	if err != nil {
+		log.Error(err, "Failed recreate job", "job", desiredJob)
+		return err
+	}
+
+	err = reconciler.updateJobStatusForRestart()
+	if err != nil {
+		log.Error(err, "Failed update job status for restart")
+		return err
+	}
+
+	return err
 }
 
 // Takes a savepoint if possible then stops the job.
@@ -533,9 +574,18 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	var jobStatus = cluster.Status.Components.Job
 	jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
 	jobStatus.SavepointLocation = savepointStatus.Location
-	var tc = &TimeConverter{}
-	var now = time.Now()
-	jobStatus.LastSavepointTime = tc.ToString(now)
-	cluster.Status.LastUpdateTime = tc.ToString(now)
+	setTimestamp(&jobStatus.LastSavepointTime)
+	setTimestamp(&cluster.Status.LastUpdateTime)
+	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
+}
+
+func (reconciler *ClusterReconciler) updateJobStatusForRestart() error {
+	var cluster = v1alpha1.FlinkCluster{}
+	reconciler.observed.cluster.DeepCopyInto(&cluster)
+	var jobStatus = cluster.Status.Components.Job
+	jobStatus.State = v1alpha1.JobState.Pending
+	jobStatus.ID = ""
+	jobStatus.RestartCount++
+	setTimestamp(&cluster.Status.LastUpdateTime)
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

@@ -78,3 +78,22 @@ func (tc *TimeConverter) FromString(timeStr string) time.Time {
 func (tc *TimeConverter) ToString(timestamp time.Time) string {
 	return timestamp.Format(time.RFC3339)
 }
+
+// setTimestamp sets the current timestamp to the target.
+func setTimestamp(target *string) {
+	var tc = &TimeConverter{}
+	var now = time.Now()
+	*target = tc.ToString(now)
+}
+
+// shouldRestartJob returns true if the controller should restart the failed
+// job.
+func shouldRestartJob(
+	restartPolicy *v1alpha1.JobRestartPolicy,
+	jobStatus *v1alpha1.JobStatus) bool {
+	return restartPolicy != nil &&
+		*restartPolicy == v1alpha1.JobRestartPolicyFromSavepointOnFailure &&
+		jobStatus != nil &&
+		jobStatus.State == v1alpha1.JobState.Failed &&
+		len(jobStatus.SavepointLocation) > 0
+}

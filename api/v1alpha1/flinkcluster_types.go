@@ -424,6 +424,9 @@ type JobStatus struct {
 
 	// Last successful or failed savepoint operation timestamp.
 	LastSavepointTime string `json:"lastSavepointTime,omitempty"`
+
+	// The number of restarts.
+	RestartCount int32 `json:"restartCount,omitempty"`
 }
 
 // JobManagerIngressStatus defines the status of a JobManager ingress.

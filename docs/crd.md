@@ -95,6 +95,7 @@ FlinkCluster
             |__ savepointLocation
             |__ lastSavepointTriggerID
             |__ lastSavepointTime
+            |__ restartCount
 Last successful or failed savepoint operation timestamp.
     |__ lastUpdateTime
 ```
@@ -223,4 +224,5 @@ Last successful or failed savepoint operation timestamp.
         * **savepointLocation**: Last savepoint location.
         * **lastSavepointTriggerID**: Last savepoint trigger ID.
         * **lastSavepointTime**: Last successful or failed savepoint operation timestamp.
+        * **restartCount**: The number of restarts.
     * **lastUpdateTime**: Last update timestamp of this status.
