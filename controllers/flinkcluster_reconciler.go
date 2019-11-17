@@ -43,6 +43,8 @@ type ClusterReconciler struct {
 	desired     DesiredClusterState
 }
 
+var requeueResult = ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}
+
 // Compares the desired state and the observed state, if there is a difference,
 // takes actions to drive the observed state towards the desired state.
 func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
@@ -341,24 +343,23 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 	// Create
 	if desiredJob != nil && observedJob == nil {
-		// If the observed Flink job status list is not nil (e.g., emtpy list), it
-		// means Flink REST API server is up and running. It is the source of
+		// If the observed Flink job status list is not nil (e.g., emtpy list),
+		// it means Flink REST API server is up and running. It is the source of
 		// truth of whether we can submit a job.
 		if observed.flinkJobList != nil {
-			for _, jobID := range observed.flinkRunningJobIDs {
-				log.Info("Cancel unexpected running job", "jobID", jobID)
-				var err = reconciler.cancelJob(jobID)
-				if err != nil {
-					log.Error(err, "Failed to cancel unexpected job", "jobID", jobID)
-					return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
-				}
+			if len(observed.flinkJobList.Jobs) > 0 {
+				var err = fmt.Errorf(
+					"found unexpected job(s): %v, "+
+						"please consider taking savepoint manually, "+
+						"then delete and recreate the cluster",
+					observed.flinkJobList.Jobs)
+				return requeueResult, err
 			}
-
 			var err = reconciler.createJob(desiredJob)
-			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, err
+			return requeueResult, err
 		}
 		log.Info("Waiting for Flink API to be ready before creating job")
-		return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
+		return requeueResult, nil
 	}
 
 	// Update
@@ -370,7 +371,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 		if !reconciler.isJobStopped() {
 			log.Info("Job is not finished yet, no action", "jobID", jobID)
-			return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
+			return requeueResult, nil
 		}
 
 		log.Info("Job has finished, no action")
@@ -384,7 +385,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			var err = reconciler.cancelJob(jobID)
 			if err != nil {
 				log.Error(err, "Failed to cancel job", "jobID", jobID)
-				return ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}, nil
+				return requeueResult, nil
 			}
 		}
 		var err = reconciler.deleteJob(observedJob)

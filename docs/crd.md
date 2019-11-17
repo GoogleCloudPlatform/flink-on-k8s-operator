@@ -119,18 +119,19 @@ Last successful or failed savepoint operation timestamp.
         * **tlsSecretName** (optional): Kubernetes secret resource name for TLS.
       * **resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
-        More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+        See [more info](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/) about
+        resources.
       * **memoryOffHeapRatio** (optional): Percentage of off-heap memory in containers,
         as a safety margin, default: 25
       * **memoryOffHeapMin** (optional): Minimum amount of off-heap memory in containers,
         as a safety margin, default: 600M.
         You can express this value like 600M, 572Mi and 600e6.
-        More info about value expression:
-        https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
+        See [more info](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory)
+        about value expression.
       * **volumes** (optional): Volumes in the JobManager pod.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **mounts** (optional): Volume mounts in the JobManager container.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) volume mounts.
     * **taskManager** (required): TaskManager spec.
       * **replicas** (required): The number of TaskManager replicas.
       * **ports** (optional): Ports that TaskManager listening on.
@@ -139,20 +140,21 @@ Last successful or failed savepoint operation timestamp.
         * **query** (optional): Query port.
       * **resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
-        More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+        See [more info](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/) about
+        resources.
       * **memoryOffHeapRatio** (optional): Percentage of off-heap memory in containers,
         as a safety margin, default: 25
       * **memoryOffHeapMin** (optional): Minimum amount of off-heap memory in containers,
         as a safety margin, default: 600M.
         You can express this value like 600M, 572Mi and 600e6.
-        More info about value expression:
-        https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory
+        See [more info](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-memory)
+        about value expression.
       * **volumes** (optional): Volumes in the TaskManager pod.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **mounts** (optional): Volume mounts in the TaskManager containers.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
-        More info: https://kubernetes.io/docs/concepts/containers/
+        See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
       session cluster.
       * **jarFile** (required): JAR file of the job. It could be a local file or remote URI, depending on which
@@ -166,13 +168,16 @@ Last successful or failed savepoint operation timestamp.
       * **parallelism** (optional): Parallelism of the job, default: 1.
       * **noLoggingToStdout** (optional): No logging output to STDOUT, default: false.
       * **initContainers** (optional): Init containers of the Job pod.
-        More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+        See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
       * **volumes** (optional): Volumes in the Job pod.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **mounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
         automatically added to init containers; otherwise, the mounts defined in init containers will take precedence.
-        More info: https://kubernetes.io/docs/concepts/storage/volumes/
-      * **restartPolicy** (optional): Restart policy, `OnFailure` or `Never`, default: `OnFailure`.
+        See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
+      * **restartPolicy** (optional): Restart policy when the job fails, `FromSavepointOnFailure` or `Never`,
+        default: `Never`. `FromSavepointOnFailure` means if there is a savepoint recorded in the job status, the
+        operator will try to restart the failed job from the savepoint; otherwise, the job will stay in failed state.
+        `Never` means the operator will never try to restart a failed job, manual cleanup is required.
       * **cleanupPolicy** (optional): The action to take after job finishes.
         * **afterJobSucceeds** (required): The action to take after job succeeds,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.

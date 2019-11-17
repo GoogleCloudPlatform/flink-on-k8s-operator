@@ -67,15 +67,6 @@ var JobState = struct {
 	Unknown:   "Unknown",
 }
 
-// JobRestartPolicy defines the policy for job restart.
-var JobRestartPolicy = struct {
-	OnFailure string
-	Never     string
-}{
-	OnFailure: "OnFailure",
-	Never:     "Never",
-}
-
 // AccessScope defines the access scope of JobManager service.
 var AccessScope = struct {
 	Cluster  string
@@ -86,6 +77,18 @@ var AccessScope = struct {
 	VPC:      "VPC",
 	External: "External",
 }
+
+// JobRestartPolicy defines the restart policy when a job fails.
+type JobRestartPolicy = string
+
+const (
+	// JobRestartPolicyNever - never restarts a failed job.
+	JobRestartPolicyNever = "Never"
+
+	// JobRestartPolicyFromSavepointOnFailure - restart the job from the latest
+	// savepoint if available, otherwise do not restart.
+	JobRestartPolicyFromSavepointOnFailure = "FromSavepointOnFailure"
+)
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
 type ImageSpec struct {
@@ -291,8 +294,16 @@ type JobSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
-	// Restart policy, "OnFailure" or "Never", default: "OnFailure".
-	RestartPolicy *corev1.RestartPolicy `json:"restartPolicy"`
+	// Restart policy when the job fails, "FromSavepointOnFailure" or "Never",
+	// default: "Never".
+	//
+	// "FromSavepointOnFailure" means if there is a savepoint recorded in the
+	// job status, the operator will try to restart the failed job from the
+	// savepoint; otherwise, the job will stay in failed state.
+	//
+	// "Never" means the operator will never try to restart a failed job, manual
+	// cleanup is required.
+	RestartPolicy *JobRestartPolicy `json:"restartPolicy"`
 
 	// The action to take after job finishes.
 	CleanupPolicy *CleanupPolicy `json:"cleanupPolicy,omitempty"`

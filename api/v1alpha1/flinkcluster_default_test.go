@@ -17,9 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
 
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func TestSetDefault(t *testing.T) {
 	var defaultJobAllowNonRestoredState = false
 	var defaultJobParallelism = int32(1)
 	var defaultJobNoLoggingToStdout = false
-	var defaultJobRestartPolicy = corev1.RestartPolicy("OnFailure")
+	var defaultJobRestartPolicy = JobRestartPolicyNever
 	var defatulJobManagerIngressTLSUse = false
 	var defaultMemoryOffHeapRatio = int32(25)
 	var defaultMemoryOffHeapMin = resource.MustParse("600M")
@@ -129,7 +130,7 @@ func TestSetNonDefault(t *testing.T) {
 	var jobAllowNonRestoredState = true
 	var jobParallelism = int32(2)
 	var jobNoLoggingToStdout = true
-	var jobRestartPolicy = corev1.RestartPolicy("Never")
+	var jobRestartPolicy = JobRestartPolicyFromSavepointOnFailure
 	var jobManagerIngressTLSUse = true
 	var memoryOffHeapRatio = int32(50)
 	var memoryOffHeapMin = resource.MustParse("600M")

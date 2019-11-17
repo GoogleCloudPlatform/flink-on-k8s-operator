@@ -468,7 +468,7 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 	}
 	if in.RestartPolicy != nil {
 		in, out := &in.RestartPolicy, &out.RestartPolicy
-		*out = new(v1.RestartPolicy)
+		*out = new(string)
 		**out = **in
 	}
 	if in.CleanupPolicy != nil {
