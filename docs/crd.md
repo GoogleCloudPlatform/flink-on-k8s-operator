@@ -174,10 +174,10 @@ Last successful or failed savepoint operation timestamp.
       * **mounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
         automatically added to init containers; otherwise, the mounts defined in init containers will take precedence.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
-      * **restartPolicy** (optional): Restart policy when the job fails, `FromSavepointOnFailure` or `Never`,
-        default: `Never`. `FromSavepointOnFailure` means if there is a savepoint recorded in the job status, the
+      * **restartPolicy** (optional): Restart policy when the job fails, `enum("FromSavepointOnFailure, "Never")`,
+        default: `"Never"`. `"FromSavepointOnFailure"` means if there is a savepoint recorded in the job status, the
         operator will try to restart the failed job from the savepoint; otherwise, the job will stay in failed state.
-        `Never` means the operator will never try to restart a failed job, manual cleanup is required.
+        `"Never"` means the operator will never try to restart a failed job, manual cleanup is required.
       * **cleanupPolicy** (optional): The action to take after job finishes.
         * **afterJobSucceeds** (required): The action to take after job succeeds,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
