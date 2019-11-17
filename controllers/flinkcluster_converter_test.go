@@ -46,11 +46,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var tmRPCPort int32 = 6122
 	var tmQueryPort int32 = 6125
 	var replicas int32 = 42
-	var restartPolicy = corev1.RestartPolicy("OnFailure")
+	var restartPolicy = v1alpha1.JobRestartPolicyFromSavepointOnFailure
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
+	var jobBackoffLimit int32 = 0
 	var jmProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
@@ -631,7 +632,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
-					RestartPolicy: "OnFailure",
+					RestartPolicy: v1alpha1.JobRestartPolicyNever,
 					Volumes: []corev1.Volume{
 						{
 							Name: "cache-volume",
@@ -650,6 +651,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 			},
+			BackoffLimit: &jobBackoffLimit,
 		},
 	}
 

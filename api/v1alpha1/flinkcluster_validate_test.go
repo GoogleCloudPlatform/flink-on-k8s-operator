@@ -34,7 +34,7 @@ func TestValidateCreate(t *testing.T) {
 	var uiPort int32 = 8004
 	var dataPort int32 = 8005
 	var parallelism int32 = 2
-	var restartPolicy = corev1.RestartPolicyOnFailure
+	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
 	var cluster = FlinkCluster{
@@ -347,8 +347,8 @@ func TestInvalidJobSpec(t *testing.T) {
 	var queryPort int32 = 8003
 	var uiPort int32 = 8004
 	var dataPort int32 = 8005
-	var restartPolicy = corev1.RestartPolicyOnFailure
-	var invalidRestartPolicy = corev1.RestartPolicy("XXX")
+	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
+	var invalidRestartPolicy = "XXX"
 	var validator = &Validator{}
 	var parallelism int32 = 2
 	var memoryOffHeapRatio int32 = 25

@@ -1495,7 +1495,13 @@ spec:
                   format: int32
                   type: integer
                 restartPolicy:
-                  description: 'Restart policy, "OnFailure" or "Never", default: "OnFailure".'
+                  description: "Restart policy when the job fails, \"FromSavepointOnFailure\"
+                    or \"Never\", default: \"Never\". \n \"FromSavepointOnFailure\"
+                    means if there is a savepoint recorded in the job status, the
+                    operator will try to restart the failed job from the savepoint;
+                    otherwise, the job will stay in failed state. \n \"Never\" means
+                    the operator will never try to restart a failed job, manual cleanup
+                    is required."
                   type: string
                 savepoint:
                   description: Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).

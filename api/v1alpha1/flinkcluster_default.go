@@ -113,8 +113,8 @@ func _SetJobDefault(jobSpec *JobSpec) {
 		*jobSpec.NoLoggingToStdout = false
 	}
 	if jobSpec.RestartPolicy == nil {
-		jobSpec.RestartPolicy = new(corev1.RestartPolicy)
-		*jobSpec.RestartPolicy = corev1.RestartPolicyOnFailure
+		jobSpec.RestartPolicy = new(JobRestartPolicy)
+		*jobSpec.RestartPolicy = JobRestartPolicyNever
 	}
 	if jobSpec.CleanupPolicy == nil {
 		jobSpec.CleanupPolicy = &CleanupPolicy{

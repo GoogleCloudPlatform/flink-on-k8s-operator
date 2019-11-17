@@ -614,11 +614,19 @@ func getDesiredJob(
 				VolumeMounts:    volumeMounts,
 			},
 		},
-		RestartPolicy:    *jobSpec.RestartPolicy,
+		RestartPolicy:    corev1.RestartPolicyNever,
 		Volumes:          volumes,
 		ImagePullSecrets: imageSpec.PullSecrets,
 	}
 
+	// Disable the retry mechanism of k8s Job, all retires should be initiated
+	// by the operator based on the job restart policy. This is because Flink
+	// jobs are stateful, if a job fails after running for 10 hours, we probably
+	// don't want to start over from the beginning, instead we want to resume
+	// the job from the latest savepoint which means strictly speaking it is no
+	// longer the same job as the previous one because the `--fromSavepoint`
+	// parameter has changed.
+	var backoffLimit int32 = 0
 	var job = &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -632,6 +640,7 @@ func getDesiredJob(
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec:       podSpec,
 			},
+			BackoffLimit: &backoffLimit,
 		},
 	}
 	return job

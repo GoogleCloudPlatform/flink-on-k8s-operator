@@ -253,8 +253,8 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 		return fmt.Errorf("job restartPolicy is unspecified")
 	}
 	switch *jobSpec.RestartPolicy {
-	case corev1.RestartPolicyNever:
-	case corev1.RestartPolicyOnFailure:
+	case JobRestartPolicyNever:
+	case JobRestartPolicyFromSavepointOnFailure:
 	default:
 		return fmt.Errorf("invalid job restartPolicy: %v", *jobSpec.RestartPolicy)
 	}
