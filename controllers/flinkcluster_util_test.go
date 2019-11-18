@@ -19,6 +19,7 @@ package controllers
 import (
 	"testing"
 
+	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
 	"gotest.tools/assert"
 )
 
@@ -34,4 +35,28 @@ func TestTimeConverter(t *testing.T) {
 	var tm2 = tc.FromString(str3)
 	var str4 = tc.ToString(tm2)
 	assert.Assert(t, str3 == str4)
+}
+
+func TestShouldRestartJob(t *testing.T) {
+	var restartOnFailure = v1alpha1.JobRestartPolicyFromSavepointOnFailure
+	var jobStatus1 = v1alpha1.JobStatus{
+		State:             v1alpha1.JobState.Failed,
+		SavepointLocation: "gs://my-bucket/savepoint-123",
+	}
+	var restart1 = shouldRestartJob(&restartOnFailure, &jobStatus1)
+	assert.Equal(t, restart1, true)
+
+	var jobStatus2 = v1alpha1.JobStatus{
+		State: v1alpha1.JobState.Failed,
+	}
+	var restart2 = shouldRestartJob(&restartOnFailure, &jobStatus2)
+	assert.Equal(t, restart2, false)
+
+	var neverRestart = v1alpha1.JobRestartPolicyNever
+	var jobStatus3 = v1alpha1.JobStatus{
+		State:             v1alpha1.JobState.Failed,
+		SavepointLocation: "gs://my-bucket/savepoint-123",
+	}
+	var restart3 = shouldRestartJob(&neverRestart, &jobStatus3)
+	assert.Equal(t, restart3, false)
 }

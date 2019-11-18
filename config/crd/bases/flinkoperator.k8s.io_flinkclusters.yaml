@@ -6261,6 +6261,10 @@ spec:
                     name:
                       description: The name of the Kubernetes job resource.
                       type: string
+                    restartCount:
+                      description: The number of restarts.
+                      format: int32
+                      type: integer
                     savepointLocation:
                       description: Savepoint location.
                       type: string

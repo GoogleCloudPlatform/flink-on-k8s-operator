@@ -580,9 +580,13 @@ func getDesiredJob(
 	if jobSpec.ClassName != nil {
 		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
 	}
-	if jobSpec.Savepoint != nil {
-		jobArgs = append(jobArgs, "--fromSavepoint", *jobSpec.Savepoint)
+
+	var jobStatus = flinkCluster.Status.Components.Job
+	var fromSavepoint = getFromSavepoint(jobSpec, jobStatus)
+	if fromSavepoint != nil {
+		jobArgs = append(jobArgs, "--fromSavepoint", *fromSavepoint)
 	}
+
 	if jobSpec.AllowNonRestoredState != nil &&
 		*jobSpec.AllowNonRestoredState == true {
 		jobArgs = append(jobArgs, "--allowNonRestoredState")
@@ -686,6 +690,14 @@ func getDesiredJob(
 		},
 	}
 	return job
+}
+
+func getFromSavepoint(
+	jobSpec *v1alpha1.JobSpec, jobStatus *v1alpha1.JobStatus) *string {
+	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
+		return &jobStatus.SavepointLocation
+	}
+	return jobSpec.Savepoint
 }
 
 func getJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {

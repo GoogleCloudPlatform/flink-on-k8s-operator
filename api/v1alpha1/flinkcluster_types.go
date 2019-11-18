@@ -268,7 +268,7 @@ type JobSpec struct {
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
-	// Automatically take a savepoint to the savepoints dir every n seconds.
+	// Automatically take a savepoint to the `savepointsDir` every n seconds.
 	AutoSavepointSeconds *int32 `json:"autoSavepointSeconds,omitempty"`
 
 	// Savepoints dir where to store automatically taken savepoints.
@@ -294,15 +294,16 @@ type JobSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
-	// Restart policy when the job fails, "FromSavepointOnFailure" or "Never",
+	// Restart policy when the job fails, "Never" or "FromSavepointOnFailure",
 	// default: "Never".
 	//
-	// "FromSavepointOnFailure" means if there is a savepoint recorded in the
-	// job status, the operator will try to restart the failed job from the
-	// savepoint; otherwise, the job will stay in failed state.
-	//
 	// "Never" means the operator will never try to restart a failed job, manual
-	// cleanup is required.
+	// cleanup and restart is required.
+	//
+	// "FromSavepointOnFailure" means the operator will try to restart the failed
+	// job from the savepoint recorded in the job status if available; otherwise,
+	// the job will stay in failed state. This option is usually used together
+	// with `autoSavepointSeconds` and `savepointsDir`.
 	RestartPolicy *JobRestartPolicy `json:"restartPolicy"`
 
 	// The action to take after job finishes.
@@ -424,6 +425,9 @@ type JobStatus struct {
 
 	// Last successful or failed savepoint operation timestamp.
 	LastSavepointTime string `json:"lastSavepointTime,omitempty"`
+
+	// The number of restarts.
+	RestartCount int32 `json:"restartCount,omitempty"`
 }
 
 // JobManagerIngressStatus defines the status of a JobManager ingress.

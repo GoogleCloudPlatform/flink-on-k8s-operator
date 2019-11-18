@@ -95,6 +95,7 @@ FlinkCluster
             |__ savepointLocation
             |__ lastSavepointTriggerID
             |__ lastSavepointTime
+            |__ restartCount
 Last successful or failed savepoint operation timestamp.
     |__ lastUpdateTime
 ```
@@ -165,7 +166,7 @@ Last successful or failed savepoint operation timestamp.
       * **className** (required): Fully qualified Java class name of the job.
       * **args** (optional): Command-line args of the job.
       * **savepoint** (optional): Savepoint where to restore the job from.
-      * **autoSavepointSeconds** (optional): Automatically take a savepoint to the savepoints dir every n seconds.
+      * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
       * **parallelism** (optional): Parallelism of the job, default: 1.
@@ -177,10 +178,12 @@ Last successful or failed savepoint operation timestamp.
       * **mounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
         automatically added to init containers; otherwise, the mounts defined in init containers will take precedence.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
-      * **restartPolicy** (optional): Restart policy when the job fails, `enum("FromSavepointOnFailure, "Never")`,
-        default: `"Never"`. `"FromSavepointOnFailure"` means if there is a savepoint recorded in the job status, the
-        operator will try to restart the failed job from the savepoint; otherwise, the job will stay in failed state.
+      * **restartPolicy** (optional): Restart policy when the job fails, `enum("Never", "FromSavepointOnFailure")`,
+        default: `"Never"`.
         `"Never"` means the operator will never try to restart a failed job, manual cleanup is required.
+        `"FromSavepointOnFailure"` means the operator will try to restart the failed job from the savepoint recorded in
+          the job status if available; otherwise, the job will stay in failed state. This option is usually used
+          together with `autoSavepointSeconds` and `savepointDir`.
       * **cleanupPolicy** (optional): The action to take after job finishes.
         * **afterJobSucceeds** (required): The action to take after job succeeds,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
@@ -223,4 +226,5 @@ Last successful or failed savepoint operation timestamp.
         * **savepointLocation**: Last savepoint location.
         * **lastSavepointTriggerID**: Last savepoint trigger ID.
         * **lastSavepointTime**: Last successful or failed savepoint operation timestamp.
+        * **restartCount**: The number of restarts.
     * **lastUpdateTime**: Last update timestamp of this status.
