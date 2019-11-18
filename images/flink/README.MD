@@ -36,7 +36,7 @@ ConfigMap and make the file available to the Flink TaskManager containers:
 1. Create a configMap with the `core-site.xml`.
 
   ```bash
-  kubectl create configmap hadoop-config --from-file [/PATH/TO/CORE-SITE.XML]
+  kubectl create configmap hadoop-config --from-file=[/PATH/TO/CORE-SITE.XML]
   ```
 
 ## Create a Flink cluster
@@ -55,23 +55,19 @@ Now you can create a Flink cluster with the Secret and ConfigMap created in the 
       ...
     taskManager:
       ...
-      mounts:
-        - name: hadoop-conf-volume
-          mountPath: /etc/hadoop/conf
-      volumes:
-        - name: hadoop-conf-volume
-          configMap:
-            name: hadoop-config
     job:
       jarFile: gs://my-bucket/my-job.jar
       savepoint: gs://my-bucket/path-to-savepoints/savepoint-1234
       savepointsDir: gs://my-bucket/path-to-savepoints
       autoSavepointSeconds: 300
+    hadoopConfig:
+      secretName: "hadoop-configmap"
+      mountPath: "/etc/hadoop/conf"
     gcpConfig:
       serviceAccount:
         secretName: "gcp-service-account-secret"
         keyFile: "gcp_service_account_key.json"
-        mountPath: "/etc/gcp_service_account/"
+        mountPath: "/etc/gcp/keys"
   ```
 
 Then run:

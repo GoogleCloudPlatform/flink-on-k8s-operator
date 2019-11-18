@@ -37,6 +37,10 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 	if err != nil {
 		return err
 	}
+	err = v.validateHadoopConfig(cluster.Spec.HadoopConfig)
+	if err != nil {
+		return err
+	}
 	err = v.validateGCPConfig(cluster.Spec.GCPConfig)
 	if err != nil {
 		return err
@@ -107,6 +111,19 @@ func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {
 	}
 	if len(meta.Namespace) == 0 {
 		return fmt.Errorf("cluster namesapce is unspecified")
+	}
+	return nil
+}
+
+func (v *Validator) validateHadoopConfig(hadoopConfig *HadoopConfig) error {
+	if hadoopConfig == nil {
+		return nil
+	}
+	if len(hadoopConfig.ConfigMapName) == 0 {
+		return fmt.Errorf("Hadoop ConfigMap name is unspecified")
+	}
+	if len(hadoopConfig.MountPath) == 0 {
+		return fmt.Errorf("Hadoop config volume mount path is unspecified")
 	}
 	return nil
 }

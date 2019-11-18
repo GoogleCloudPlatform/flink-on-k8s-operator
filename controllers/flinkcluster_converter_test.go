@@ -178,6 +178,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
+			HadoopConfig: &v1alpha1.HadoopConfig{
+				ConfigMapName: "hadoop-configmap",
+				MountPath:     "/etc/hadoop/conf",
+			},
 			GCPConfig: &v1alpha1.GCPConfig{
 				ServiceAccount: &v1alpha1.GCPServiceAccount{
 					SecretName: "gcp-service-account-secret",
@@ -264,6 +268,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 										},
 									},
 								},
+								{Name: "HADOOP_CONF_DIR", Value: "/etc/hadoop/conf"},
 								{
 									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
@@ -289,6 +294,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 									MountPath: "/opt/flink/conf",
 								},
 								{
+									Name:      "hadoop-config-volume",
+									MountPath: "/etc/hadoop/conf",
+									ReadOnly:  true,
+								},
+								{
 									Name:      "gcp-service-account-volume",
 									MountPath: "/etc/gcp_service_account/",
 									ReadOnly:  true,
@@ -303,6 +313,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "flinkjobcluster-sample-configmap",
+									},
+								},
+							},
+						},
+						{
+							Name: "hadoop-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "hadoop-configmap",
 									},
 								},
 							},
@@ -494,6 +514,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 										},
 									},
 								},
+								{Name: "HADOOP_CONF_DIR", Value: "/etc/hadoop/conf"},
 								{
 									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
@@ -517,6 +538,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "cache-volume", MountPath: "/cache"},
 								{Name: "flink-config-volume", MountPath: "/opt/flink/conf"},
 								{
+									Name:      "hadoop-config-volume",
+									MountPath: "/etc/hadoop/conf",
+									ReadOnly:  true,
+								},
+								{
 									Name:      "gcp-service-account-volume",
 									MountPath: "/etc/gcp_service_account/",
 									ReadOnly:  true,
@@ -538,6 +564,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "flinkjobcluster-sample-configmap",
+									},
+								},
+							},
+						},
+						{
+							Name: "hadoop-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "hadoop-configmap",
 									},
 								},
 							},
@@ -616,6 +652,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"./README.txt",
 							},
 							Env: []v1.EnvVar{
+								{Name: "HADOOP_CONF_DIR", Value: "/etc/hadoop/conf"},
 								{
 									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
@@ -624,6 +661,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
+								{
+									Name:      "hadoop-config-volume",
+									MountPath: "/etc/hadoop/conf",
+									ReadOnly:  true,
+								},
 								{
 									Name:      "gcp-service-account-volume",
 									MountPath: "/etc/gcp_service_account/",
@@ -638,6 +680,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name: "cache-volume",
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "hadoop-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "hadoop-configmap",
+									},
+								},
 							},
 						},
 						{

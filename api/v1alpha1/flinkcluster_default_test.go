@@ -35,6 +35,7 @@ func TestSetDefault(t *testing.T) {
 			JobManager: JobManagerSpec{
 				Ingress: &JobManagerIngressSpec{},
 			},
+			HadoopConfig: &HadoopConfig{},
 		},
 	}
 	_SetDefault(&cluster)
@@ -105,7 +106,10 @@ func TestSetDefault(t *testing.T) {
 				},
 			},
 			FlinkProperties: nil,
-			EnvVars:         nil,
+			HadoopConfig: &HadoopConfig{
+				MountPath: "/etc/hadoop/conf",
+			},
+			EnvVars: nil,
 		},
 		Status: FlinkClusterStatus{},
 	}
@@ -185,7 +189,10 @@ func TestSetNonDefault(t *testing.T) {
 				},
 			},
 			FlinkProperties: nil,
-			EnvVars:         nil,
+			HadoopConfig: &HadoopConfig{
+				MountPath: "/opt/flink/hadoop/conf",
+			},
+			EnvVars: nil,
 		},
 		Status: FlinkClusterStatus{},
 	}
@@ -243,7 +250,10 @@ func TestSetNonDefault(t *testing.T) {
 				},
 			},
 			FlinkProperties: nil,
-			EnvVars:         nil,
+			HadoopConfig: &HadoopConfig{
+				MountPath: "/opt/flink/hadoop/conf",
+			},
+			EnvVars: nil,
 		},
 		Status: FlinkClusterStatus{},
 	}

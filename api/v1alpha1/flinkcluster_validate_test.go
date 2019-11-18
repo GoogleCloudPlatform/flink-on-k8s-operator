@@ -85,6 +85,10 @@ func TestValidateCreate(t *testing.T) {
 					MountPath:  "/etc/gcp_service_account",
 				},
 			},
+			HadoopConfig: &HadoopConfig{
+				ConfigMapName: "hadoop-configmap",
+				MountPath:     "/etc/hadoop/conf",
+			},
 		},
 	}
 	var validator = &Validator{}
@@ -561,4 +565,26 @@ func TestInvalidGCPConfig(t *testing.T) {
 	var expectedErr = "invalid GCP service account volume mount path"
 	assert.Assert(t, err != nil, "err is not expected to be nil")
 	assert.Equal(t, err.Error(), expectedErr)
+}
+
+func TestInvalidHadoopConfig(t *testing.T) {
+	var validator = &Validator{}
+
+	var hadoopConfig1 = HadoopConfig{
+		ConfigMapName: "",
+		MountPath:     "/etc/hadoop/conf",
+	}
+	var err1 = validator.validateHadoopConfig(&hadoopConfig1)
+	var expectedErr1 = "Hadoop ConfigMap name is unspecified"
+	assert.Assert(t, err1 != nil, "err is not expected to be nil")
+	assert.Equal(t, err1.Error(), expectedErr1)
+
+	var hadoopConfig2 = HadoopConfig{
+		ConfigMapName: "hadoop-configmap",
+		MountPath:     "",
+	}
+	var err2 = validator.validateHadoopConfig(&hadoopConfig2)
+	var expectedErr2 = "Hadoop config volume mount path is unspecified"
+	assert.Assert(t, err2 != nil, "err is not expected to be nil")
+	assert.Equal(t, err2.Error(), expectedErr2)
 }

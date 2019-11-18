@@ -62,8 +62,11 @@ FlinkCluster
             |__ afterJobSucceeds
             |__ afterJobFails
         |__ cancelRequested
-    |__ flinkProperties
     |__ envVars
+    |__ flinkProperties
+    |__ hadoopConfig
+        |__ configMapName
+        |__ mountPath
     |__ gcpConfig
         |__ serviceAccount
             |__ secretName
@@ -185,9 +188,13 @@ Last successful or failed savepoint operation timestamp.
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"KeepCluster"`.
       * **cancelRequested** (optional): Request the job to be cancelled. Only applies to running jobs. If
         `savePointsDir` is provided, a savepoint will be taken before stopping the job.
-    * **flinkProperties** (optional): Flink properties which are appened to flink-conf.yaml of the Flink image.
     * **envVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
-    * **gcpConfig** (optional): Configs specific to GCP.
+    * **flinkProperties** (optional): Flink properties which are appened to flink-conf.yaml.
+    * **hadoopConfig** (optional): Configs for Hadoop.
+      * **configMapName**: The name of the ConfigMap which holds the Hadoop config files. The ConfigMap must be in the
+        same namespace as the FlinkCluster.
+      * **mountPath**: The path where to mount the Volume of the ConfigMap.
+    * **gcpConfig** (optional): Configs for GCP.
       * **serviceAccount**: GCP service account.
         * **secretName**: The name of the Secret holding the GCP service account key file. The Secret must be in the
           same namespace as the FlinkCluster.

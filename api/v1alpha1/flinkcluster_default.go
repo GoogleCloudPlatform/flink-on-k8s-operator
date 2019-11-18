@@ -27,6 +27,7 @@ func _SetDefault(cluster *FlinkCluster) {
 	_SetJobManagerDefault(&cluster.Spec.JobManager)
 	_SetTaskManagerDefault(&cluster.Spec.TaskManager)
 	_SetJobDefault(cluster.Spec.Job)
+	_SetHadoopConfigDefault(cluster.Spec.HadoopConfig)
 }
 
 func _SetImageDefault(imageSpec *ImageSpec) {
@@ -122,5 +123,14 @@ func _SetJobDefault(jobSpec *JobSpec) {
 			AfterJobFails:     CleanupActionKeepCluster,
 			AfterJobCancelled: CleanupActionDeleteCluster,
 		}
+	}
+}
+
+func _SetHadoopConfigDefault(hadoopConfig *HadoopConfig) {
+	if hadoopConfig == nil {
+		return
+	}
+	if len(hadoopConfig.MountPath) == 0 {
+		hadoopConfig.MountPath = "/etc/hadoop/conf"
 	}
 }

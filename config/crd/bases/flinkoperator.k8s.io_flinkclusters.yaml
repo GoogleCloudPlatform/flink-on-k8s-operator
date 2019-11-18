@@ -487,8 +487,7 @@ spec:
             flinkProperties:
               additionalProperties:
                 type: string
-              description: Flink properties which are appened to flink-conf.yaml of
-                the image.
+              description: Flink properties which are appened to flink-conf.yaml.
               type: object
             gcpConfig:
               description: Config for GCP.
@@ -508,6 +507,18 @@ spec:
                         as the FlinkCluster.
                       type: string
                   type: object
+              type: object
+            hadoopConfig:
+              description: Config for Hadoop.
+              properties:
+                configMapName:
+                  description: The name of the ConfigMap which contains the Hadoop
+                    config files. The ConfigMap must be in the same namespace as the
+                    FlinkCluster.
+                  type: string
+                mountPath:
+                  description: The path where to mount the Volume of the ConfigMap.
+                  type: string
               type: object
             image:
               description: Flink image spec for the cluster's components.
