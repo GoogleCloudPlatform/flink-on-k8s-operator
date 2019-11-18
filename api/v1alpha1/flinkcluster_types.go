@@ -330,18 +330,31 @@ type FlinkClusterSpec struct {
 	// otherwise, it is a long-running Session Cluster.
 	Job *JobSpec `json:"job,omitempty"`
 
-	// Flink properties which are appened to flink-conf.yaml of the image.
-	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
-
 	// Environment variables shared by all JobManager, TaskManager and job
 	// containers.
 	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
+
+	// Flink properties which are appened to flink-conf.yaml.
+	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
+
+	// Config for Hadoop.
+	HadoopConfig *HadoopConfig `json:"hadoopConfig,omitempty"`
 
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
 }
 
-// GCPConfig defines configs specific to GCP.
+// HadoopConfig defines configs for Hadoop.
+type HadoopConfig struct {
+	// The name of the ConfigMap which contains the Hadoop config files.
+	// The ConfigMap must be in the same namespace as the FlinkCluster.
+	ConfigMapName string `json:"configMapName,omitempty"`
+
+	// The path where to mount the Volume of the ConfigMap.
+	MountPath string `json:"mountPath,omitempty"`
+}
+
+// GCPConfig defines configs for GCP.
 type GCPConfig struct {
 	// GCP service account.
 	ServiceAccount *GCPServiceAccount `json:"serviceAccount,omitempty"`
