@@ -1,7 +1,8 @@
 # Using GCS connector with custom Flink images
 
 To use [Google Cloud Storage](https://cloud.google.com/storage/) as remote storage for checkpoints, savepoints or job
-jar, you can create a custom Docker image based on the official Flink image and add GCS connector in it.
+jar, you can create a custom Docker image based on the official Flink image and add
+[GCS connector](https://github.com/GoogleCloudPlatform/bigdata-interop/tree/master/gcs) in it.
 
 ## Create custom Docker image with GCS connector
 
@@ -25,7 +26,7 @@ Before you create a Flink cluster with the custom image, you need to prepare sev
 2. Create Kubernetes Secret object with your service account key file.
 
   ```bash
-  kubectl create secret generic gcp-service-account-secret --from-file=gcp_service_account_key.json=[/PATH/TO/KEY.json]
+  kubectl create secret generic gcp-service-account-secret --from-file gcp_service_account_key.json=[/PATH/TO/KEY]
   ```
 
 ### GCS connector config
@@ -36,7 +37,7 @@ ConfigMap and make the file available to the Flink TaskManager containers:
 1. Create a configMap with the `core-site.xml`.
 
   ```bash
-  kubectl create configmap hadoop-config --from-file=[/PATH/TO/CORE-SITE.XML]
+  kubectl create configmap hadoop-configmap --from-file [/PATH/TO/CORE-SITE.XML]
   ```
 
 ## Create a Flink cluster
@@ -61,13 +62,13 @@ Now you can create a Flink cluster with the Secret and ConfigMap created in the 
       savepointsDir: gs://my-bucket/path-to-savepoints
       autoSavepointSeconds: 300
     hadoopConfig:
-      secretName: "hadoop-configmap"
-      mountPath: "/etc/hadoop/conf"
+      configMapName: hadoop-configmap
+      mountPath: /etc/hadoop/conf
     gcpConfig:
       serviceAccount:
-        secretName: "gcp-service-account-secret"
-        keyFile: "gcp_service_account_key.json"
-        mountPath: "/etc/gcp/keys"
+        secretName: gcp-service-account-secret
+        keyFile: gcp_service_account_key.json
+        mountPath: /etc/gcp/keys
   ```
 
 Then run:
