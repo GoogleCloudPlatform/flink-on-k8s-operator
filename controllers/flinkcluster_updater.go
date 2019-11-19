@@ -349,45 +349,52 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var jobCancelled = false
 	var observedJob = observed.job
 	var recordedJobStatus = recorded.Components.Job
+	var jobStatus *v1alpha1.JobStatus
 	if observedJob != nil {
-		status.Components.Job = &v1alpha1.JobStatus{}
-		var recordedJobStatus = observed.cluster.Status.Components.Job
+		jobStatus = &v1alpha1.JobStatus{}
 		if recordedJobStatus != nil {
-			recordedJobStatus.DeepCopyInto(status.Components.Job)
+			recordedJobStatus.DeepCopyInto(jobStatus)
 		}
-		status.Components.Job.Name = observedJob.ObjectMeta.Name
-
+		jobStatus.Name = observedJob.ObjectMeta.Name
+		jobStatus.FromSavepoint = getFromSavepoint(observedJob.Spec)
 		var flinkJobID = updater.getFlinkJobID()
 		if flinkJobID != nil {
-			status.Components.Job.ID = *flinkJobID
+			jobStatus.ID = *flinkJobID
 		}
 
-		if observedJob.Status.Active > 0 {
+		if observedJob.Status.Failed > 0 {
+			jobStatus.State = v1alpha1.JobState.Failed
+			jobStopped = true
+			jobFailed = true
+		} else if observedJob.Status.Succeeded > 0 {
+			jobStatus.State = v1alpha1.JobState.Succeeded
+			jobStopped = true
+			jobSucceeded = true
+		} else {
 			// When job status is Active, it is possible that the pod is still
 			// Pending (for scheduling), so we use Flink job ID to determine
 			// the actual state.
 			if flinkJobID == nil {
-				status.Components.Job.State = v1alpha1.JobState.Pending
+				jobStatus.State = v1alpha1.JobState.Pending
 			} else {
-				status.Components.Job.State = v1alpha1.JobState.Running
+				jobStatus.State = v1alpha1.JobState.Running
 			}
-		} else if observedJob.Status.Failed > 0 {
-			status.Components.Job.State = v1alpha1.JobState.Failed
-			jobStopped = true
-			jobFailed = true
-		} else if observedJob.Status.Succeeded > 0 {
-			status.Components.Job.State = v1alpha1.JobState.Succeeded
-			jobStopped = true
-			jobSucceeded = true
-		} else {
-			status.Components.Job = nil
+			if recordedJobStatus != nil && (recordedJobStatus.State ==
+				v1alpha1.JobState.Failed ||
+				recordedJobStatus.State == v1alpha1.JobState.Cancelled) {
+				jobStatus.RestartCount++
+			}
 		}
-	} else if recordedJobStatus != nil && len(recordedJobStatus.Name) > 0 {
-		status.Components.Job = recordedJobStatus.DeepCopy()
-		status.Components.Job.State = v1alpha1.JobState.Cancelled
+	} else if recordedJobStatus != nil {
+		jobStatus = recordedJobStatus.DeepCopy()
 		jobStopped = true
-		jobCancelled = true
+		var cancelRequested = observed.cluster.Spec.Job.CancelRequested
+		if cancelRequested != nil && *cancelRequested {
+			jobStatus.State = v1alpha1.JobState.Cancelled
+			jobCancelled = true
+		}
 	}
+	status.Components.Job = jobStatus
 
 	// Derive the new cluster state.
 	switch recorded.State {
@@ -538,15 +545,19 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			changed = true
 		}
 	} else {
-		var isEqual = reflect.DeepEqual(
-			newStatus.Components.Job, currentStatus.Components.Job)
-		if !isEqual {
-			updater.log.Info(
-				"Job status changed",
-				"current",
-				*currentStatus.Components.Job,
-				"new",
-				*newStatus.Components.Job)
+		if newStatus.Components.Job != nil {
+			var isEqual = reflect.DeepEqual(
+				newStatus.Components.Job, currentStatus.Components.Job)
+			if !isEqual {
+				updater.log.Info(
+					"Job status changed",
+					"current",
+					*currentStatus.Components.Job,
+					"new",
+					*newStatus.Components.Job)
+				changed = true
+			}
+		} else {
 			changed = true
 		}
 	}

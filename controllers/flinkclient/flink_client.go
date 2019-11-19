@@ -87,7 +87,7 @@ func (c *FlinkClient) StopJob(
 	apiBaseURL string, jobID string) error {
 	var resp = struct{}{}
 	return c.HTTPClient.Patch(
-		fmt.Sprintf("%s/jobs/%s?mode=stop", apiBaseURL, jobID), []byte{}, &resp)
+		fmt.Sprintf("%s/jobs/%s?mode=cancel", apiBaseURL, jobID), []byte{}, &resp)
 }
 
 // TriggerSavepoint triggers an async savepoint operation.

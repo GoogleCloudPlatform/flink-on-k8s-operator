@@ -52,6 +52,7 @@ FlinkCluster
         |__ allowNonRestoredState
         |__ autoSavepointSeconds
         |__ savepointsDir
+        |__ savepointGeneration
         |__ parallelism
         |__ noLoggingToStdout
         |__ volumes
@@ -92,6 +93,8 @@ FlinkCluster
             |__ name
             |__ id
             |__ state
+            |__ fromSavepoint
+            |__ savepointGeneration
             |__ savepointLocation
             |__ lastSavepointTriggerID
             |__ lastSavepointTime
@@ -169,6 +172,8 @@ Last successful or failed savepoint operation timestamp.
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
+      * **savepointGeneration** (optional): Update this field to `jobStatus.savepointGeneration + 1` for a running job
+        cluster to trigger a new savepoint to `savepointsDir` on demand.
       * **parallelism** (optional): Parallelism of the job, default: 1.
       * **noLoggingToStdout** (optional): No logging output to STDOUT, default: false.
       * **initContainers** (optional): Init containers of the Job pod.
@@ -223,6 +228,12 @@ Last successful or failed savepoint operation timestamp.
         * **name**: The resource name of the job.
         * **id**: The ID of the Flink job.
         * **state**: The state of the job.
+        * **fromSavepoint**: The actual savepoint from which this job started.
+          In case of restart, it might be different from the savepoint in the
+          job spec.
+        * **savepointGeneration**: The generation of the savepoint in `savepointsDir` taken by the operator. The value
+          starts from 0 when there is no savepoint and increases by 1 for each
+          successful savepoint.
         * **savepointLocation**: Last savepoint location.
         * **lastSavepointTriggerID**: Last savepoint trigger ID.
         * **lastSavepointTime**: Last successful or failed savepoint operation timestamp.

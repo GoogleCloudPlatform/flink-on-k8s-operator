@@ -445,14 +445,14 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.AutoSavepointSeconds != nil {
-		in, out := &in.AutoSavepointSeconds, &out.AutoSavepointSeconds
-		*out = new(int32)
-		**out = **in
-	}
 	if in.SavepointsDir != nil {
 		in, out := &in.SavepointsDir, &out.SavepointsDir
 		*out = new(string)
+		**out = **in
+	}
+	if in.AutoSavepointSeconds != nil {
+		in, out := &in.AutoSavepointSeconds, &out.AutoSavepointSeconds
+		*out = new(int32)
 		**out = **in
 	}
 	if in.Parallelism != nil {

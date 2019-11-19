@@ -268,11 +268,15 @@ type JobSpec struct {
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
+	// Savepoints dir where to store savepoints of the job.
+	SavepointsDir *string `json:"savepointsDir,omitempty"`
+
 	// Automatically take a savepoint to the `savepointsDir` every n seconds.
 	AutoSavepointSeconds *int32 `json:"autoSavepointSeconds,omitempty"`
 
-	// Savepoints dir where to store automatically taken savepoints.
-	SavepointsDir *string `json:"savepointsDir,omitempty"`
+	// Update this field to `jobStatus.savepointGeneration + 1` for a running job
+	// cluster to trigger a new savepoint to `savepointsDir` on demand.
+	SavepointGeneration int32 `json:"savepointGeneration,omitempty"`
 
 	// Job parallelism, default: 1.
 	Parallelism *int32 `json:"parallelism,omitempty"`
@@ -416,6 +420,16 @@ type JobStatus struct {
 
 	// The state of the Kubernetes job.
 	State string `json:"state"`
+
+	// The actual savepoint from which this job started.
+	// In case of restart, it might be different from the savepoint in the job
+	// spec.
+	FromSavepoint string `json:"fromSavepoint,omitempty"`
+
+	// The generation of the savepoint in `savepointsDir` taken by the operator.
+	// The value starts from 0 when there is no savepoint and increases by 1 for
+	// each successful savepoint.
+	SavepointGeneration int32 `json:"savepointGeneration,omitempty"`
 
 	// Savepoint location.
 	SavepointLocation string `json:"savepointLocation,omitempty"`

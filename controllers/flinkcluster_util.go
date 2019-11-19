@@ -21,6 +21,7 @@ import (
 	"time"
 
 	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
 )
 
 func getFlinkAPIBaseURL(cluster *v1alpha1.FlinkCluster) string {
@@ -96,4 +97,14 @@ func shouldRestartJob(
 		jobStatus != nil &&
 		jobStatus.State == v1alpha1.JobState.Failed &&
 		len(jobStatus.SavepointLocation) > 0
+}
+
+func getFromSavepoint(jobSpec batchv1.JobSpec) string {
+	var jobArgs = jobSpec.Template.Spec.Containers[0].Args
+	for i, arg := range jobArgs {
+		if arg == "--fromSavepoint" && i < len(jobArgs)-1 {
+			return jobArgs[i+1]
+		}
+	}
+	return ""
 }

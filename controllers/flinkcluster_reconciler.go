@@ -340,26 +340,26 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var desiredJob = reconciler.desired.Job
 	var observed = reconciler.observed
 	var observedJob = observed.job
+	var err error
 
 	// Create
 	if desiredJob != nil && observedJob == nil {
 		// If the observed Flink job status list is not nil (e.g., emtpy list),
 		// it means Flink REST API server is up and running. It is the source of
 		// truth of whether we can submit a job.
-		if observed.flinkJobList != nil {
-			if len(observed.flinkJobList.Jobs) > 0 {
-				var err = fmt.Errorf(
-					"found unexpected job(s): %v, "+
-						"please consider taking savepoint manually, "+
-						"then delete and recreate the cluster",
-					observed.flinkJobList.Jobs)
-				return requeueResult, err
-			}
-			var err = reconciler.createJob(desiredJob)
+		if observed.flinkJobList == nil {
+			log.Info("Waiting for Flink API server to be ready")
+			return requeueResult, nil
+		}
+
+		if len(observed.flinkRunningJobIDs) > 0 {
+			log.Info("Cancelling unexpected running job(s)")
+			err = reconciler.cancelRunningJobs(false /* takeSavepoint */)
 			return requeueResult, err
 		}
-		log.Info("Waiting for Flink API to be ready before creating job")
-		return requeueResult, nil
+
+		err = reconciler.createJob(desiredJob)
+		return requeueResult, err
 	}
 
 	// Update or restart
@@ -393,7 +393,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	if desiredJob == nil && observedJob != nil {
 		if len(jobID) > 0 {
 			log.Info("Cancelling job", "jobID", jobID)
-			var err = reconciler.cancelJob(jobID)
+			var err = reconciler.cancelFlinkJob(jobID, true /* takeSavepoint */)
 			if err != nil {
 				log.Error(err, "Failed to cancel job", "jobID", jobID)
 				return requeueResult, nil
@@ -454,13 +454,19 @@ func (reconciler *ClusterReconciler) isJobStopped() bool {
 }
 
 func (reconciler *ClusterReconciler) restartJob() error {
-	var err error
 	var log = reconciler.log
 	var observedJob = reconciler.observed.job
 	var desiredJob = reconciler.desired.Job
 
+	log.Info("Restarting job", "old", observedJob, "new", desiredJob)
+
+	var err = reconciler.cancelRunningJobs(false /* takeSavepoint */)
+	if err != nil {
+		return err
+	}
+
 	if observedJob != nil {
-		err = reconciler.deleteJob(observedJob)
+		var err = reconciler.deleteJob(observedJob)
 		if err != nil {
 			log.Error(
 				err, "Failed to delete failed job", "job", observedJob)
@@ -468,39 +474,44 @@ func (reconciler *ClusterReconciler) restartJob() error {
 		}
 	}
 
-	err = reconciler.createJob(desiredJob)
-	if err != nil {
-		log.Error(err, "Failed recreate job", "job", desiredJob)
-		return err
-	}
+	// Do not create new job immediately, leave it to the next reconciliation,
+	// because we still need to be able to create the new job if we encounter
+	// ephemeral error here. It is better to organize the logic in a central place.
 
-	err = reconciler.updateJobStatusForRestart()
-	if err != nil {
-		log.Error(err, "Failed update job status for restart")
-		return err
-	}
+	return nil
+}
 
-	return err
+// Cancel running jobs.
+func (reconciler *ClusterReconciler) cancelRunningJobs(
+	takeSavepoint bool) error {
+	var log = reconciler.log
+	var runningJobIDs = reconciler.observed.flinkRunningJobIDs
+	for _, jobID := range runningJobIDs {
+		log.Info("Cancel running job", "jobID", jobID)
+		var err = reconciler.cancelFlinkJob(jobID, takeSavepoint)
+		if err != nil {
+			log.Error(err, "Failed to cancel running job", "jobID", jobID)
+			return err
+		}
+	}
+	return nil
 }
 
 // Takes a savepoint if possible then stops the job.
-func (reconciler *ClusterReconciler) cancelJob(jobID string) error {
+func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint bool) error {
 	var log = reconciler.log
-	if reconciler.canTakeSavepoint() {
+	if takeSavepoint && reconciler.canTakeSavepoint() {
 		var err = reconciler.takeSavepoint(jobID)
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Info("Can not take savepoint before stopping job", "jobID", jobID)
+		log.Info("Skip taking savepoint before stopping job", "jobID", jobID)
 	}
-	if !reconciler.isJobStopped() {
-		var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
-		reconciler.log.Info("Stoping job", "jobID", jobID)
-		return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
-	}
-	log.Info("Job has finished, no need to cancel", "jobID", jobID)
-	return nil
+
+	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
+	reconciler.log.Info("Stoping job", "jobID", jobID)
+	return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 }
 
 func (reconciler *ClusterReconciler) shouldAutoTakeSavepoint(
@@ -572,20 +583,10 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
 	cluster.Status = reconciler.observed.cluster.Status
 	var jobStatus = cluster.Status.Components.Job
+	jobStatus.SavepointGeneration++
 	jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
 	jobStatus.SavepointLocation = savepointStatus.Location
 	setTimestamp(&jobStatus.LastSavepointTime)
-	setTimestamp(&cluster.Status.LastUpdateTime)
-	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
-}
-
-func (reconciler *ClusterReconciler) updateJobStatusForRestart() error {
-	var cluster = v1alpha1.FlinkCluster{}
-	reconciler.observed.cluster.DeepCopyInto(&cluster)
-	var jobStatus = cluster.Status.Components.Job
-	jobStatus.State = v1alpha1.JobState.Pending
-	jobStatus.ID = ""
-	jobStatus.RestartCount++
 	setTimestamp(&cluster.Status.LastUpdateTime)
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

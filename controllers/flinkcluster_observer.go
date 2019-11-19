@@ -210,16 +210,6 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 		return
 	}
 
-	// Skip if it is already recorded.
-	var recordedJobStatus = observed.cluster.Status.Components.Job
-	if recordedJobStatus != nil && len(recordedJobStatus.ID) > 0 {
-		log.Info(
-			"Skip getting Flink job status.",
-			"recordedStatus",
-			*recordedJobStatus)
-		return
-	}
-
 	// Get Flink job status list.
 	var jobList = &flinkclient.JobStatusList{}
 	var err = observer.flinkClient.GetJobStatusList(
