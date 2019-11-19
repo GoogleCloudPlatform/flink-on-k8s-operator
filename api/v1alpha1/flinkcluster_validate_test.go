@@ -548,8 +548,42 @@ func TestUpdateSpecNotAllowed(t *testing.T) {
 		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
 	var validator = &Validator{}
 	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
-	var expectedErr = "the cluster properties are not updatable"
+	var expectedErr = "the cluster properties are immutable"
 	assert.Equal(t, err.Error(), expectedErr)
+}
+
+func TestUpdateSavepointGeneration(t *testing.T) {
+	var validator = &Validator{}
+
+	var oldCluster = FlinkCluster{
+		Spec: FlinkClusterSpec{
+			Job: &JobSpec{},
+		},
+		Status: FlinkClusterStatus{
+			Components: FlinkClusterComponentsStatus{
+				Job: &JobStatus{
+					SavepointGeneration: 2,
+				},
+			},
+		},
+	}
+	var newCluster1 = FlinkCluster{
+		Spec: FlinkClusterSpec{
+			Job: &JobSpec{SavepointGeneration: 4},
+		},
+	}
+
+	var err1 = validator.ValidateUpdate(&oldCluster, &newCluster1)
+	var expectedErr1 = "you can only update savepointGeneration to 3"
+	assert.Equal(t, err1.Error(), expectedErr1)
+
+	var newCluster2 = FlinkCluster{
+		Spec: FlinkClusterSpec{
+			Job: &JobSpec{SavepointGeneration: 3},
+		},
+	}
+	var err2 = validator.ValidateUpdate(&oldCluster, &newCluster2)
+	assert.Equal(t, err2, nil)
 }
 
 func TestInvalidGCPConfig(t *testing.T) {

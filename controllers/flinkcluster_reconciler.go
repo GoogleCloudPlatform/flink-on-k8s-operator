@@ -376,7 +376,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
-		if len(jobID) > 0 && reconciler.shouldAutoTakeSavepoint(jobID) {
+		if len(jobID) > 0 && reconciler.shouldTakeSavepoint(jobID) {
 			reconciler.takeSavepoint(jobID)
 		}
 
@@ -514,8 +514,9 @@ func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint 
 	return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 }
 
-func (reconciler *ClusterReconciler) shouldAutoTakeSavepoint(
+func (reconciler *ClusterReconciler) shouldTakeSavepoint(
 	jobID string) bool {
+	var log = reconciler.log
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 
@@ -523,7 +524,15 @@ func (reconciler *ClusterReconciler) shouldAutoTakeSavepoint(
 		return false
 	}
 
-	// Not enabled.
+	// User requested.
+	if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration {
+		log.Info(
+			"Savepoint is requested",
+			"statusGen", jobStatus.SavepointGeneration,
+			"specGen", jobSpec.SavepointGeneration)
+		return true
+	}
+
 	if jobSpec.AutoSavepointSeconds == nil {
 		return false
 	}
