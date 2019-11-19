@@ -19,6 +19,7 @@ package flinkclient
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -52,8 +53,18 @@ func (c *HTTPClient) doHTTP(
 	method string, url string, body []byte, outStructPtr interface{}) error {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	req, err := c.createRequest(method, url, body)
+	c.Log.Info("HTTPClient", "url", url, "method", method, "error", err)
+	if err != nil {
+		return err
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
+		return err
+	}
+	c.Log.Info(
+		"HTTPClient", "status", resp.Status, "body", outStructPtr, "error", err)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err = fmt.Errorf("%v", resp.Status)
 		return err
 	}
 	return c.readResponse(resp, outStructPtr)

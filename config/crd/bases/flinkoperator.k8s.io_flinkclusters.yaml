@@ -558,7 +558,7 @@ spec:
                     type: string
                   type: array
                 autoSavepointSeconds:
-                  description: Automatically take a savepoint to the savepoints dir
+                  description: Automatically take a savepoint to the `savepointsDir`
                     every n seconds.
                   format: int32
                   type: integer
@@ -1506,19 +1506,26 @@ spec:
                   format: int32
                   type: integer
                 restartPolicy:
-                  description: "Restart policy when the job fails, \"FromSavepointOnFailure\"
-                    or \"Never\", default: \"Never\". \n \"FromSavepointOnFailure\"
-                    means if there is a savepoint recorded in the job status, the
-                    operator will try to restart the failed job from the savepoint;
-                    otherwise, the job will stay in failed state. \n \"Never\" means
-                    the operator will never try to restart a failed job, manual cleanup
-                    is required."
+                  description: "Restart policy when the job fails, \"Never\" or \"FromSavepointOnFailure\",
+                    default: \"Never\". \n \"Never\" means the operator will never
+                    try to restart a failed job, manual cleanup and restart is required.
+                    \n \"FromSavepointOnFailure\" means the operator will try to restart
+                    the failed job from the savepoint recorded in the job status if
+                    available; otherwise, the job will stay in failed state. This
+                    option is usually used together with `autoSavepointSeconds` and
+                    `savepointsDir`."
                   type: string
                 savepoint:
                   description: Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
                   type: string
+                savepointGeneration:
+                  description: Update this field to `jobStatus.savepointGeneration
+                    + 1` for a running job cluster to trigger a new savepoint to `savepointsDir`
+                    on demand.
+                  format: int32
+                  type: integer
                 savepointsDir:
-                  description: Savepoints dir where to store automatically taken savepoints.
+                  description: Savepoints dir where to store savepoints of the job.
                   type: string
                 volumes:
                   description: 'Volumes in the Job pod. More info: https://kubernetes.io/docs/concepts/storage/volumes/'
@@ -6249,6 +6256,11 @@ spec:
                   description: The status of the job, available only when JobSpec
                     is provided.
                   properties:
+                    fromSavepoint:
+                      description: The actual savepoint from which this job started.
+                        In case of restart, it might be different from the savepoint
+                        in the job spec.
+                      type: string
                     id:
                       description: The ID of the Flink job.
                       type: string
@@ -6263,6 +6275,12 @@ spec:
                       type: string
                     restartCount:
                       description: The number of restarts.
+                      format: int32
+                      type: integer
+                    savepointGeneration:
+                      description: The generation of the savepoint. The value starts
+                        from 0 when there is no savepoint and increases by 1 for each
+                        successful savepoint.
                       format: int32
                       type: integer
                     savepointLocation:

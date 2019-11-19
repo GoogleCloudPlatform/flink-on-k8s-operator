@@ -582,7 +582,7 @@ func getDesiredJob(
 	}
 
 	var jobStatus = flinkCluster.Status.Components.Job
-	var fromSavepoint = getFromSavepoint(jobSpec, jobStatus)
+	var fromSavepoint = convertFromSavepoint(jobSpec, jobStatus)
 	if fromSavepoint != nil {
 		jobArgs = append(jobArgs, "--fromSavepoint", *fromSavepoint)
 	}
@@ -649,7 +649,7 @@ func getDesiredJob(
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
 
 	var podSpec = corev1.PodSpec{
-		InitContainers: getJobInitContainers(jobSpec),
+		InitContainers: convertJobInitContainers(jobSpec),
 		Containers: []corev1.Container{
 			corev1.Container{
 				Name:            "main",
@@ -692,7 +692,7 @@ func getDesiredJob(
 	return job
 }
 
-func getFromSavepoint(
+func convertFromSavepoint(
 	jobSpec *v1alpha1.JobSpec, jobStatus *v1alpha1.JobStatus) *string {
 	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
 		return &jobStatus.SavepointLocation
@@ -700,7 +700,7 @@ func getFromSavepoint(
 	return jobSpec.Savepoint
 }
 
-func getJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
+func convertJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
 	var initContainers = []corev1.Container{}
 	// Add jobSpec level volume mounts to each init container if there is no
 	// conflict.
