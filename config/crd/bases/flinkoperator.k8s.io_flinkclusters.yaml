@@ -6278,9 +6278,9 @@ spec:
                       format: int32
                       type: integer
                     savepointGeneration:
-                      description: The generation of the savepoint. The value starts
-                        from 0 when there is no savepoint and increases by 1 for each
-                        successful savepoint.
+                      description: The generation of the savepoint in `savepointsDir`
+                        taken by the operator. The value starts from 0 when there
+                        is no savepoint and increases by 1 for each successful savepoint.
                       format: int32
                       type: integer
                     savepointLocation:

@@ -66,7 +66,7 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
-	var cancelRequested, err = v.checkCancelRequested(old, new)
+	cancelRequested, err := v.checkCancelRequested(old, new)
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,16 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
+	savepointGenUpdated, err := v.checkSavepointGeneration(old, new)
+	if err != nil {
+		return err
+	}
+	if savepointGenUpdated {
+		return nil
+	}
+
 	if !reflect.DeepEqual(new.Spec, old.Spec) {
-		return fmt.Errorf("the cluster properties are not updatable")
+		return fmt.Errorf("the cluster properties are immutable")
 	}
 
 	return nil
@@ -103,6 +111,34 @@ func (v *Validator) checkCancelRequested(
 	}
 
 	return false, nil
+}
+
+func (v *Validator) checkSavepointGeneration(
+	old *FlinkCluster, new *FlinkCluster) (bool, error) {
+	if old.Spec.Job == nil || new.Spec.Job == nil {
+		return false, nil
+	}
+
+	var oldSpecGen = old.Spec.Job.SavepointGeneration
+	var newSpecGen = new.Spec.Job.SavepointGeneration
+	if oldSpecGen == newSpecGen {
+		return false, nil
+	}
+
+	var oldStatusGen int32 = 0
+	if old.Status.Components.Job != nil {
+		oldStatusGen = old.Status.Components.Job.SavepointGeneration
+	}
+	if newSpecGen != oldStatusGen+1 {
+		return false, fmt.Errorf(
+			"you can only update savepointGeneration to %v",
+			oldStatusGen+1)
+	}
+
+	// Check if only `savepointGeneration` changed, no other changes.
+	var oldCopy = old.DeepCopy()
+	oldCopy.Spec.Job.SavepointGeneration = newSpecGen
+	return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {
