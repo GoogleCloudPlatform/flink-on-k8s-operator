@@ -80,7 +80,7 @@ func TestSetDefault(t *testing.T) {
 				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
 				MemoryOffHeapMin:   defaultMemoryOffHeapMin,
 				Volumes:            nil,
-				Mounts:             nil,
+				VolumeMounts:       nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -163,7 +163,7 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
-				Mounts:             nil,
+				VolumeMounts:       nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -224,7 +224,7 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
-				Mounts:             nil,
+				VolumeMounts:       nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,

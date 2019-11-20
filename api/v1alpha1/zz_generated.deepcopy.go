@@ -396,8 +396,8 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Mounts != nil {
-		in, out := &in.Mounts, &out.Mounts
+	if in.VolumeMounts != nil {
+		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]v1.VolumeMount, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
@@ -435,8 +435,8 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Savepoint != nil {
-		in, out := &in.Savepoint, &out.Savepoint
+	if in.FromSavepoint != nil {
+		in, out := &in.FromSavepoint, &out.FromSavepoint
 		*out = new(string)
 		**out = **in
 	}
@@ -472,8 +472,8 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Mounts != nil {
-		in, out := &in.Mounts, &out.Mounts
+	if in.VolumeMounts != nil {
+		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]v1.VolumeMount, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
@@ -576,8 +576,8 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Mounts != nil {
-		in, out := &in.Mounts, &out.Mounts
+	if in.VolumeMounts != nil {
+		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]v1.VolumeMount, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

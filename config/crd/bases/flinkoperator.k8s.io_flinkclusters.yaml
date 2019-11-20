@@ -583,6 +583,10 @@ spec:
                       description: Action to take after job succeeds.
                       type: string
                   type: object
+                fromSavepoint:
+                  description: FromSavepoint where to restore the job from (e.g.,
+                    gs://my-savepoint/1234).
+                  type: string
                 initContainers:
                   description: 'Init containers of the Job pod. A typical use case
                     could be using an init container to download a remote job jar
@@ -1460,7 +1464,33 @@ spec:
                 jarFile:
                   description: JAR file of the job.
                   type: string
-                mounts:
+                noLoggingToStdout:
+                  description: 'No logging output to STDOUT, default: false.'
+                  type: boolean
+                parallelism:
+                  description: 'Job parallelism, default: 1.'
+                  format: int32
+                  type: integer
+                restartPolicy:
+                  description: "Restart policy when the job fails, \"Never\" or \"FromSavepointOnFailure\",
+                    default: \"Never\". \n \"Never\" means the operator will never
+                    try to restart a failed job, manual cleanup and restart is required.
+                    \n \"FromSavepointOnFailure\" means the operator will try to restart
+                    the failed job from the savepoint recorded in the job status if
+                    available; otherwise, the job will stay in failed state. This
+                    option is usually used together with `autoSavepointSeconds` and
+                    `savepointsDir`."
+                  type: string
+                savepointGeneration:
+                  description: Update this field to `jobStatus.savepointGeneration
+                    + 1` for a running job cluster to trigger a new savepoint to `savepointsDir`
+                    on demand.
+                  format: int32
+                  type: integer
+                savepointsDir:
+                  description: Savepoints dir where to store savepoints of the job.
+                  type: string
+                volumeMounts:
                   description: 'Volume mounts in the Job container. More info: https://kubernetes.io/docs/concepts/storage/volumes/'
                   items:
                     properties:
@@ -1498,35 +1528,6 @@ spec:
                     - mountPath
                     type: object
                   type: array
-                noLoggingToStdout:
-                  description: 'No logging output to STDOUT, default: false.'
-                  type: boolean
-                parallelism:
-                  description: 'Job parallelism, default: 1.'
-                  format: int32
-                  type: integer
-                restartPolicy:
-                  description: "Restart policy when the job fails, \"Never\" or \"FromSavepointOnFailure\",
-                    default: \"Never\". \n \"Never\" means the operator will never
-                    try to restart a failed job, manual cleanup and restart is required.
-                    \n \"FromSavepointOnFailure\" means the operator will try to restart
-                    the failed job from the savepoint recorded in the job status if
-                    available; otherwise, the job will stay in failed state. This
-                    option is usually used together with `autoSavepointSeconds` and
-                    `savepointsDir`."
-                  type: string
-                savepoint:
-                  description: Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
-                  type: string
-                savepointGeneration:
-                  description: Update this field to `jobStatus.savepointGeneration
-                    + 1` for a running job cluster to trigger a new savepoint to `savepointsDir`
-                    on demand.
-                  format: int32
-                  type: integer
-                savepointsDir:
-                  description: Savepoints dir where to store savepoints of the job.
-                  type: string
                 volumes:
                   description: 'Volumes in the Job pod. More info: https://kubernetes.io/docs/concepts/storage/volumes/'
                   items:
@@ -2765,44 +2766,6 @@ spec:
                     safety margin to avoid OOM kill, default: 25'
                   format: int32
                   type: integer
-                mounts:
-                  description: Volume mounts in the JobManager container.
-                  items:
-                    properties:
-                      mountPath:
-                        description: Path within the container at which the volume
-                          should be mounted.  Must not contain ':'.
-                        type: string
-                      mountPropagation:
-                        description: mountPropagation determines how mounts are propagated
-                          from the host to container and the other way around. When
-                          not set, MountPropagationNone is used. This field is beta
-                          in 1.10.
-                        type: string
-                      name:
-                        description: This must match the Name of a Volume.
-                        type: string
-                      readOnly:
-                        description: Mounted read-only if true, read-write otherwise
-                          (false or unspecified). Defaults to false.
-                        type: boolean
-                      subPath:
-                        description: Path within the volume from which the container's
-                          volume should be mounted. Defaults to "" (volume's root).
-                        type: string
-                      subPathExpr:
-                        description: Expanded path within the volume from which the
-                          container's volume should be mounted. Behaves similarly
-                          to SubPath but environment variable references $(VAR_NAME)
-                          are expanded using the container's environment. Defaults
-                          to "" (volume's root). SubPathExpr and SubPath are mutually
-                          exclusive. This field is alpha in 1.14.
-                        type: string
-                    required:
-                    - name
-                    - mountPath
-                    type: object
-                  type: array
                 nodeSelector:
                   additionalProperties:
                     type: string
@@ -2853,6 +2816,44 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                volumeMounts:
+                  description: Volume mounts in the JobManager container.
+                  items:
+                    properties:
+                      mountPath:
+                        description: Path within the container at which the volume
+                          should be mounted.  Must not contain ':'.
+                        type: string
+                      mountPropagation:
+                        description: mountPropagation determines how mounts are propagated
+                          from the host to container and the other way around. When
+                          not set, MountPropagationNone is used. This field is beta
+                          in 1.10.
+                        type: string
+                      name:
+                        description: This must match the Name of a Volume.
+                        type: string
+                      readOnly:
+                        description: Mounted read-only if true, read-write otherwise
+                          (false or unspecified). Defaults to false.
+                        type: boolean
+                      subPath:
+                        description: Path within the volume from which the container's
+                          volume should be mounted. Defaults to "" (volume's root).
+                        type: string
+                      subPathExpr:
+                        description: Expanded path within the volume from which the
+                          container's volume should be mounted. Behaves similarly
+                          to SubPath but environment variable references $(VAR_NAME)
+                          are expanded using the container's environment. Defaults
+                          to "" (volume's root). SubPathExpr and SubPath are mutually
+                          exclusive. This field is alpha in 1.14.
+                        type: string
+                    required:
+                    - name
+                    - mountPath
+                    type: object
+                  type: array
                 volumes:
                   description: Volumes in the JobManager pod.
                   items:
@@ -4069,45 +4070,6 @@ spec:
                     safety margin to avoid OOM kill, default: 25'
                   format: int32
                   type: integer
-                mounts:
-                  description: 'Volume mounts in the TaskManager containers. More
-                    info: https://kubernetes.io/docs/concepts/storage/volumes/'
-                  items:
-                    properties:
-                      mountPath:
-                        description: Path within the container at which the volume
-                          should be mounted.  Must not contain ':'.
-                        type: string
-                      mountPropagation:
-                        description: mountPropagation determines how mounts are propagated
-                          from the host to container and the other way around. When
-                          not set, MountPropagationNone is used. This field is beta
-                          in 1.10.
-                        type: string
-                      name:
-                        description: This must match the Name of a Volume.
-                        type: string
-                      readOnly:
-                        description: Mounted read-only if true, read-write otherwise
-                          (false or unspecified). Defaults to false.
-                        type: boolean
-                      subPath:
-                        description: Path within the volume from which the container's
-                          volume should be mounted. Defaults to "" (volume's root).
-                        type: string
-                      subPathExpr:
-                        description: Expanded path within the volume from which the
-                          container's volume should be mounted. Behaves similarly
-                          to SubPath but environment variable references $(VAR_NAME)
-                          are expanded using the container's environment. Defaults
-                          to "" (volume's root). SubPathExpr and SubPath are mutually
-                          exclusive. This field is alpha in 1.14.
-                        type: string
-                    required:
-                    - name
-                    - mountPath
-                    type: object
-                  type: array
                 nodeSelector:
                   additionalProperties:
                     type: string
@@ -5024,6 +4986,45 @@ spec:
                         type: string
                     required:
                     - name
+                    type: object
+                  type: array
+                volumeMounts:
+                  description: 'Volume mounts in the TaskManager containers. More
+                    info: https://kubernetes.io/docs/concepts/storage/volumes/'
+                  items:
+                    properties:
+                      mountPath:
+                        description: Path within the container at which the volume
+                          should be mounted.  Must not contain ':'.
+                        type: string
+                      mountPropagation:
+                        description: mountPropagation determines how mounts are propagated
+                          from the host to container and the other way around. When
+                          not set, MountPropagationNone is used. This field is beta
+                          in 1.10.
+                        type: string
+                      name:
+                        description: This must match the Name of a Volume.
+                        type: string
+                      readOnly:
+                        description: Mounted read-only if true, read-write otherwise
+                          (false or unspecified). Defaults to false.
+                        type: boolean
+                      subPath:
+                        description: Path within the volume from which the container's
+                          volume should be mounted. Defaults to "" (volume's root).
+                        type: string
+                      subPathExpr:
+                        description: Expanded path within the volume from which the
+                          container's volume should be mounted. Behaves similarly
+                          to SubPath but environment variable references $(VAR_NAME)
+                          are expanded using the container's environment. Defaults
+                          to "" (volume's root). SubPathExpr and SubPath are mutually
+                          exclusive. This field is alpha in 1.14.
+                        type: string
+                    required:
+                    - name
+                    - mountPath
                     type: object
                   type: array
                 volumes:

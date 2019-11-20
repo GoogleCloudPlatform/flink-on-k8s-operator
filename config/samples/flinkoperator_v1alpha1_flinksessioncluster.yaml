@@ -37,7 +37,7 @@ spec:
     volumes:
       - name: cache-volume
         emptyDir: {}
-    mounts:
+    volumeMounts:
       - mountPath: /cache
         name: cache-volume
     sidecars:
