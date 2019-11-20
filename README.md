@@ -41,9 +41,10 @@ The operator is still under active development, there is not Helm chart availabl
 
 * [Developer Guide](docs/developer_guide.md)
 * [Custom resource definition](docs/crd.md)
+* [Managing savepoints with the Flink Operator](docs/savepoints_guide.md)
 * [Using GCS connector with custom Flink images](images/flink/README.md)
 * [Using init container to download remote job jar](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
-* [Test the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
+* [Testing the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
 
 ## Contributing
 
