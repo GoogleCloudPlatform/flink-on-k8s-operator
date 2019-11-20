@@ -100,7 +100,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 				},
-				Mounts: []corev1.VolumeMount{
+				VolumeMounts: []corev1.VolumeMount{
 					{Name: "cache-volume", MountPath: "/cache"},
 				},
 				InitContainers: []corev1.Container{
@@ -172,7 +172,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 				},
-				Mounts: []corev1.VolumeMount{
+				VolumeMounts: []corev1.VolumeMount{
 					{Name: "cache-volume", MountPath: "/cache"},
 				},
 			},

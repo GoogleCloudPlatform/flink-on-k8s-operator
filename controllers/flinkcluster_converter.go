@@ -113,7 +113,7 @@ func getDesiredJobManagerDeployment(
 	var confMount *corev1.VolumeMount
 	confVol, confMount = convertFlinkConfig(clusterName)
 	volumes = append(jobManagerSpec.Volumes, *confVol)
-	volumeMounts = append(jobManagerSpec.Mounts, *confMount)
+	volumeMounts = append(jobManagerSpec.VolumeMounts, *confMount)
 	var envVars = []corev1.EnvVar{
 		{
 			Name: "JOB_MANAGER_CPU_LIMIT",
@@ -383,7 +383,7 @@ func getDesiredTaskManagerDeployment(
 	// Flink config.
 	var confVol, confMount = convertFlinkConfig(clusterName)
 	volumes = append(taskManagerSpec.Volumes, *confVol)
-	volumeMounts = append(taskManagerSpec.Mounts, *confMount)
+	volumeMounts = append(taskManagerSpec.VolumeMounts, *confMount)
 
 	var envVars = []corev1.EnvVar{
 		{
@@ -620,7 +620,7 @@ func getDesiredJob(
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
 	volumes = append(volumes, jobSpec.Volumes...)
-	volumeMounts = append(volumeMounts, jobSpec.Mounts...)
+	volumeMounts = append(volumeMounts, jobSpec.VolumeMounts...)
 
 	// Hadoop config.
 	var hcVolume, hcMount, hcEnv = convertHadoopConfig(clusterSpec.HadoopConfig)
@@ -697,7 +697,7 @@ func convertFromSavepoint(
 	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
 		return &jobStatus.SavepointLocation
 	}
-	return jobSpec.Savepoint
+	return jobSpec.FromSavepoint
 }
 
 func convertJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
@@ -705,7 +705,7 @@ func convertJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
 	// Add jobSpec level volume mounts to each init container if there is no
 	// conflict.
 	for _, initContainer := range jobSpec.InitContainers {
-		for _, jobMount := range jobSpec.Mounts {
+		for _, jobMount := range jobSpec.VolumeMounts {
 			var conflit = false
 			for _, mount := range initContainer.VolumeMounts {
 				if jobMount.MountPath == mount.MountPath {

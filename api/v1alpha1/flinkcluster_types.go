@@ -167,7 +167,7 @@ type JobManagerSpec struct {
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// Volume mounts in the JobManager container.
-	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Selector which must match a node's labels for the JobManager pod to be
 	// scheduled on that node.
@@ -217,7 +217,7 @@ type TaskManagerSpec struct {
 
 	// Volume mounts in the TaskManager containers.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
-	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Selector which must match a node's labels for the TaskManager pod to be
 	// scheduled on that node.
@@ -262,8 +262,8 @@ type JobSpec struct {
 	// Args of the job.
 	Args []string `json:"args,omitempty"`
 
-	// Savepoint where to restore the job from (e.g., gs://my-savepoint/1234).
-	Savepoint *string `json:"savepoint,omitempty"`
+	// FromSavepoint where to restore the job from (e.g., gs://my-savepoint/1234).
+	FromSavepoint *string `json:"fromSavepoint,omitempty"`
 
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
@@ -290,7 +290,7 @@ type JobSpec struct {
 
 	// Volume mounts in the Job container.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
-	Mounts []corev1.VolumeMount `json:"mounts,omitempty"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Init containers of the Job pod. A typical use case could be using an init
 	// container to download a remote job jar to a local path which is

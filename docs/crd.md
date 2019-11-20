@@ -31,7 +31,7 @@ FlinkCluster
         |__ memoryOffHeapRatio
         |__ memoryOffHeapMin
         |__ volumes
-        |__ mounts
+        |__ volumeMounts
     |__ taskManager
         |__ replicas
         |__ ports
@@ -42,13 +42,13 @@ FlinkCluster
         |__ memoryOffHeapRatio
         |__ memoryOffHeapMin
         |__ volumes
-        |__ mounts
+        |__ volumeMounts
         |__ sidecars
     |__ job
         |__ jarFile
         |__ className
         |__ args
-        |__ savepoint
+        |__ fromSavepoint
         |__ allowNonRestoredState
         |__ autoSavepointSeconds
         |__ savepointsDir
@@ -56,7 +56,7 @@ FlinkCluster
         |__ parallelism
         |__ noLoggingToStdout
         |__ volumes
-        |__ mounts
+        |__ volumeMounts
         |__ initContainers
         |__ restartPolicy
         |__ cleanupPolicy
@@ -99,7 +99,6 @@ FlinkCluster
             |__ lastSavepointTriggerID
             |__ lastSavepointTime
             |__ restartCount
-Last successful or failed savepoint operation timestamp.
     |__ lastUpdateTime
 ```
 
@@ -137,7 +136,7 @@ Last successful or failed savepoint operation timestamp.
         about value expression.
       * **volumes** (optional): Volumes in the JobManager pod.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
-      * **mounts** (optional): Volume mounts in the JobManager container.
+      * **volumeMounts** (optional): Volume mounts in the JobManager container.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) volume mounts.
     * **taskManager** (required): TaskManager spec.
       * **replicas** (required): The number of TaskManager replicas.
@@ -158,7 +157,7 @@ Last successful or failed savepoint operation timestamp.
         about value expression.
       * **volumes** (optional): Volumes in the TaskManager pod.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
-      * **mounts** (optional): Volume mounts in the TaskManager containers.
+      * **volumeMounts** (optional): Volume mounts in the TaskManager containers.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
@@ -180,7 +179,7 @@ Last successful or failed savepoint operation timestamp.
         See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
       * **volumes** (optional): Volumes in the Job pod.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
-      * **mounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
+      * **volumeMounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
         automatically added to init containers; otherwise, the mounts defined in init containers will take precedence.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
       * **restartPolicy** (optional): Restart policy when the job fails, `enum("Never", "FromSavepointOnFailure")`,

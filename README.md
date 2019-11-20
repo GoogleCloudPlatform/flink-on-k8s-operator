@@ -35,16 +35,16 @@ through one custom resource [FlinkCluster](docs/crd.md), depending on whether a 
 ## Installation
 
 The operator is still under active development, there is not Helm chart available yet, please follow the
-[Developer Guide](docs/developer-guide.md) to build the operator and deploy it to your Kubernetes cluster.
+[Developer Guide](docs/developer_guide.md) to build the operator and deploy it to your Kubernetes cluster.
 
 ## Documentation
 
-* [Developer Guide](docs/developer-guide.md)
+* [Developer Guide](docs/developer_guide.md)
 * [Custom resource definition](docs/crd.md)
-* [Using GCS connector with custom Flink images](images/flink/README.MD)
-* [Using init container to download remote job JAR](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
-* [Test environment setup for streaming applications](docs/streaming_test_env_setup.md)
+* [Using GCS connector with custom Flink images](images/flink/README.md)
+* [Using init container to download remote job jar](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
+* [Test the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
 
 ## Contributing
 
-Please check [CONTRIBUTING.md](CONTRIBUTING.md) and the [Developer Guide](docs/developer-guide.md) out.
+Please check [CONTRIBUTING.md](CONTRIBUTING.md) and the [Developer Guide](docs/developer_guide.md) out.
