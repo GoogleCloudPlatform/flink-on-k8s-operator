@@ -1,8 +1,8 @@
-### Helm Chart for Flink Operator
+# Helm Chart for Flink Operator
 
-This is the Helm chart for the flink operator.
+This is the Helm chart for the Flink operator.
 
-#### Installing the chart
+## Installing the chart
 
 The instructions to install the Flink operator chart:
 
