@@ -8,7 +8,9 @@ The instructions to install the Flink operator chart:
 
 1. Flink operator image needs to be built and pushed. [Here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/docs/developer-guide.md#build-and-push-docker-image) is how to do it.
 
-2. Then install cert-manager chart by following steps:
+2. Run the bash script `update_template.sh` to update the manifest files in templates from the Flink operator source repo.
+
+3. Then install cert-manager chart by following steps:
 
 	```bash
 	# Install the CustomResourceDefinition resources separately
@@ -28,7 +30,7 @@ The instructions to install the Flink operator chart:
 	  jetstack/cert-manager
 	```
 
-3. Finally operator chart can be installed by running:
+4. Finally operator chart can be installed by running:
 
 	```bash
 	helm install --name [RELEASE_NAME] ./helm-chart --set operatorImage.name=[MAGE_NAME]
