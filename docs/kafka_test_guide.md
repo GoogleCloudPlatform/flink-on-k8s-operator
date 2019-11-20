@@ -1,4 +1,4 @@
-# Test the Flink Operator with Apache Kafka
+# Testing the Flink Operator with Apache Kafka
 
 Often times developers or users want to be able to quickly try out the Flink Operator with a long-running streaming
 application and test features like taking savepoints. The WordCount example including in the Flink release cannot do the
