@@ -26,15 +26,19 @@ Kubernetes resources (e.g., JobManager Pod) based on the spec of the custom reso
 cluster, users can then talk to the cluster through the Kubernetes API and Flink custom resources to manage their Flink
 clusters and jobs.
 
-The operator supports creating both [Flink job cluster](https://ci.apache.org/projects/flink/flink-docs-stable/ops/deployment/docker.html#flink-job-cluster)
-and [Flink session cluster](https://ci.apache.org/projects/flink/flink-docs-stable/ops/deployment/docker.html#flink-session-cluster)
-through one custom resource [FlinkCluster](docs/crd.md), depending on whether a job spec is provided. See samples:
-[Flink job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml),
-[Flink session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml).
+## Features
+
+* Supporting both Flink [job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and [session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml) depending on whether a job spec is provided
+* Supporting remote job jar through [init containers](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml) or
+  [custom images](images/flink/README.md)
+* [Managing savepoints](docs/savepoints_guide.md)
+  * Taking savepoints automatically every n seconds
+  * Taking savepoints manually by updating the custom resource
+  * Restarting failed jobs automatically from the latest savepoint
 
 ## Installation
 
-The operator is still under active development, there is not Helm chart available yet, please follow the
+The operator is still under active development, there is no Helm chart available yet, please follow the
 [Developer Guide](docs/developer_guide.md) to build the operator and deploy it to your Kubernetes cluster.
 
 ## Documentation
