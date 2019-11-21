@@ -28,13 +28,20 @@ clusters and jobs.
 
 ## Features
 
-* Supporting both Flink [job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and [session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml) depending on whether a job spec is provided
-* Supporting remote job jar through [init containers](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml) or
-  [custom images](images/flink/README.md)
-* [Managing savepoints](docs/savepoints_guide.md)
-  * Taking savepoints automatically every n seconds
-  * Taking savepoints manually by updating the custom resource
-  * Restarting failed jobs automatically from the latest savepoint
+* Support for both Flink [job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and
+  [session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml) depending on whether a job spec is
+  provided
+* Custom Flink images
+* Flink and Hadoop configs and container environment variables
+* Init containers and sidecar containers
+* Remote job jar
+* Different access scopes of JobManager service
+* Taking savepoints periodically
+* Taking savepoints on demand
+* Restarting failed job from the latest savepoint automatically
+* Cancelling job with savepoint
+* Cleanup policy on job success and failure
+* GCP integration (service account, GCE connector, networking)
 
 ## Installation
 
