@@ -35,7 +35,7 @@ clusters and jobs.
 * Flink and Hadoop configs and container environment variables
 * Init containers and sidecar containers
 * Remote job jar
-* Different access scopes of JobManager service
+* Configurable access scope for JobManager service
 * Taking savepoints periodically
 * Taking savepoints on demand
 * Restarting failed job from the latest savepoint automatically
