@@ -32,9 +32,9 @@ clusters and jobs.
 * Supporting remote job jar through [init containers](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml) or
   [custom images](images/flink/README.md)
 * [Managing savepoints](docs/savepoints_guide.md)
-  * Taking savepoints automatically every n seconds to a specified directory
-  * Taking savepoints manually by updating the FlinkCluster custom resource
-  * Restarting failed jobs from the latest savepoint
+  * Taking savepoints automatically every n seconds
+  * Taking savepoints manually by updating the custom resource
+  * Restarting failed jobs automatically from the latest savepoint
 
 ## Installation
 
