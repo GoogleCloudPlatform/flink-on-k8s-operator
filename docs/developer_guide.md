@@ -229,22 +229,33 @@ kubectl logs jobs/<CLUSTER-NAME>-job -f --tail=1000
 In a session cluster, depending on how you submit the job, you can check the
 job status and logs accordingly.
 
-### Flink web UI
+### Flink web UI, REST API and CLI
 
-You can also access the Flink web UI via a proxy, run the following command in a
-terminal
+You can also access the Flink web UI, [REST API](https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/rest_api.html)
+and [CLI](https://ci.apache.org/projects/flink/flink-docs-stable/ops/cli.html) by first creating a port forward from you
+local machine to the JobManager service UI port (8081 by default).
 
 ```bash
-kubectl proxy
+kubectl port-forward svc/[FLINK_CLUSTER_NAME]-jobmanager 8081:8081
 ```
 
-then navigate to
+then access the web UI with your browser through the following URL:
 
-```
-http://localhost:8001/api/v1/namespaces/default/services/<CLUSTER-NAME>-jobmanager:ui/proxy
+```bash
+http://localhost:8081
 ```
 
-in your browser.
+call the Flink REST API, e.g., list jobs:
+
+```bash
+curl http://localhost:8081/jobs
+```
+
+run the Flink CLI, e.g. list jobs:
+
+```bash
+flink list -m localhost:8081
+```
 
 ## Undeploy the operator
 
