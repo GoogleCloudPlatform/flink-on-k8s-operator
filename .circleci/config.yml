@@ -28,12 +28,9 @@ workflows:
   release:
     jobs:
       - lint-scripts
-          filters:
-            branches:
-              only: remote-helm-chart
       - release-charts:
           filters:
             tags:
               ignore: /.*/
             branches:
-              only: remote-helm-chart 
+              only: remote-helm-chart
