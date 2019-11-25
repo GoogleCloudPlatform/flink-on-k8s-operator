@@ -1,9 +1,6 @@
 version: 2
 jobs:
   lint-scripts:
-    branches:
-      only:
-        - remote-helm-chart
     docker:
       - image: koalaman/shellcheck-alpine
     steps:
@@ -12,9 +9,6 @@ jobs:
           name: lint
           command: shellcheck -x .circleci/*.sh
   release-charts:
-    branches:
-      only:
-        - remote-helm-chart
     machine: true
     steps:
       - checkout
@@ -33,6 +27,11 @@ workflows:
   version: 2
   release:
     jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - remote-helm-chart
       - lint-scripts
       - release-charts:
           filters:
