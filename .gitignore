@@ -26,3 +26,5 @@ bin
 
 # Dynamic patch files
 config/default/manager_image_patch.yaml
+./helm-chart/.deploy
+.deploy
