@@ -46,6 +46,7 @@ main() {
     if [[ -n "${changed_charts[*]}" ]]; then
         git clone https://github.com/GoogleCloudPlatform/flink-on-k8s-operator.git
         sed -e 's#image: .*#image: '"${IMG}"'#' flink-on-k8s-operator/config/default/manager_image_patch.template >flink-on-k8s-operator/config/default/manager_image_patch.yaml
+        sed -i '/- \.\.\/crd/d' flink-on-k8s-operator/config/default/kustomization.yaml
         kustomize build flink-on-k8s-operator/config/default | tee flink-operator.yaml
         sed -i '1s/^/{{- if .Values.rbac.create }}\n/' flink-operator.yaml
         sed -i -e "\$a{{- end }}\n" flink-operator.yaml
