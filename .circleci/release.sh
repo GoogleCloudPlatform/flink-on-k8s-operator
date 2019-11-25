@@ -41,17 +41,26 @@ main() {
     echo "Identifying changed charts since tag '$latest_tag'..."
 
     local changed_charts=()
-    readarray -t changed_charts <<< "$(git diff --find-renames --name-only "$latest_tag_rev" -- charts | cut -d '/' -f 2 | uniq)"
+    readarray -t changed_charts <<< "$(git diff --find-renames --name-only "$latest_tag_rev" -- helm-chart | cut -d '/' -f 2 | uniq)"
 
     if [[ -n "${changed_charts[*]}" ]]; then
         git clone https://github.com/GoogleCloudPlatform/flink-on-k8s-operator.git
         sed -e 's#image: .*#image: '"${IMG}"'#' flink-on-k8s-operator/config/default/manager_image_patch.template >flink-on-k8s-operator/config/default/manager_image_patch.yaml
         kustomize build flink-on-k8s-operator/config/default | tee flink-operator.yaml
-        mv flink-operator.yaml charts/app/templates/flink-operator.yaml
-        cp flink-on-k8s-operator/config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml charts/app/templates/flink-cluster-crd.yaml
+        sed -i '1s/^/{{- if .Values.rbac.create }}\n/' flink-operator.yaml
+        sed -i -e "\$a{{- end }}\n" templates/flink-operator.yaml
+        sed -i 's/flink-operator-system/{{ .Values.flinkOperatorNamespace }}/g' flink-operator.yaml
+        sed -i 's/replicas: 1/replicas: {{ .Values.replicas }}/g' flink-operator.yaml
+        sed -i "s/$IMG/{{ .Values.operatorImage.name }}/g" flink-operator.yaml
+        mv flink-operator.yaml helm-chart/flink-operator/templates/flink-operator.yaml
+        cp flink-on-k8s-operator/config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+        sed -i '1s/^/{{ if .Values.rbac.create }}\n/' helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+        sed -i -e "\$a{{ end }}\n" helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+        sed -i 's/{{$clusterName}}.example.com/clusterName.example.com/g' helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+
         for chart in "${changed_charts[@]}"; do
             echo "Packaging chart '$chart'..."
-            package_chart "charts/$chart"
+            package_chart "helm-chart/$chart"
         done
 
         release_charts
@@ -96,20 +105,19 @@ update_index() {
       git push "$GIT_REPOSITORY_URL" remote-helm-chart
     fi
 
-    for file in charts/*/*.md; do
+    for file in helm-chart/*/*.md; do
         if [[ -e $file ]]; then
             mkdir -p ".deploy/docs/$(dirname "$file")"
             cp --force "$file" ".deploy/docs/$(dirname "$file")"
         fi
     done
 
-    git stash
     git checkout gh-pages
     cp --force .deploy/index.yaml index.yaml
 
-    if [[ -e ".deploy/docs/charts" ]]; then
+    if [[ -e ".deploy/docs/" ]]; then
         mkdir -p charts
-        cp --force --recursive .deploy/docs/charts/* charts/
+        cp --force --recursive .deploy/docs/* charts/
     fi
 
     git checkout master -- README.md
