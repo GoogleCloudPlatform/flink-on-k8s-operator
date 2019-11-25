@@ -1,17 +1,21 @@
-# Default values for flink-operator.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# K8s namespace where Flink operator to be deployed
+flinkOperatorNamespace: "flink-operator-system"
 
-replicaCount: 1
+# The number of replicas of the operator Deployment
+replicas: 1
 
-image:
-  repository: nginx
-  tag: stable
+# Create RBAC resources if true
+rbac:
+  create: true
+
+# Enable the cert-manager by default
+cert-manager:
+  enabled: true
+
+# The defination of the operator image
+operatorImage:
+  name:
   pullPolicy: IfNotPresent
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -20,9 +24,8 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
-podSecurityContext: {}
-  # fsGroup: 2000
 
+# Defines security context for operator container
 securityContext: {}
   # capabilities:
   #   drop:
@@ -30,24 +33,6 @@ securityContext: {}
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
-
-service:
-  type: ClusterIP
-  port: 80
-
-ingress:
-  enabled: false
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths: []
-
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -61,8 +46,7 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+# Annotations to be added to pods
+podAnnotations: {}
+
 nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
