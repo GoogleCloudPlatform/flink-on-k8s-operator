@@ -48,7 +48,7 @@ main() {
         sed -e 's#image: .*#image: '"${IMG}"'#' flink-on-k8s-operator/config/default/manager_image_patch.template >flink-on-k8s-operator/config/default/manager_image_patch.yaml
         kustomize build flink-on-k8s-operator/config/default | tee flink-operator.yaml
         sed -i '1s/^/{{- if .Values.rbac.create }}\n/' flink-operator.yaml
-        sed -i -e "\$a{{- end }}\n" templates/flink-operator.yaml
+        sed -i -e "\$a{{- end }}\n" flink-operator.yaml
         sed -i 's/flink-operator-system/{{ .Values.flinkOperatorNamespace }}/g' flink-operator.yaml
         sed -i 's/replicas: 1/replicas: {{ .Values.replicas }}/g' flink-operator.yaml
         sed -i "s/$IMG/{{ .Values.operatorImage.name }}/g" flink-operator.yaml
