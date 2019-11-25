@@ -3,7 +3,7 @@ jobs:
   build:
     branches:
       only:
-        remote-helm-chart
+        - remote-helm-chart
   lint-scripts:
     docker:
       - image: koalaman/shellcheck-alpine
