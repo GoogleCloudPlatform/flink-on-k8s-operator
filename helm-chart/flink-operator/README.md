@@ -33,7 +33,8 @@ The instructions to install the Flink operator chart:
 4. Finally operator chart can be installed by running:
 
 	```bash
-	helm install --name [RELEASE_NAME] ./helm-chart --set operatorImage.name=[MAGE_NAME]
+	helm repo add flink-operator-repo https://googlecloudplatform.github.io/flink-on-k8s-operator/
+	helm install --name [RELEASE_NAME] flink-operator-repo/flink-operator --set operatorImage.name=[MAGE_NAME]
 	```
 
 If you run into webhook related issue when installing operator chart, then disable the cert-manager webhook component and install operator chart again. The command to disable the webhook:
