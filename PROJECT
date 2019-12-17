@@ -1,0 +1,7 @@
+version: "2"
+domain: k8s.io
+repo: github.com/googlecloudplatform/flink-operator
+resources:
+- group: flinkoperator
+  version: v1alpha1
+  kind: FlinkCluster
