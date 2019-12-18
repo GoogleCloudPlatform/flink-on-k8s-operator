@@ -26,7 +26,7 @@ curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases |\
   grep linux |\
   cut -d '"' -f 4 |\
   grep /kustomize/v |\
-  sort | tail -n 1 |\
+  grep 3.5.3 |\
   xargs curl -O -L
 sudo mkdir -p /usr/local/kustomize
 sudo tar -xzf ./kustomize_v*_linux_amd64.tar.gz -C /usr/local/kustomize
