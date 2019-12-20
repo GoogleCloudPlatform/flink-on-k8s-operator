@@ -49,7 +49,7 @@ func TestValidateCreate(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -147,7 +147,7 @@ func TestInvalidJobManagerSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas2,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -199,7 +199,7 @@ func TestInvalidJobManagerSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas1,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   nil,
 					Blob:  &blobPort,
@@ -236,7 +236,7 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -274,7 +274,7 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -312,7 +312,7 @@ func TestInvalidTaskManagerSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -370,7 +370,7 @@ func TestInvalidJobSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -412,7 +412,7 @@ func TestInvalidJobSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -454,7 +454,7 @@ func TestInvalidJobSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,
@@ -497,7 +497,7 @@ func TestInvalidJobSpec(t *testing.T) {
 			},
 			JobManager: JobManagerSpec{
 				Replicas:    &jmReplicas,
-				AccessScope: AccessScope.VPC,
+				AccessScope: AccessScopeVPC,
 				Ports: JobManagerPorts{
 					RPC:   &rpcPort,
 					Blob:  &blobPort,

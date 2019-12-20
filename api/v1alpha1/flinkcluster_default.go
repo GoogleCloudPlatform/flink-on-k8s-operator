@@ -42,7 +42,7 @@ func _SetJobManagerDefault(jmSpec *JobManagerSpec) {
 		*jmSpec.Replicas = 1
 	}
 	if len(jmSpec.AccessScope) == 0 {
-		jmSpec.AccessScope = AccessScope.Cluster
+		jmSpec.AccessScope = AccessScopeCluster
 	}
 	if jmSpec.Ingress != nil {
 		if jmSpec.Ingress.UseTLS == nil {

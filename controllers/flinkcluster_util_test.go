@@ -40,21 +40,21 @@ func TestTimeConverter(t *testing.T) {
 func TestShouldRestartJob(t *testing.T) {
 	var restartOnFailure = v1alpha1.JobRestartPolicyFromSavepointOnFailure
 	var jobStatus1 = v1alpha1.JobStatus{
-		State:             v1alpha1.JobState.Failed,
+		State:             v1alpha1.JobStateFailed,
 		SavepointLocation: "gs://my-bucket/savepoint-123",
 	}
 	var restart1 = shouldRestartJob(&restartOnFailure, &jobStatus1)
 	assert.Equal(t, restart1, true)
 
 	var jobStatus2 = v1alpha1.JobStatus{
-		State: v1alpha1.JobState.Failed,
+		State: v1alpha1.JobStateFailed,
 	}
 	var restart2 = shouldRestartJob(&restartOnFailure, &jobStatus2)
 	assert.Equal(t, restart2, false)
 
 	var neverRestart = v1alpha1.JobRestartPolicyNever
 	var jobStatus3 = v1alpha1.JobStatus{
-		State:             v1alpha1.JobState.Failed,
+		State:             v1alpha1.JobStateFailed,
 		SavepointLocation: "gs://my-bucket/savepoint-123",
 	}
 	var restart3 = shouldRestartJob(&neverRestart, &jobStatus3)

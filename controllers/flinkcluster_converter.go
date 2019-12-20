@@ -264,13 +264,13 @@ func getDesiredJobManagerService(
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/internal-load-balancing
 	switch jobManagerSpec.AccessScope {
-	case v1alpha1.AccessScope.Cluster:
+	case v1alpha1.AccessScopeCluster:
 		jobManagerService.Spec.Type = corev1.ServiceTypeClusterIP
-	case v1alpha1.AccessScope.VPC:
+	case v1alpha1.AccessScopeVPC:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 		jobManagerService.Annotations =
 			map[string]string{"cloud.google.com/load-balancer-type": "Internal"}
-	case v1alpha1.AccessScope.External:
+	case v1alpha1.AccessScopeExternal:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 	default:
 		panic(fmt.Sprintf(
@@ -772,11 +772,11 @@ func shouldCleanup(
 
 	var action v1alpha1.CleanupAction
 	switch jobStatus.State {
-	case v1alpha1.JobState.Succeeded:
+	case v1alpha1.JobStateSucceeded:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobSucceeds
-	case v1alpha1.JobState.Failed:
+	case v1alpha1.JobStateFailed:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobFails
-	case v1alpha1.JobState.Cancelled:
+	case v1alpha1.JobStateCancelled:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobCancelled
 	default:
 		return false

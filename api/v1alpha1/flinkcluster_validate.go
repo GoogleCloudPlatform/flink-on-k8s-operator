@@ -210,9 +210,9 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 
 	// AccessScope.
 	switch jmSpec.AccessScope {
-	case AccessScope.Cluster:
-	case AccessScope.VPC:
-	case AccessScope.External:
+	case AccessScopeCluster:
+	case AccessScopeVPC:
+	case AccessScopeExternal:
 	default:
 		return fmt.Errorf("invalid JobManager access scope: %v", jmSpec.AccessScope)
 	}

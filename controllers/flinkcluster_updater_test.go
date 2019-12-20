@@ -33,7 +33,7 @@ func TestGetDeploymentStateNotReady(t *testing.T) {
 	}
 	var state = getDeploymentState(&deployment)
 	assert.Assert(
-		t, state == v1alpha1.ComponentState.NotReady)
+		t, state == v1alpha1.ComponentStateNotReady)
 }
 
 func TestGetDeploymentStateReady(t *testing.T) {
@@ -43,7 +43,7 @@ func TestGetDeploymentStateReady(t *testing.T) {
 		Status: appsv1.DeploymentStatus{AvailableReplicas: 3},
 	}
 	var state = getDeploymentState(&deployment)
-	assert.Assert(t, state == v1alpha1.ComponentState.Ready)
+	assert.Assert(t, state == v1alpha1.ComponentStateReady)
 }
 
 func TestIsStatusChangedFalse(t *testing.T) {

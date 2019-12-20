@@ -95,7 +95,7 @@ func shouldRestartJob(
 	return restartPolicy != nil &&
 		*restartPolicy == v1alpha1.JobRestartPolicyFromSavepointOnFailure &&
 		jobStatus != nil &&
-		jobStatus.State == v1alpha1.JobState.Failed &&
+		jobStatus.State == v1alpha1.JobStateFailed &&
 		len(jobStatus.SavepointLocation) > 0
 }
 

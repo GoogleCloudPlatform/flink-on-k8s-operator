@@ -23,60 +23,38 @@ import (
 )
 
 // ClusterState defines states for a cluster.
-var ClusterState = struct {
-	Creating         string
-	Running          string
-	Reconciling      string
-	Stopping         string
-	PartiallyStopped string
-	Stopped          string
-}{
-	Creating:         "Creating",
-	Running:          "Running",
-	Reconciling:      "Reconciling",
-	Stopping:         "Stopping",
-	PartiallyStopped: "PartiallyStopped",
-	Stopped:          "Stopped",
-}
+const (
+	ClusterStateCreating         = "Creating"
+	ClusterStateRunning          = "Running"
+	ClusterStateReconciling      = "Reconciling"
+	ClusterStateStopping         = "Stopping"
+	ClusterStatePartiallyStopped = "PartiallyStopped"
+	ClusterStateStopped          = "Stopped"
+)
 
 // ComponentState defines states for a cluster component.
-var ComponentState = struct {
-	NotReady string
-	Ready    string
-	Deleted  string
-}{
-	NotReady: "NotReady",
-	Ready:    "Ready",
-	Deleted:  "Deleted",
-}
+const (
+	ComponentStateNotReady = "NotReady"
+	ComponentStateReady    = "Ready"
+	ComponentStateDeleted  = "Deleted"
+)
 
 // JobState defines states for a Flink job.
-var JobState = struct {
-	Pending   string
-	Running   string
-	Succeeded string
-	Failed    string
-	Cancelled string
-	Unknown   string
-}{
-	Pending:   "Pending",
-	Running:   "Running",
-	Succeeded: "Succeeded",
-	Failed:    "Failed",
-	Cancelled: "Cancelled",
-	Unknown:   "Unknown",
-}
+const (
+	JobStatePending   = "Pending"
+	JobStateRunning   = "Running"
+	JobStateSucceeded = "Succeeded"
+	JobStateFailed    = "Failed"
+	JobStateCancelled = "Cancelled"
+	JobStateUnknown   = "Unknown"
+)
 
 // AccessScope defines the access scope of JobManager service.
-var AccessScope = struct {
-	Cluster  string
-	VPC      string
-	External string
-}{
-	Cluster:  "Cluster",
-	VPC:      "VPC",
-	External: "External",
-}
+const (
+	AccessScopeCluster  = "Cluster"
+	AccessScopeVPC      = "VPC"
+	AccessScopeExternal = "External"
+)
 
 // JobRestartPolicy defines the restart policy when a job fails.
 type JobRestartPolicy = string
