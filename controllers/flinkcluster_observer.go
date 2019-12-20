@@ -202,7 +202,7 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 
 	// Wait until the cluster is running.
 	if observed.cluster.Status.State !=
-		v1alpha1.ClusterState.Running {
+		v1alpha1.ClusterStateRunning {
 		log.Info(
 			"Skip getting Flink job status.",
 			"clusterState",

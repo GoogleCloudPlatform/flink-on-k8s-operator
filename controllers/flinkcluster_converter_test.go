@@ -115,7 +115,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 			JobManager: v1alpha1.JobManagerSpec{
-				AccessScope: v1alpha1.AccessScope.VPC,
+				AccessScope: v1alpha1.AccessScopeVPC,
 				Ingress: &v1alpha1.JobManagerIngressSpec{
 					HostFormat: &hostFormat,
 					Annotations: map[string]string{

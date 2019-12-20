@@ -184,12 +184,12 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.ConfigMap.Name =
 			observedConfigMap.ObjectMeta.Name
 		status.Components.ConfigMap.State =
-			v1alpha1.ComponentState.Ready
+			v1alpha1.ComponentStateReady
 	} else if recorded.Components.ConfigMap.Name != "" {
 		status.Components.ConfigMap =
 			v1alpha1.FlinkClusterComponentState{
 				Name:  recorded.Components.ConfigMap.Name,
-				State: v1alpha1.ComponentState.Deleted,
+				State: v1alpha1.ComponentStateDeleted,
 			}
 	}
 
@@ -201,14 +201,14 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.JobManagerDeployment.State =
 			getDeploymentState(observedJmDeployment)
 		if status.Components.JobManagerDeployment.State ==
-			v1alpha1.ComponentState.Ready {
+			v1alpha1.ComponentStateReady {
 			runningComponents++
 		}
 	} else if recorded.Components.JobManagerDeployment.Name != "" {
 		status.Components.JobManagerDeployment =
 			v1alpha1.FlinkClusterComponentState{
 				Name:  recorded.Components.JobManagerDeployment.Name,
-				State: v1alpha1.ComponentState.Deleted,
+				State: v1alpha1.ComponentStateDeleted,
 			}
 	}
 
@@ -218,17 +218,17 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		var state string
 		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
 			if observedJmService.Spec.ClusterIP != "" {
-				state = v1alpha1.ComponentState.Ready
+				state = v1alpha1.ComponentStateReady
 				runningComponents++
 			} else {
-				state = v1alpha1.ComponentState.NotReady
+				state = v1alpha1.ComponentStateNotReady
 			}
 		} else if observedJmService.Spec.Type == corev1.ServiceTypeLoadBalancer {
 			if len(observedJmService.Status.LoadBalancer.Ingress) > 0 {
-				state = v1alpha1.ComponentState.Ready
+				state = v1alpha1.ComponentStateReady
 				runningComponents++
 			} else {
-				state = v1alpha1.ComponentState.NotReady
+				state = v1alpha1.ComponentStateNotReady
 			}
 		}
 		status.Components.JobManagerService =
@@ -240,7 +240,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.JobManagerService =
 			v1alpha1.FlinkClusterComponentState{
 				Name:  recorded.Components.JobManagerService.Name,
-				State: v1alpha1.ComponentState.Deleted,
+				State: v1alpha1.ComponentStateDeleted,
 			}
 	}
 
@@ -303,9 +303,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 		// Jobmanager ingress state become ready when LB for ingress is specified.
 		if loadbalancerReady {
-			state = v1alpha1.ComponentState.Ready
+			state = v1alpha1.ComponentStateReady
 		} else {
-			state = v1alpha1.ComponentState.NotReady
+			state = v1alpha1.ComponentStateNotReady
 		}
 
 		status.Components.JobManagerIngress =
@@ -319,7 +319,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.JobManagerIngress =
 			&v1alpha1.JobManagerIngressStatus{
 				Name:  recorded.Components.JobManagerIngress.Name,
-				State: v1alpha1.ComponentState.Deleted,
+				State: v1alpha1.ComponentStateDeleted,
 			}
 	}
 
@@ -331,14 +331,14 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.TaskManagerDeployment.State =
 			getDeploymentState(observedTmDeployment)
 		if status.Components.TaskManagerDeployment.State ==
-			v1alpha1.ComponentState.Ready {
+			v1alpha1.ComponentStateReady {
 			runningComponents++
 		}
 	} else if recorded.Components.TaskManagerDeployment.Name != "" {
 		status.Components.TaskManagerDeployment =
 			v1alpha1.FlinkClusterComponentState{
 				Name:  recorded.Components.TaskManagerDeployment.Name,
-				State: v1alpha1.ComponentState.Deleted,
+				State: v1alpha1.ComponentStateDeleted,
 			}
 	}
 
@@ -363,11 +363,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 
 		if observedJob.Status.Failed > 0 {
-			jobStatus.State = v1alpha1.JobState.Failed
+			jobStatus.State = v1alpha1.JobStateFailed
 			jobStopped = true
 			jobFailed = true
 		} else if observedJob.Status.Succeeded > 0 {
-			jobStatus.State = v1alpha1.JobState.Succeeded
+			jobStatus.State = v1alpha1.JobStateSucceeded
 			jobStopped = true
 			jobSucceeded = true
 		} else {
@@ -375,13 +375,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			// Pending (for scheduling), so we use Flink job ID to determine
 			// the actual state.
 			if flinkJobID == nil {
-				jobStatus.State = v1alpha1.JobState.Pending
+				jobStatus.State = v1alpha1.JobStatePending
 			} else {
-				jobStatus.State = v1alpha1.JobState.Running
+				jobStatus.State = v1alpha1.JobStateRunning
 			}
 			if recordedJobStatus != nil && (recordedJobStatus.State ==
-				v1alpha1.JobState.Failed ||
-				recordedJobStatus.State == v1alpha1.JobState.Cancelled) {
+				v1alpha1.JobStateFailed ||
+				recordedJobStatus.State == v1alpha1.JobStateCancelled) {
 				jobStatus.RestartCount++
 			}
 		}
@@ -390,7 +390,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		jobStopped = true
 		var cancelRequested = observed.cluster.Spec.Job.CancelRequested
 		if cancelRequested != nil && *cancelRequested {
-			jobStatus.State = v1alpha1.JobState.Cancelled
+			jobStatus.State = v1alpha1.JobStateCancelled
 			jobCancelled = true
 		}
 	}
@@ -398,44 +398,44 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// Derive the new cluster state.
 	switch recorded.State {
-	case "", v1alpha1.ClusterState.Creating:
+	case "", v1alpha1.ClusterStateCreating:
 		if runningComponents < totalComponents {
-			status.State = v1alpha1.ClusterState.Creating
+			status.State = v1alpha1.ClusterStateCreating
 		} else {
-			status.State = v1alpha1.ClusterState.Running
+			status.State = v1alpha1.ClusterStateRunning
 		}
-	case v1alpha1.ClusterState.Running,
-		v1alpha1.ClusterState.Reconciling:
+	case v1alpha1.ClusterStateRunning,
+		v1alpha1.ClusterStateReconciling:
 		if jobStopped {
 			var policy = observed.cluster.Spec.Job.CleanupPolicy
 			if jobSucceeded &&
 				policy.AfterJobSucceeds != v1alpha1.CleanupActionKeepCluster {
-				status.State = v1alpha1.ClusterState.Stopping
+				status.State = v1alpha1.ClusterStateStopping
 			} else if jobFailed &&
 				policy.AfterJobFails != v1alpha1.CleanupActionKeepCluster {
-				status.State = v1alpha1.ClusterState.Stopping
+				status.State = v1alpha1.ClusterStateStopping
 			} else if jobCancelled &&
 				policy.AfterJobCancelled != v1alpha1.CleanupActionKeepCluster {
-				status.State = v1alpha1.ClusterState.Stopping
+				status.State = v1alpha1.ClusterStateStopping
 			} else {
-				status.State = v1alpha1.ClusterState.Running
+				status.State = v1alpha1.ClusterStateRunning
 			}
 		} else if runningComponents < totalComponents {
-			status.State = v1alpha1.ClusterState.Reconciling
+			status.State = v1alpha1.ClusterStateReconciling
 		} else {
-			status.State = v1alpha1.ClusterState.Running
+			status.State = v1alpha1.ClusterStateRunning
 		}
-	case v1alpha1.ClusterState.Stopping,
-		v1alpha1.ClusterState.PartiallyStopped:
+	case v1alpha1.ClusterStateStopping,
+		v1alpha1.ClusterStatePartiallyStopped:
 		if runningComponents == 0 {
-			status.State = v1alpha1.ClusterState.Stopped
+			status.State = v1alpha1.ClusterStateStopped
 		} else if runningComponents < totalComponents {
-			status.State = v1alpha1.ClusterState.PartiallyStopped
+			status.State = v1alpha1.ClusterStatePartiallyStopped
 		} else {
-			status.State = v1alpha1.ClusterState.Stopping
+			status.State = v1alpha1.ClusterStateStopping
 		}
-	case v1alpha1.ClusterState.Stopped:
-		status.State = v1alpha1.ClusterState.Stopped
+	case v1alpha1.ClusterStateStopped:
+		status.State = v1alpha1.ClusterStateStopped
 	default:
 		panic(fmt.Sprintf("Unknown cluster state: %v", recorded.State))
 	}
@@ -574,7 +574,7 @@ func (updater *ClusterStatusUpdater) updateClusterStatus(
 
 func getDeploymentState(deployment *appsv1.Deployment) string {
 	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
-		return v1alpha1.ComponentState.Ready
+		return v1alpha1.ComponentStateReady
 	}
-	return v1alpha1.ComponentState.NotReady
+	return v1alpha1.ComponentStateNotReady
 }

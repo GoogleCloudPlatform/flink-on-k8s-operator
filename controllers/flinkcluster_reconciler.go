@@ -448,9 +448,9 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 func (reconciler *ClusterReconciler) isJobStopped() bool {
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	return jobStatus != nil &&
-		(jobStatus.State == v1alpha1.JobState.Succeeded ||
-			jobStatus.State == v1alpha1.JobState.Failed ||
-			jobStatus.State == v1alpha1.JobState.Cancelled)
+		(jobStatus.State == v1alpha1.JobStateSucceeded ||
+			jobStatus.State == v1alpha1.JobStateFailed ||
+			jobStatus.State == v1alpha1.JobStateCancelled)
 }
 
 func (reconciler *ClusterReconciler) restartJob() error {
