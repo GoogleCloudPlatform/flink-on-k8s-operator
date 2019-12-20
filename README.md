@@ -5,6 +5,11 @@
 Kubernetes Operator for Apache Flink is a control plane for running [Apache Flink](https://flink.apache.org/) on
 [Kubernetes](https://kubernetes.io/).
 
+## Community
+
+Ask questions, report bugs or propose feature requests [here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/issues)
+or join our [Slack](https://app.slack.com/client/T09NY5SBT/CQYSE926R) channel.
+
 ## Project Status
 
 *Alpha*
@@ -41,7 +46,7 @@ clusters and jobs.
 * Restarting failed job from the latest savepoint automatically
 * Cancelling job with savepoint
 * Cleanup policy on job success and failure
-* GCP integration (service account, GCE connector, networking)
+* GCP integration (service account, GCS connector, networking)
 
 ## Installation
 
