@@ -1,0 +1,52 @@
+# K8s namespace where Flink operator to be deployed
+flinkOperatorNamespace: "flink-operator-system"
+
+# The number of replicas of the operator Deployment
+replicas: 1
+
+# Create RBAC resources if true
+rbac:
+  create: true
+
+# Enable the cert-manager by default
+cert-manager:
+  enabled: true
+
+# The defination of the operator image
+operatorImage:
+  name:
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+
+# Defines security context for operator container
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# Annotations to be added to pods
+podAnnotations: {}
+
+nodeSelector: {}
