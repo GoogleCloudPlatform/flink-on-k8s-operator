@@ -90,6 +90,21 @@ cluster with
 make deploy
 ```
 
+By default, the operator will be deployed to namespace `flink-operator-system`,
+but you can deploy it to other namespaces with the environment variable
+`FLINK_OPERATOR_NAMESPACE`, for example:
+
+```bash
+make deploy FLINK_OPERATOR_NAMESPACE=my-namespace
+```
+
+or
+
+```bash
+export FLINK_OPERATOR_NAMESPACE=my-namespace
+make deploy
+```
+
 After that, you can verify CRD `flinkclusters.flinkoperator.k8s.io` has been
 created with
 
@@ -262,5 +277,5 @@ flink list -m localhost:8081
 Undeploy the operator and CRDs from the Kubernetes cluster with
 
 ```
-make undeploy
+make undeploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
 ```
