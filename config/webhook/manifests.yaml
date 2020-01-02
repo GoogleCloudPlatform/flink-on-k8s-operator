@@ -11,14 +11,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-flinkoperator-k8s-io-v1alpha1-flinkcluster
+      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: mflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
     - flinkoperator.k8s.io
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -37,14 +37,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-flinkoperator-k8s-io-v1alpha1-flinkcluster
+      path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: vflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
     - flinkoperator.k8s.io
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE

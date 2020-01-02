@@ -69,7 +69,7 @@ vars:
   objref:
     kind: Certificate
     group: certmanager.k8s.io
-    version: v1alpha1
+    version: v1beta1
     name: serving-cert # this name should match the one in certmanager/certificate.yaml
 - name: WEBHOOK_SERVICE_NAME
   objref:

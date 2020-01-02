@@ -1,11 +1,11 @@
 # FlinkCluster Custom Resource Definition
 
 The Kubernetes Operator for Apache Flink uses  [CustomResourceDefinition](https://kubernetes.io/docs/concepts/api-extension/custom-resources/)
-named `FlinkCluster` for specifying a Flink job cluster ([sample](../config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml))
-or Flink session cluster ([sample](../config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml)), depending on
+named `FlinkCluster` for specifying a Flink job cluster ([sample](../config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml))
+or Flink session cluster ([sample](../config/samples/flinkoperator_v1beta1_flinksessioncluster.yaml)), depending on
 whether the job spec is specified. Similarly to other kinds of Kubernetes resources, the custom resource consists of a
 resource `Metadata`, a specification in a `Spec` field and a `Status` field. The definitions are organized in the
-following structure. The v1alpha1 version of the API definition is implemented [here](../api/v1alpha1/flinkcluster_types.go).
+following structure. The v1beta1 version of the API definition is implemented [here](../api/v1beta1/flinkcluster_types.go).
 
 ```
 FlinkCluster

@@ -27,7 +27,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -67,7 +67,7 @@ type DesiredClusterState struct {
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *v1alpha1.FlinkCluster,
+	cluster *v1beta1.FlinkCluster,
 	now time.Time) DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
@@ -85,7 +85,7 @@ func getDesiredClusterState(
 
 // Gets the desired JobManager deployment spec from the FlinkCluster spec.
 func getDesiredJobManagerDeployment(
-	flinkCluster *v1alpha1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
 
 	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
 		return nil
@@ -216,7 +216,7 @@ func getDesiredJobManagerDeployment(
 
 // Gets the desired JobManager service spec from a cluster spec.
 func getDesiredJobManagerService(
-	flinkCluster *v1alpha1.FlinkCluster) *corev1.Service {
+	flinkCluster *v1beta1.FlinkCluster) *corev1.Service {
 
 	if shouldCleanup(flinkCluster, "JobManagerService") {
 		return nil
@@ -264,13 +264,13 @@ func getDesiredJobManagerService(
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/internal-load-balancing
 	switch jobManagerSpec.AccessScope {
-	case v1alpha1.AccessScopeCluster:
+	case v1beta1.AccessScopeCluster:
 		jobManagerService.Spec.Type = corev1.ServiceTypeClusterIP
-	case v1alpha1.AccessScopeVPC:
+	case v1beta1.AccessScopeVPC:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 		jobManagerService.Annotations =
 			map[string]string{"cloud.google.com/load-balancer-type": "Internal"}
-	case v1alpha1.AccessScopeExternal:
+	case v1beta1.AccessScopeExternal:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 	default:
 		panic(fmt.Sprintf(
@@ -281,7 +281,7 @@ func getDesiredJobManagerService(
 
 // Gets the desired JobManager ingress spec from a cluster spec.
 func getDesiredJobManagerIngress(
-	flinkCluster *v1alpha1.FlinkCluster) *extensionsv1beta1.Ingress {
+	flinkCluster *v1beta1.FlinkCluster) *extensionsv1beta1.Ingress {
 	var jobManagerIngressSpec = flinkCluster.Spec.JobManager.Ingress
 	if jobManagerIngressSpec == nil {
 		return nil
@@ -356,7 +356,7 @@ func getDesiredJobManagerIngress(
 
 // Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
-	flinkCluster *v1alpha1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
 
 	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
 		return nil
@@ -488,7 +488,7 @@ func getDesiredTaskManagerDeployment(
 
 // Gets the desired configMap.
 func getDesiredConfigMap(
-	flinkCluster *v1alpha1.FlinkCluster) *corev1.ConfigMap {
+	flinkCluster *v1beta1.FlinkCluster) *corev1.ConfigMap {
 
 	if shouldCleanup(flinkCluster, "ConfigMap") {
 		return nil
@@ -551,7 +551,7 @@ func getDesiredConfigMap(
 
 // Gets the desired job spec from a cluster spec.
 func getDesiredJob(
-	flinkCluster *v1alpha1.FlinkCluster) *batchv1.Job {
+	flinkCluster *v1beta1.FlinkCluster) *batchv1.Job {
 	var jobSpec = flinkCluster.Spec.Job
 
 	if jobSpec == nil {
@@ -693,14 +693,14 @@ func getDesiredJob(
 }
 
 func convertFromSavepoint(
-	jobSpec *v1alpha1.JobSpec, jobStatus *v1alpha1.JobStatus) *string {
+	jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) *string {
 	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
 		return &jobStatus.SavepointLocation
 	}
 	return jobSpec.FromSavepoint
 }
 
-func convertJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
+func convertJobInitContainers(jobSpec *v1beta1.JobSpec) []corev1.Container {
 	var initContainers = []corev1.Container{}
 	// Add jobSpec level volume mounts to each init container if there is no
 	// conflict.
@@ -725,7 +725,7 @@ func convertJobInitContainers(jobSpec *v1alpha1.JobSpec) []corev1.Container {
 
 // Converts the FlinkCluster as owner reference for its child resources.
 func toOwnerReference(
-	flinkCluster *v1alpha1.FlinkCluster) metav1.OwnerReference {
+	flinkCluster *v1beta1.FlinkCluster) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         flinkCluster.APIVersion,
 		Kind:               flinkCluster.Kind,
@@ -762,7 +762,7 @@ func getJobManagerIngressHost(ingressHostFormat string, clusterName string) stri
 // Checks whether the component should be deleted according to the cleanup
 // policy. Always return false for session cluster.
 func shouldCleanup(
-	cluster *v1alpha1.FlinkCluster, component string) bool {
+	cluster *v1beta1.FlinkCluster, component string) bool {
 	var jobStatus = cluster.Status.Components.Job
 
 	// Session cluster.
@@ -770,29 +770,29 @@ func shouldCleanup(
 		return false
 	}
 
-	var action v1alpha1.CleanupAction
+	var action v1beta1.CleanupAction
 	switch jobStatus.State {
-	case v1alpha1.JobStateSucceeded:
+	case v1beta1.JobStateSucceeded:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobSucceeds
-	case v1alpha1.JobStateFailed:
+	case v1beta1.JobStateFailed:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobFails
-	case v1alpha1.JobStateCancelled:
+	case v1beta1.JobStateCancelled:
 		action = cluster.Spec.Job.CleanupPolicy.AfterJobCancelled
 	default:
 		return false
 	}
 
 	switch action {
-	case v1alpha1.CleanupActionDeleteCluster:
+	case v1beta1.CleanupActionDeleteCluster:
 		return true
-	case v1alpha1.CleanupActionDeleteTaskManager:
+	case v1beta1.CleanupActionDeleteTaskManager:
 		return component == "TaskManagerDeployment"
 	}
 
 	return false
 }
 
-func calFlinkHeapSize(cluster *v1alpha1.FlinkCluster) map[string]string {
+func calFlinkHeapSize(cluster *v1beta1.FlinkCluster) map[string]string {
 	if cluster.Spec.JobManager.MemoryOffHeapRatio == nil {
 		return nil
 	}
@@ -865,7 +865,7 @@ func convertFlinkConfig(clusterName string) (*corev1.Volume, *corev1.VolumeMount
 	return confVol, confMount
 }
 
-func convertHadoopConfig(hadoopConfig *v1alpha1.HadoopConfig) (
+func convertHadoopConfig(hadoopConfig *v1beta1.HadoopConfig) (
 	*corev1.Volume, *corev1.VolumeMount, *corev1.EnvVar) {
 	if hadoopConfig == nil {
 		return nil, nil, nil
@@ -893,7 +893,7 @@ func convertHadoopConfig(hadoopConfig *v1alpha1.HadoopConfig) (
 	return volume, mount, env
 }
 
-func convertGCPConfig(gcpConfig *v1alpha1.GCPConfig) (*corev1.Volume, *corev1.VolumeMount, *corev1.EnvVar) {
+func convertGCPConfig(gcpConfig *v1beta1.GCPConfig) (*corev1.Volume, *corev1.VolumeMount, *corev1.EnvVar) {
 	if gcpConfig == nil {
 		return nil, nil, nil
 	}

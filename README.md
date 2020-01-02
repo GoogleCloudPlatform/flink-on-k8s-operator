@@ -33,8 +33,8 @@ clusters and jobs.
 
 ## Features
 
-* Support for both Flink [job cluster](config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml) and
-  [session cluster](config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml) depending on whether a job spec is
+* Support for both Flink [job cluster](config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml) and
+  [session cluster](config/samples/flinkoperator_v1beta1_flinksessioncluster.yaml) depending on whether a job spec is
   provided
 * Custom Flink images
 * Flink and Hadoop configs and container environment variables
@@ -61,7 +61,7 @@ The operator is still under active development, there is no Helm chart available
 * [Custom resource definition](docs/crd.md)
 * [Managing savepoints with the Flink Operator](docs/savepoints_guide.md)
 * [Using GCS connector with custom Flink images](images/flink/README.md)
-* [Using init container to download remote job jar](config/samples/flinkoperator_v1alpha1_remotejobjar.yaml)
+* [Using init container to download remote job jar](config/samples/flinkoperator_v1beta1_remotejobjar.yaml)
 * [Testing the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
 
 ## Contributing
