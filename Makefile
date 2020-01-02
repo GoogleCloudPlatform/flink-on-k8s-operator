@@ -3,7 +3,8 @@
 IMG ?= flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
-
+# The Kubernetes namespace in which the operator will be deployed.
+FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
 
 #################### Local build and test ####################
 
@@ -16,6 +17,7 @@ build: generate fmt vet
 test: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 	go mod tidy
+	echo $(FLINK_OPERATOR_NAMESPACE)
 
 # Run tests in the builder container.
 test-in-docker: builder-image
@@ -84,10 +86,15 @@ cert-manager:
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests cert-manager
 	kubectl apply -f config/crd/bases
-	kustomize build config/default | kubectl apply -f -
+	kustomize build config/default \
+			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| kubectl apply -f -
 
 undeploy:
-	kustomize build config/default | kubectl delete -f - || true
+	kustomize build config/default \
+			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| kubectl delete -f - \
+			|| true
 	kubectl delete -f config/crd/bases || true
 
 # Deploy the sample Flink clusters in the Kubernetes cluster
