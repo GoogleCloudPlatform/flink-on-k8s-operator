@@ -50,9 +50,15 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var watchNamespace string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(
+		&watchNamespace,
+		"watch-namespace",
+		"",
+		"Watch custom resources in the namespace, ignore other namespaces. If empty, all namespaces will be watched.")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
@@ -68,8 +74,9 @@ func main() {
 	}
 
 	err = (&controllers.FlinkClusterReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
+		Client:         mgr.GetClient(),
+		Log:            ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
+		WatchNamespace: watchNamespace,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")

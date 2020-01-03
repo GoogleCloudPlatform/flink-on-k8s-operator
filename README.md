@@ -40,6 +40,8 @@ clusters and jobs.
 * Flink and Hadoop configs and container environment variables
 * Init containers and sidecar containers
 * Remote job jar
+* Configurable namespace to run the operator in
+* Configurable namepsace to watch custom resources in
 * Configurable access scope for JobManager service
 * Taking savepoints periodically
 * Taking savepoints on demand
