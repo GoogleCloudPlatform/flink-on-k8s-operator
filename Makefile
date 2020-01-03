@@ -64,7 +64,7 @@ builder-image:
 
 # Build the Flink Operator docker image
 operator-image: builder-image test-in-docker
-	docker build . -t ${IMG}
+	docker build  -t ${IMG} --label git-commit=$(shell git rev-parse HEAD) .
 	@echo "updating kustomize image patch file for Flink Operator resource"
 	sed -e 's#image: .*#image: '"${IMG}"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
 
