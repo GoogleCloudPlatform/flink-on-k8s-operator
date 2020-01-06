@@ -1,4 +1,4 @@
-# FlinkCluster Custom Resource Definition
+# FlinkCluster Custom Resource Definition - v1alpha1
 
 The Kubernetes Operator for Apache Flink uses  [CustomResourceDefinition](https://kubernetes.io/docs/concepts/api-extension/custom-resources/)
 named `FlinkCluster` for specifying a Flink job cluster ([sample](../config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml))

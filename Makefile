@@ -30,7 +30,7 @@ run: generate fmt vet
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./api/v1beta1/..." output:crd:artifacts:config=config/crd/bases
 	go mod tidy
 
 # Run go fmt against code
@@ -43,7 +43,7 @@ vet:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/v1beta1/...
 
 # find or download controller-gen
 # download controller-gen if necessary

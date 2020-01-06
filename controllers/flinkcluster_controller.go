@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -82,7 +82,7 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	mgr ctrl.Manager) error {
 	reconciler.Mgr = mgr
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.FlinkCluster{}).
+		For(&v1beta1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
