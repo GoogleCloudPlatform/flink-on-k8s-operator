@@ -12,7 +12,7 @@ or join our [Slack](https://app.slack.com/client/T09NY5SBT/CQYSE926R) channel.
 
 ## Project Status
 
-*Alpha*
+*Beta*
 
 The operator is under active development, backward compatibility of the APIs is not guaranteed for alpha releases.
 
@@ -58,7 +58,7 @@ The operator is still under active development, there is no Helm chart available
 ## Documentation
 
 * [Developer Guide](docs/developer_guide.md)
-* [Custom resource definition](docs/crd.md)
+* [Custom resource definition (v1beta1)](docs/crd.md)
 * [Managing savepoints with the Flink Operator](docs/savepoints_guide.md)
 * [Using GCS connector with custom Flink images](images/flink/README.md)
 * [Using init container to download remote job jar](config/samples/flinkoperator_v1beta1_remotejobjar.yaml)
