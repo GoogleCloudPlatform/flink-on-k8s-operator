@@ -14,6 +14,8 @@ or join our [Slack](https://app.slack.com/client/T09NY5SBT/CQYSE926R) channel.
 
 *Beta*
 
+The operator is under active development, backward compatibility of the APIs is not guaranteed for beta releases.
+
 ## Prerequisites
 
 * Version >= 1.9 of Kubernetes
