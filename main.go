@@ -20,7 +20,7 @@ import (
 	"flag"
 	"os"
 
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -42,7 +42,7 @@ func init() {
 	appsv1.AddToScheme(scheme)
 	batchv1.AddToScheme(scheme)
 	corev1.AddToScheme(scheme)
-	v1alpha1.AddToScheme(scheme)
+	v1beta1.AddToScheme(scheme)
 	extensionsv1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
@@ -50,9 +50,15 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var watchNamespace string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(
+		&watchNamespace,
+		"watch-namespace",
+		"",
+		"Watch custom resources in the namespace, ignore other namespaces. If empty, all namespaces will be watched.")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
@@ -68,8 +74,9 @@ func main() {
 	}
 
 	err = (&controllers.FlinkClusterReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
+		Client:         mgr.GetClient(),
+		Log:            ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
+		WatchNamespace: watchNamespace,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")
@@ -79,7 +86,7 @@ func main() {
 	// Set up webhooks for the custom resource.
 	// Disable it with `FLINK_OPERATOR_ENABLE_WEBHOOKS=false` when we run locally.
 	if os.Getenv("FLINK_OPERATOR_ENABLE_WEBHOOKS") != "false" {
-		err = (&v1alpha1.FlinkCluster{}).SetupWebhookWithManager(mgr)
+		err = (&v1beta1.FlinkCluster{}).SetupWebhookWithManager(mgr)
 		if err != nil {
 			setupLog.Error(err, "Unable to setup webhooks", "webhook", "FlinkCluster")
 			os.Exit(1)

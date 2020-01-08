@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -448,9 +448,9 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 func (reconciler *ClusterReconciler) isJobStopped() bool {
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	return jobStatus != nil &&
-		(jobStatus.State == v1alpha1.JobStateSucceeded ||
-			jobStatus.State == v1alpha1.JobStateFailed ||
-			jobStatus.State == v1alpha1.JobStateCancelled)
+		(jobStatus.State == v1beta1.JobStateSucceeded ||
+			jobStatus.State == v1beta1.JobStateFailed ||
+			jobStatus.State == v1beta1.JobStateCancelled)
 }
 
 func (reconciler *ClusterReconciler) restartJob() error {
@@ -588,7 +588,7 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
 	savepointStatus flinkclient.SavepointStatus) error {
-	var cluster = v1alpha1.FlinkCluster{}
+	var cluster = v1beta1.FlinkCluster{}
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
 	cluster.Status = reconciler.observed.cluster.Status
 	var jobStatus = cluster.Status.Components.Job

@@ -45,7 +45,7 @@ ConfigMap and make the file available to the Flink TaskManager containers:
 Now you can create a Flink cluster with the Secret and ConfigMap created in the previous steps.
 
   ```yaml
-  apiVersion: flinkoperator.k8s.io/v1alpha1
+  apiVersion: flinkoperator.k8s.io/v1beta1
   kind: FlinkCluster
   metadata:
     name: my-flinkjobcluster

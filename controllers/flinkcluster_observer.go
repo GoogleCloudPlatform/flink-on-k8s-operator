@@ -21,7 +21,7 @@ import (
 	"errors"
 
 	"github.com/go-logr/logr"
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -43,7 +43,7 @@ type ClusterStateObserver struct {
 
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
-	cluster            *v1alpha1.FlinkCluster
+	cluster            *v1beta1.FlinkCluster
 	configMap          *corev1.ConfigMap
 	jmDeployment       *appsv1.Deployment
 	jmService          *corev1.Service
@@ -63,7 +63,7 @@ func (observer *ClusterStateObserver) observe(
 	var log = observer.log
 
 	// Cluster state.
-	var observedCluster = new(v1alpha1.FlinkCluster)
+	var observedCluster = new(v1beta1.FlinkCluster)
 	err = observer.observeCluster(observedCluster)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -202,7 +202,7 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 
 	// Wait until the cluster is running.
 	if observed.cluster.Status.State !=
-		v1alpha1.ClusterStateRunning {
+		v1beta1.ClusterStateRunning {
 		log.Info(
 			"Skip getting Flink job status.",
 			"clusterState",
@@ -264,7 +264,7 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 }
 
 func (observer *ClusterStateObserver) observeCluster(
-	cluster *v1alpha1.FlinkCluster) error {
+	cluster *v1beta1.FlinkCluster) error {
 	return observer.k8sClient.Get(
 		observer.context, observer.request.NamespacedName, cluster)
 }

@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -46,7 +46,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var tmRPCPort int32 = 6122
 	var tmQueryPort int32 = 6125
 	var replicas int32 = 42
-	var restartPolicy = v1alpha1.JobRestartPolicyFromSavepointOnFailure
+	var restartPolicy = v1beta1.JobRestartPolicyFromSavepointOnFailure
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
 	var memoryOffHeapRatio int32 = 25
@@ -75,18 +75,18 @@ func TestGetDesiredClusterState(t *testing.T) {
 		FailureThreshold:    5,
 	}
 	// Setup.
-	var cluster = &v1alpha1.FlinkCluster{
+	var cluster = &v1beta1.FlinkCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "FlinkCluster",
-			APIVersion: "flinkoperator.k8s.io/v1alpha1",
+			APIVersion: "flinkoperator.k8s.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "flinkjobcluster-sample",
 			Namespace: "default",
 		},
-		Spec: v1alpha1.FlinkClusterSpec{
-			Image: v1alpha1.ImageSpec{Name: "flink:1.8.1"},
-			Job: &v1alpha1.JobSpec{
+		Spec: v1beta1.FlinkClusterSpec{
+			Image: v1beta1.ImageSpec{Name: "flink:1.8.1"},
+			Job: &v1beta1.JobSpec{
 				Args:          []string{"--input", "./README.txt"},
 				ClassName:     &className,
 				JarFile:       "/cache/my-job.jar",
@@ -114,9 +114,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 			},
-			JobManager: v1alpha1.JobManagerSpec{
-				AccessScope: v1alpha1.AccessScopeVPC,
-				Ingress: &v1alpha1.JobManagerIngressSpec{
+			JobManager: v1beta1.JobManagerSpec{
+				AccessScope: v1beta1.AccessScopeVPC,
+				Ingress: &v1beta1.JobManagerIngressSpec{
 					HostFormat: &hostFormat,
 					Annotations: map[string]string{
 						"kubernetes.io/ingress.class":                "nginx",
@@ -125,7 +125,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 					UseTLS: &useTLS,
 				},
-				Ports: v1alpha1.JobManagerPorts{
+				Ports: v1beta1.JobManagerPorts{
 					RPC:   &jmRPCPort,
 					Blob:  &jmBlobPort,
 					Query: &jmQueryPort,
@@ -144,9 +144,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
-			TaskManager: v1alpha1.TaskManagerSpec{
+			TaskManager: v1beta1.TaskManagerSpec{
 				Replicas: 42,
-				Ports: v1alpha1.TaskManagerPorts{
+				Ports: v1beta1.TaskManagerPorts{
 					Data:  &tmDataPort,
 					RPC:   &tmRPCPort,
 					Query: &tmQueryPort,
@@ -178,12 +178,12 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
-			HadoopConfig: &v1alpha1.HadoopConfig{
+			HadoopConfig: &v1beta1.HadoopConfig{
 				ConfigMapName: "hadoop-configmap",
 				MountPath:     "/etc/hadoop/conf",
 			},
-			GCPConfig: &v1alpha1.GCPConfig{
-				ServiceAccount: &v1alpha1.GCPServiceAccount{
+			GCPConfig: &v1beta1.GCPConfig{
+				ServiceAccount: &v1beta1.GCPServiceAccount{
 					SecretName: "gcp-service-account-secret",
 					KeyFile:    "gcp_service_account_key.json",
 					MountPath:  "/etc/gcp_service_account/",
@@ -209,7 +209,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					APIVersion:         "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -363,7 +363,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					APIVersion:         "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -409,7 +409,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					APIVersion:         "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -455,7 +455,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					APIVersion:         "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -607,7 +607,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Labels: map[string]string{
 				"app": "flink", "cluster": "flinkjobcluster-sample"},
 			OwnerReferences: []metav1.OwnerReference{
-				{APIVersion: "flinkoperator.k8s.io/v1alpha1",
+				{APIVersion: "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -674,7 +674,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
-					RestartPolicy: v1alpha1.JobRestartPolicyNever,
+					RestartPolicy: v1beta1.JobRestartPolicyNever,
 					Volumes: []corev1.Volume{
 						{
 							Name: "cache-volume",
@@ -732,7 +732,7 @@ taskmanager.rpc.port: 6122
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "flinkoperator.k8s.io/v1alpha1",
+					APIVersion:         "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
@@ -758,13 +758,13 @@ func TestCalFlinkHeapSize(t *testing.T) {
 	var memoryOffHeapMin = resource.MustParse("600M")
 
 	// Case 1: Heap sizes are computed from memoryOffHeapMin or memoryOffHeapRatio
-	cluster := &v1alpha1.FlinkCluster{
+	cluster := &v1beta1.FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycluster",
 			Namespace: "default",
 		},
-		Spec: v1alpha1.FlinkClusterSpec{
-			JobManager: v1alpha1.JobManagerSpec{
+		Spec: v1beta1.FlinkClusterSpec{
+			JobManager: v1beta1.JobManagerSpec{
 				Resources: corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("1Gi"),
@@ -773,7 +773,7 @@ func TestCalFlinkHeapSize(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
-			TaskManager: v1alpha1.TaskManagerSpec{
+			TaskManager: v1beta1.TaskManagerSpec{
 				Resources: corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -797,13 +797,13 @@ func TestCalFlinkHeapSize(t *testing.T) {
 		expectedFlinkHeapSize)
 
 	// Case 2: No values when memory limits are missing or insufficient
-	cluster = &v1alpha1.FlinkCluster{
+	cluster = &v1beta1.FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycluster",
 			Namespace: "default",
 		},
-		Spec: v1alpha1.FlinkClusterSpec{
-			JobManager: v1alpha1.JobManagerSpec{
+		Spec: v1beta1.FlinkClusterSpec{
+			JobManager: v1beta1.JobManagerSpec{
 				Resources: corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -812,7 +812,7 @@ func TestCalFlinkHeapSize(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
-			TaskManager: v1alpha1.TaskManagerSpec{
+			TaskManager: v1beta1.TaskManagerSpec{
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},

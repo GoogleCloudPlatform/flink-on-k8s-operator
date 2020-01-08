@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	v1alpha1 "github.com/googlecloudplatform/flink-operator/api/v1alpha1"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 )
 
-func getFlinkAPIBaseURL(cluster *v1alpha1.FlinkCluster) string {
+func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
 	return fmt.Sprintf(
 		"http://%s.%s.svc.cluster.local:%d",
 		getJobManagerServiceName(cluster.ObjectMeta.Name),
@@ -90,12 +90,12 @@ func setTimestamp(target *string) {
 // shouldRestartJob returns true if the controller should restart the failed
 // job.
 func shouldRestartJob(
-	restartPolicy *v1alpha1.JobRestartPolicy,
-	jobStatus *v1alpha1.JobStatus) bool {
+	restartPolicy *v1beta1.JobRestartPolicy,
+	jobStatus *v1beta1.JobStatus) bool {
 	return restartPolicy != nil &&
-		*restartPolicy == v1alpha1.JobRestartPolicyFromSavepointOnFailure &&
+		*restartPolicy == v1beta1.JobRestartPolicyFromSavepointOnFailure &&
 		jobStatus != nil &&
-		jobStatus.State == v1alpha1.JobStateFailed &&
+		jobStatus.State == v1beta1.JobStateFailed &&
 		len(jobStatus.SavepointLocation) > 0
 }
 

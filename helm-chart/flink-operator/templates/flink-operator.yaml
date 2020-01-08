@@ -19,14 +19,14 @@ webhooks:
     service:
       name: flink-operator-webhook-service
       namespace: {{ .Values.flinkOperatorNamespace }}
-      path: /mutate-flinkoperator-k8s-io-v1alpha1-flinkcluster
+      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: mflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
     - flinkoperator.k8s.io
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -351,7 +351,7 @@ spec:
           defaultMode: 420
           secretName: webhook-server-cert
 ---
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: certmanager.k8s.io/v1beta1
 kind: Certificate
 metadata:
   name: flink-operator-serving-cert
@@ -365,7 +365,7 @@ spec:
     name: flink-operator-selfsigned-issuer
   secretName: webhook-server-cert
 ---
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: certmanager.k8s.io/v1beta1
 kind: Issuer
 metadata:
   name: flink-operator-selfsigned-issuer
@@ -386,14 +386,14 @@ webhooks:
     service:
       name: flink-operator-webhook-service
       namespace: {{ .Values.flinkOperatorNamespace }}
-      path: /validate-flinkoperator-k8s-io-v1alpha1-flinkcluster
+      path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: vflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
     - flinkoperator.k8s.io
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE

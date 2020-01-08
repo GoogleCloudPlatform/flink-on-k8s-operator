@@ -3,7 +3,8 @@
 IMG ?= flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
-
+# The Kubernetes namespace in which the operator will be deployed.
+FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
 
 #################### Local build and test ####################
 
@@ -16,6 +17,7 @@ build: generate fmt vet
 test: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 	go mod tidy
+	echo $(FLINK_OPERATOR_NAMESPACE)
 
 # Run tests in the builder container.
 test-in-docker: builder-image
@@ -28,7 +30,7 @@ run: generate fmt vet
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./api/v1beta1/..." output:crd:artifacts:config=config/crd/bases
 	go mod tidy
 
 # Run go fmt against code
@@ -41,7 +43,7 @@ vet:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/v1beta1/...
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -62,7 +64,7 @@ builder-image:
 
 # Build the Flink Operator docker image
 operator-image: builder-image test-in-docker
-	docker build . -t ${IMG}
+	docker build  -t ${IMG} --label git-commit=$(shell git rev-parse HEAD) .
 	@echo "updating kustomize image patch file for Flink Operator resource"
 	sed -e 's#image: .*#image: '"${IMG}"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
 
@@ -84,10 +86,15 @@ cert-manager:
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests cert-manager
 	kubectl apply -f config/crd/bases
-	kustomize build config/default | kubectl apply -f -
+	kustomize build config/default \
+			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| kubectl apply -f -
 
 undeploy:
-	kustomize build config/default | kubectl delete -f - || true
+	kustomize build config/default \
+			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| kubectl delete -f - \
+			|| true
 	kubectl delete -f config/crd/bases || true
 
 # Deploy the sample Flink clusters in the Kubernetes cluster

@@ -8,7 +8,7 @@ library. The project structure and boilerplate files are generated with
 [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder). Knowledge of
 controller-runtime and Kubebuilder is required to understand this project.
 
-The Flink custom resource is defined in Go struct [FlinkCluster](../api/v1alpha1/flinkcluster_types.go),
+The Flink custom resource is defined in Go struct [FlinkCluster](../api/v1beta1/flinkcluster_types.go),
 then Kubebuild generates related Go files and YAML files, e.g.
 [flinkclusters.yaml](../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml).
 The custom logic for reconciling a Flink custom resource is inside of the
@@ -98,6 +98,21 @@ cluster with
 make deploy
 ```
 
+By default, the operator will be deployed to namespace `flink-operator-system`,
+but you can deploy it to other namespaces with the environment variable
+`FLINK_OPERATOR_NAMESPACE`, for example:
+
+```bash
+make deploy FLINK_OPERATOR_NAMESPACE=my-namespace
+```
+
+or
+
+```bash
+export FLINK_OPERATOR_NAMESPACE=my-namespace
+make deploy
+```
+
 After that, you can verify CRD `flinkclusters.flinkoperator.k8s.io` has been
 created with
 
@@ -147,14 +162,14 @@ session clusters or job clusters, and the operator will detect the custom resour
 automatically, then create the actual clusters optionally run jobs, and update
 status in the custom resources.
 
-Create a [sample Flink session cluster](../config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml)
+Create a [sample Flink session cluster](../config/samples/flinkoperator_v1beta1_flinksessioncluster.yaml)
 custom resource with
 
 ```bash
-kubectl apply -f config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml
+kubectl apply -f config/samples/flinkoperator_v1beta1_flinksessioncluster.yaml
 ```
 
-Flink v1alpha1 will deploy Flink session cluster's Pods, Services, etc.. on `default` namespace, and you can find out with
+Flink will deploy Flink session cluster's Pods, Services, etc.. on `default` namespace, and you can find out with
 
 ```bash
 kubectl get pods,svc -n default
@@ -166,11 +181,12 @@ or verify the Pod is up and running with
 kubectl get pods,svc -n default | grep "flinksessioncluster"
 ```
 
-and a [sample Flink job cluster](../config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml)
+and a [sample Flink job cluster](../config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml)
+
 custom resource with
 
 ```bash
-kubectl apply -f config/samples/flinkoperator_v1alpha1_flinkjobcluster.yaml
+kubectl apply -f config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml
 ```
 
 and verify the pod is up and running with
@@ -303,5 +319,5 @@ flink list -m localhost:8081
 Undeploy the operator and CRDs from the Kubernetes cluster with
 
 ```
-make undeploy
+make undeploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
 ```
