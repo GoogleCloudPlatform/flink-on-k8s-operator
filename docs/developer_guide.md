@@ -35,15 +35,15 @@ installed. Build and unit test can happen inside of the builder container. This
 is the recommended way for local development.
 
 But to create the Flink Operator Docker image and deploy it to a Kubernetes
-cluster, the following dependencies are required on you local machine:
+cluster, the following dependencies are required on your local machine:
 
-* [Docker](https://www.docker.com/)
+* [Docker](https://docs.docker.com/install/)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [Kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize)
+* [Kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)
 
 ## Local build and test
 
-To build the Flink Operator binary and run unit tests, run
+To build the Flink Operator binary and run unit tests, run:
 
 ### In Docker (recommended)
 
@@ -57,13 +57,21 @@ make test-in-docker
 make test
 ```
 
-## Build and push docker image
+## Build and push the docker image
 
 Build a Docker image for the Flink Operator and then push it to an image
 registry with
 
 ```bash
 make operator-image push-operator-image IMG=<tag>
+```
+
+If you are using gcr.io as Container Registry, then authenticate the credentials using gcloud or check [here](https://cloud.google.com/container-registry/docs/pushing-and-pulling) then build the images and push to GCR with:
+
+```bash
+PROJECT=<gcp-project>
+IMAGE_TAG=gcr.io/${PROJECT}/flink-operator:latest
+make operator-image push-operator-image IMG=${IMAGE_TAG}
 ```
 
 Depending on which image registry you want to use, choose a tag accordingly,
@@ -118,7 +126,7 @@ You can also view the details of the CRD with
 kubectl describe crds/flinkclusters.flinkoperator.k8s.io
 ```
 
-The operator runs as a Kubernetes Deployment, you can find out the deployment
+The operator runs as a Kubernetes Deployment, and you can find out the deployment
 with
 
 ```bash
@@ -137,13 +145,20 @@ You can also check the operator logs with
 kubectl logs -n flink-operator-system -l app=flink-operator --all-containers
 ```
 
+you should be able see logs like: 
+```
+INFO    setup   Starting manager
+INFO    controller-runtime.certwatcher  Starting certificate watcher
+INFO    controller-runtime.controller   Starting workers        {"controller": "flinkcluster", "worker count": 1}
+```
+
 ## Create a sample Flink cluster
 
 After deploying the Flink CRDs and the Flink Operator to a Kubernetes cluster,
 the operator serves as a control plane for Flink. In other words, previously the
 cluster only understands the language of Kubernetes, now it understands the
 language of Flink. You can then create custom resources representing Flink
-session clusters or job clusters, the operator will detect the custom resources
+session clusters or job clusters, and the operator will detect the custom resources
 automatically, then create the actual clusters optionally run jobs, and update
 status in the custom resources.
 
@@ -154,12 +169,33 @@ custom resource with
 kubectl apply -f config/samples/flinkoperator_v1beta1_flinksessioncluster.yaml
 ```
 
+Flink will deploy Flink session cluster's Pods, Services, etc.. on `default` namespace, and you can find out with
+
+```bash
+kubectl get pods,svc -n default
+```
+
+or verify the Pod is up and running with
+
+```
+kubectl get pods,svc -n default | grep "flinksessioncluster"
+```
+
 and a [sample Flink job cluster](../config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml)
+
 custom resource with
 
 ```bash
 kubectl apply -f config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml
 ```
+
+and verify the pod is up and running with
+
+```
+kubectl get pods,svc -n default | grep "flinkjobcluster"
+```
+
+NOTE: Flink Job Cluster's TaskManager will get terminated once the sample job is completed (in this case it take around 5 minutes for the pod to terminate) 
 
 ## Submit a job
 
@@ -233,6 +269,12 @@ kubectl describe flinkclusters <CLUSTER-NAME>
 
 ### Flink job
 
+To get a list of jobs
+
+```bash
+kubectl get jobs
+```
+
 In a job cluster, the job is automatically submitted by the operator you can
 check the Flink job status and logs with
 
@@ -244,7 +286,7 @@ kubectl logs jobs/<CLUSTER-NAME>-job -f --tail=1000
 In a session cluster, depending on how you submit the job, you can check the
 job status and logs accordingly.
 
-### Flink web UI, REST API and CLI
+### Flink web UI, REST API, and CLI
 
 You can also access the Flink web UI, [REST API](https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/rest_api.html)
 and [CLI](https://ci.apache.org/projects/flink/flink-docs-stable/ops/cli.html) by first creating a port forward from you
@@ -266,7 +308,7 @@ call the Flink REST API, e.g., list jobs:
 curl http://localhost:8081/jobs
 ```
 
-run the Flink CLI, e.g. list jobs:
+run the Flink CLI, e.g., list jobs:
 
 ```bash
 flink list -m localhost:8081
