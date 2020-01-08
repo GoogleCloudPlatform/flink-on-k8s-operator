@@ -31,7 +31,7 @@ run unit tests:
 
 But you don't have to install them on your local machine, because this project
 includes a [builder Docker image](../Dockerfile.builder) with the dependencies
-installed. Build, and unit test can happen inside of the builder container. This
+installed. Build and unit test can happen inside of the builder container. This
 is the recommended way for local development.
 
 But to create the Flink Operator Docker image and deploy it to a Kubernetes
@@ -43,7 +43,7 @@ cluster, the following dependencies are required on your local machine:
 
 ## Local build and test
 
-To build the Flink Operator binary and run unit tests, run.
+To build the Flink Operator binary and run unit tests, run:
 
 ### In Docker (recommended)
 
@@ -66,7 +66,7 @@ registry with
 make operator-image push-operator-image IMG=<tag>
 ```
 
-If you are using gcr.io as Container Registry, then authenticate the credentials using gcloud or check [here](https://cloud.google.com/container-registry/docs/pushing-and-pulling) then build the images and push to gcr with:
+If you are using gcr.io as Container Registry, then authenticate the credentials using gcloud or check [here](https://cloud.google.com/container-registry/docs/pushing-and-pulling) then build the images and push to GCR with:
 
 ```bash
 PROJECT=<gcp-project>
@@ -85,7 +85,7 @@ operator later, it knows what image to use.
 ## Deploy the operator to a running Kubernetes cluster
 
 Assume you have built and pushed the Flink Operator image, then you need to have
-a running Kubernetes cluster. Verify the cluster-info with
+a running Kubernetes cluster. Verify the cluster info with
 
 ```bash
 kubectl cluster-info
@@ -154,13 +154,13 @@ custom resource with
 kubectl apply -f config/samples/flinkoperator_v1alpha1_flinksessioncluster.yaml
 ```
 
-Flink v1alpha1 will deploy Flink session cluster's pods, svc, etc.. on `default` namespace, and you can find out with
+Flink v1alpha1 will deploy Flink session cluster's Pods, Services, etc.. on `default` namespace, and you can find out with
 
 ```bash
 kubectl get pods,svc -n default
 ```
 
-or verify the pod is up and running with
+or verify the Pod is up and running with
 
 ```
 kubectl get pods,svc -n default | grep "flinksessioncluster"
@@ -179,7 +179,7 @@ and verify the pod is up and running with
 kubectl get pods,svc -n default | grep "flinkjobcluster"
 ```
 
-NOTE: Flink Job Cluster's task manager will get terminated once the sample job is completed (in this case it take around 5 minutes for the pod to terminate) 
+NOTE: Flink Job Cluster's TaskManager will get terminated once the sample job is completed (in this case it take around 5 minutes for the pod to terminate) 
 
 ## Submit a job
 
