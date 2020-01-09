@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= flink-operator:latest
+IMG ?= gcr.io/flink-operator/flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 # The Kubernetes namespace in which the operator will be deployed.
@@ -83,8 +83,11 @@ install: manifests
 cert-manager:
 	bash scripts/deploy_cert_manager.sh
 
+config/default/manager_image_patch.yaml:
+	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
+
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests cert-manager
+deploy: manifests cert-manager config/default/manager_image_patch.yaml
 	kubectl apply -f config/crd/bases
 	kustomize build config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
