@@ -62,6 +62,7 @@ FlinkCluster
         |__ cleanupPolicy
             |__ afterJobSucceeds
             |__ afterJobFails
+            |__ afterJobCancelled
         |__ cancelRequested
     |__ envVars
     |__ flinkProperties
@@ -193,6 +194,8 @@ FlinkCluster
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
         * **afterJobFails** (required): The action to take after job fails,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"KeepCluster"`.
+        * **afterJobCancelled** (required): The action to take after job cancelled,
+          `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
       * **cancelRequested** (optional): Request the job to be cancelled. Only applies to running jobs. If
         `savePointsDir` is provided, a savepoint will be taken before stopping the job.
     * **envVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
