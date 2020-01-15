@@ -170,7 +170,7 @@ FlinkCluster
       * **args** (optional): Command-line args of the job.
       * **savepoint** (optional): Savepoint where to restore the job from.
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
-      * **savepointDir** (optional): Savepoints dir where to store automatically taken savepoints.
+      * **savepointsDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
       * **savepointGeneration** (optional): Update this field to `jobStatus.savepointGeneration + 1` for a running job
         cluster to trigger a new savepoint to `savepointsDir` on demand.
@@ -188,7 +188,7 @@ FlinkCluster
         `"Never"` means the operator will never try to restart a failed job, manual cleanup is required.
         `"FromSavepointOnFailure"` means the operator will try to restart the failed job from the savepoint recorded in
           the job status if available; otherwise, the job will stay in failed state. This option is usually used
-          together with `autoSavepointSeconds` and `savepointDir`.
+          together with `autoSavepointSeconds` and `savepointsDir`.
       * **cleanupPolicy** (optional): The action to take after job finishes.
         * **afterJobSucceeds** (required): The action to take after job succeeds,
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
