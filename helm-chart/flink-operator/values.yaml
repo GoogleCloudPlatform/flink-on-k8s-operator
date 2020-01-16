@@ -1,6 +1,9 @@
 # K8s namespace where Flink operator to be deployed
 flinkOperatorNamespace: "flink-operator-system"
 
+# Watch custom resources in the namespace, ignore other namespaces. If empty, all namespaces will be watched.
+watchNamespace:
+
 # The number of replicas of the operator Deployment
 replicas: 1
 
