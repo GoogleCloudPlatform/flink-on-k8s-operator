@@ -49,6 +49,7 @@ clusters and jobs.
 * Cancelling job with savepoint
 * Cleanup policy on job success and failure
 * GCP integration (service account, GCS connector, networking)
+* Support for Beam Python jobs
 
 ## Installation
 

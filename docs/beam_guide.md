@@ -87,4 +87,5 @@ Currently there are 2 known issues with running Beam jobs without JobServer:
 
 ## Roadmap
 
-In the future, we plan to support Beam Python job as a first class job type in this operator.
+In the future, we plan to support Beam Python job as a first class job type in this operator. After that you will not
+need to manage the lifecycle of Flink session cluster by yourself, it would be the same as Flink job cluster.
