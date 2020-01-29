@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: beam-wordcount-py
+spec:
+  template:
+    metadata:
+      labels:
+        app: beam-wordcount-py
+    spec:
+      containers:
+        - name: beam-wordcount-py
+          image: apachebeam/python3.7_sdk:2.18.0
+          imagePullPolicy: Always
+          command: ["python3"]
+          args:
+            - "-m"
+            - "apache_beam.examples.wordcount"
+            - "--runner=PortableRunner"
+            - "--job_endpoint=beam-job-server:8099"
+            - "--artifact_endpoint=beam-job-server:8098"
+            - "--environment_type=EXTERNAL"
+            - "--environment_config=localhost:50000"
+            - "--input"
+            - "/etc/ucf.conf"
+            - "--output"
+            - "/tmp/output"
+      restartPolicy: Never
