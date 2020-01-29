@@ -65,6 +65,7 @@ The operator is still under active development, there is no Helm chart available
 * [Using GCS connector with custom Flink images](images/flink/README.md)
 * [Using init container to download remote job jar](config/samples/flinkoperator_v1beta1_remotejobjar.yaml)
 * [Testing the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
+* [Running Apache Beam Python jobs with the Flink Operator](docs/beam_guide.md)
 
 ## Contributing
 
