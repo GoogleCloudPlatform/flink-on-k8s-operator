@@ -35,7 +35,7 @@ example job with the Flink Operator. You can write a script to automate the proc
   ```
 
 2. Replace the `ARTIFACTS_DIR` with a directory (e.g., `gs://my-bucket/artifacts`) accessible from the cluster in
-  [examples/beam/with_job_server/beam_job_server.yaml](examples/beam/with_job_server/beam_job_server.yaml), then start a
+  [examples/beam/with_job_server/beam_job_server.yaml](../examples/beam/with_job_server/beam_job_server.yaml), then start a
   Beam JobServer with:
 
   ```bash
