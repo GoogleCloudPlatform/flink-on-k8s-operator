@@ -15,7 +15,7 @@ spec:
           imagePullPolicy: Always
           args:
             - "--flink-master=beam-flink-cluster-jobmanager:8081"
-            - "--artifacts-dir=gs://dagang-test/beam/artifacts/"
+            - "--artifacts-dir=ARTIFACTS_DIR"
 ---
 apiVersion: v1
 kind: Service
