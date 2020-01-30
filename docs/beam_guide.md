@@ -66,11 +66,11 @@ example job with the Flink Operator. You can write a script to automate the proc
 
 Currently there are 2 known issues with running Beam jobs without JobServer:
 
-1. Sometimes it also fails with the error `TypeError: GetJobMetrics() missing 1 required positional argument:
-'context'`, but after retry it succeeds.
+1. [BEAM-9214](https://issues.apache.org/jira/browse/BEAM-9214): sometimes the job first fails with `TypeError:
+  GetJobMetrics() missing 1 required positional argument: 'context'`, but after retry it succeeds.
 
-2. [BEAM-9225](https://issues.apache.org/jira/browse/BEAM-9225): sometimes the job has changed state to DONE but the
-  process doesn't exit as expected.
+2. [BEAM-9225](https://issues.apache.org/jira/browse/BEAM-9225): the job process doesn't exit as expected after it has
+  changed state to DONE.
 
 ## Roadmap
 
