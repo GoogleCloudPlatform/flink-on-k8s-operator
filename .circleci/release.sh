@@ -57,7 +57,7 @@ main() {
         cp flink-on-k8s-operator/config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml helm-chart/flink-operator/templates/flink-cluster-crd.yaml
         sed -i '1s/^/{{ if .Values.rbac.create }}\n/' helm-chart/flink-operator/templates/flink-cluster-crd.yaml
         sed -i -e "\$a{{ end }}\n" helm-chart/flink-operator/templates/flink-cluster-crd.yaml
-        sed -i 's/{{$clusterName}}.example.com/clusterName.example.com/g' helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+        awk '{sub(/\{\{\$clusterName\}\}\.example\.com/, "clusterName.example.com")}1' helm-chart/flink-operator/templates/flink-cluster-crd.yaml > temp.yaml && mv temp.yaml helm-chart/flink-operator/templates/flink-cluster-crd.yaml
 
         for chart in "${changed_charts[@]}"; do
             echo "Packaging chart '$chart'..."
