@@ -80,14 +80,14 @@ install: manifests
 	kubectl apply -f config/crd/bases
 
 # Deploy cert-manager which is required by webhooks of the operator.
-cert-generator:
-	bash scripts/cert_generator.sh --service flink-operator-webhook-service --secret webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE)
+webhook-cert:
+	bash scripts/generate_cert.sh --service flink-operator-webhook-service --secret webhook-cert -n $(FLINK_OPERATOR_NAMESPACE)
 
 config/default/manager_image_patch.yaml:
 	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
 
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests cert-generator config/default/manager_image_patch.yaml
+deploy: manifests webhook-cert config/default/manager_image_patch.yaml
 	kubectl apply -f config/crd/bases
 	CA_BUNDLE="$(kubectl get secrets/webhook-server-cert -n $FLINK_OPERATOR_NAMESPACE -o jsonpath="{.data.tls\.crt}")"
 	kustomize build config/default \

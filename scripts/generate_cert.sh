@@ -59,7 +59,7 @@ fi
 
 if kubectl get secret "${secret}" -n "${namespace}" 1> /dev/null 2>&1; then
   echo "Secret ${secret} already exists."
-  exit 1
+  exit 0
 fi
 
 # Create the namespace to store cert in
@@ -76,7 +76,7 @@ csrName=${service}.${namespace}
 tmpdir=$(mktemp -d)
 echo "creating certs in tmpdir ${tmpdir} "
 
-cat << EOF >> ${tmpdir}/csr.conf
+cat << EOF > ${tmpdir}/csr.conf
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
@@ -142,5 +142,5 @@ echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.crt
 kubectl create secret generic ${secret} \
   --from-file=tls.key=${tmpdir}/server-key.pem \
   --from-file=tls.crt=${tmpdir}/server-cert.crt \
-  --dry-run -o yaml |
-  kubectl -n ${namespace} apply -f -
+  --dry-run -o yaml \
+  | kubectl -n ${namespace} apply -f -
