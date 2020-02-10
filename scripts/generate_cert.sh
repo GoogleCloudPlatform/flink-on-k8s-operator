@@ -72,7 +72,7 @@ if [[ ! -x "$(command -v openssl)" ]]; then
   exit 1
 fi
 
-csrName=${service}.${namespace}
+csrName=${service}
 tmpdir=$(mktemp -d)
 echo "creating certs in tmpdir ${tmpdir} "
 
@@ -95,15 +95,13 @@ EOF
 openssl genrsa -out ${tmpdir}/server-key.pem 2048
 openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace}.svc" -out ${tmpdir}/server.csr -config ${tmpdir}/csr.conf
 
-# clean-up any previously created CSR for our service. Ignore errors if not present.
-kubectl delete csr ${csrName} 2> /dev/null || true
-
 # create  server cert/key CSR and send to k8s API
 cat << EOF | kubectl apply -f -
 apiVersion: certificates.k8s.io/v1beta1
 kind: CertificateSigningRequest
 metadata:
   name: ${csrName}
+  namespace: ${namespace}
 spec:
   groups:
   - system:authenticated
@@ -116,17 +114,19 @@ EOF
 
 # verify CSR has been created
 while true; do
-  kubectl get csr ${csrName}
+  kubectl get csr ${csrName} -n ${namespace}
   if [ "$?" -eq 0 ]; then
     break
   fi
+  sleep 1
 done
 
 # approve and fetch the signed certificate
-kubectl certificate approve ${csrName}
+kubectl certificate approve ${csrName} -n ${namespace}
+
 # verify certificate has been signed
 for x in $(seq 10); do
-  serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}')
+  serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}' -n ${namespace})
   if [[ ${serverCert} != '' ]]; then
     break
   fi
@@ -140,7 +140,8 @@ echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.crt
 
 # create the secret with CA cert and server cert/key
 kubectl create secret generic ${secret} \
-  --from-file=tls.key=${tmpdir}/server-key.pem \
-  --from-file=tls.crt=${tmpdir}/server-cert.crt \
-  --dry-run -o yaml \
-  | kubectl -n ${namespace} apply -f -
+    -n ${namespace} \
+    --from-file=tls.key=${tmpdir}/server-key.pem \
+    --from-file=tls.crt=${tmpdir}/server-cert.crt \
+    --dry-run -o yaml \
+  | kubectl apply -f -
