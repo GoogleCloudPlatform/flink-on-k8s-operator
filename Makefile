@@ -89,7 +89,7 @@ config/default/manager_image_patch.yaml:
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests webhook-cert config/default/manager_image_patch.yaml
 	kubectl apply -f config/crd/bases
-	CA_BUNDLE="$(kubectl get secrets/webhook-server-cert -n $FLINK_OPERATOR_NAMESPACE -o jsonpath="{.data.tls\.crt}")"
+	CA_BUNDLE=$(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}")
 	kustomize build config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| sed -e "s/flinkoperator-ca-bundle/$(CA_BUNDLE)/g" \
