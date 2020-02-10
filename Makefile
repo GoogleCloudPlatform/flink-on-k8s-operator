@@ -81,7 +81,7 @@ install: manifests
 
 # Deploy cert-manager which is required by webhooks of the operator.
 webhook-cert:
-	bash scripts/generate_cert.sh --service flink-operator-webhook-service --secret webhook-cert -n $(FLINK_OPERATOR_NAMESPACE)
+	bash scripts/generate_cert.sh --service flink-operator-webhook-service --secret webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE)
 
 config/default/manager_image_patch.yaml:
 	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
