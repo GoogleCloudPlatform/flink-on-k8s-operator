@@ -72,7 +72,7 @@ if [[ ! -x "$(command -v openssl)" ]]; then
   exit 1
 fi
 
-csrName=${service}
+csrName=${service}.${namespace}
 tmpdir=$(mktemp -d)
 echo "creating certs in tmpdir ${tmpdir} "
 
@@ -101,7 +101,6 @@ apiVersion: certificates.k8s.io/v1beta1
 kind: CertificateSigningRequest
 metadata:
   name: ${csrName}
-  namespace: ${namespace}
 spec:
   groups:
   - system:authenticated
@@ -114,7 +113,7 @@ EOF
 
 # verify CSR has been created
 while true; do
-  kubectl get csr ${csrName} -n ${namespace}
+  kubectl get csr ${csrName}
   if [ "$?" -eq 0 ]; then
     break
   fi
@@ -122,11 +121,11 @@ while true; do
 done
 
 # approve and fetch the signed certificate
-kubectl certificate approve ${csrName} -n ${namespace}
+kubectl certificate approve ${csrName}
 
 # verify certificate has been signed
 for x in $(seq 10); do
-  serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}' -n ${namespace})
+  serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}')
   if [[ ${serverCert} != '' ]]; then
     break
   fi
