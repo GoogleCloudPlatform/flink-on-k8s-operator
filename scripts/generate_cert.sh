@@ -95,8 +95,11 @@ EOF
 openssl genrsa -out ${tmpdir}/server-key.pem 2048
 openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace}.svc" -out ${tmpdir}/server.csr -config ${tmpdir}/csr.conf
 
+# clean-up any previously created CSR for our service. Ignore errors if not present.
+kubectl delete csr ${csrName} 2> /dev/null || t
+
 # create  server cert/key CSR and send to k8s API
-cat << EOF | kubectl apply -f -
+cat << EOF | kubectl create -f -
 apiVersion: certificates.k8s.io/v1beta1
 kind: CertificateSigningRequest
 metadata:
@@ -139,8 +142,8 @@ echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.crt
 
 # create the secret with CA cert and server cert/key
 kubectl create secret generic ${secret} \
-    -n ${namespace} \
-    --from-file=tls.key=${tmpdir}/server-key.pem \
-    --from-file=tls.crt=${tmpdir}/server-cert.crt \
-    --dry-run -o yaml \
-  | kubectl apply -f -
+  -n ${namespace} \
+  --from-file=tls.key=${tmpdir}/server-key.pem \
+  --from-file=tls.crt=${tmpdir}/server-cert.crt \
+  --dry-run -o yaml |
+  kubectl apply -f -
