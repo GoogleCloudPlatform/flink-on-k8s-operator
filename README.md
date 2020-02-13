@@ -69,6 +69,10 @@ The operator is still under active development, there is no Helm chart available
 * [Testing the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
 * [Running Apache Beam Python jobs with the Flink Operator](docs/beam_guide.md)
 
+## Tech talks
+
+* CNCF Webinar: Apache Flink on Kubernetes Operator ([video](https://www.youtube.com/watch?v=MXj4lo8XHUE), [slides](docs/apache-flink-on-kubernetes-operator-20200212.pdf))
+
 ## Contributing
 
 Please check [CONTRIBUTING.md](CONTRIBUTING.md) and the [Developer Guide](docs/developer_guide.md) out.
