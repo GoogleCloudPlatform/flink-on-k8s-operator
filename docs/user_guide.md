@@ -22,6 +22,8 @@ then switch to the repo directory, we need to use the scripts in the repo for
 deployment. (This step will not be needed in the future after we have a Helm
 chart.)
 
+To execute the install scripts, you'll also need [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) and [go](https://golang.org/doc/install) installed on your local machine
+
 ## Deploy the operator to a Kubernetes cluster
 
 Deploy the Flink Operator to the Kubernetes cluster with
