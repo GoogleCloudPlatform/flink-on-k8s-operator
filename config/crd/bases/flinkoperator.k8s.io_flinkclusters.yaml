@@ -6335,6 +6335,9 @@ spec:
                     state:
                       description: The state of the component.
                       type: string
+                    port:
+                      description: The port of the component.
+                      type: integer
                   required:
                   - name
                   - state
