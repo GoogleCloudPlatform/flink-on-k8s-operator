@@ -240,6 +240,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 						nodePort = port.NodePort
 					}
 				}
+			} else {
+				state = v1beta1.ComponentStateNotReady
 			}
 
 		}
@@ -248,11 +250,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			v1beta1.JobManagerServiceStatus{
 				Name:  observedJmService.ObjectMeta.Name,
 				State: state,
-				Port: nodePort,
+				NodePort: nodePort,
 			}
 	} else if recorded.Components.JobManagerService.Name != "" {
 		status.Components.JobManagerService =
-			v1beta1.JobManagerServiceStatusJobManagerServiceStatus{
+			v1beta1.JobManagerServiceStatus{
 				Name:  recorded.Components.JobManagerService.Name,
 				State: v1beta1.ComponentStateDeleted,
 			}

@@ -444,7 +444,7 @@ type JobManagerServiceStatus struct {
 	State string `json:"state"`
 
 	// The port of NodePort.
-	Port int32 `json:"port,omitempty"`
+	NodePort int32 `json:"nodePort,omitempty"`
 }
 
 // FlinkClusterStatus defines the observed state of FlinkCluster

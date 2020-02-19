@@ -83,7 +83,7 @@ FlinkCluster
         |__ jobManagerService
             |__ name
             |__ state
-            |__ port
+            |__ nodePort
         |__ jobManagerIngress
             |__ name
             |__ state
@@ -114,7 +114,7 @@ FlinkCluster
     * **jobManager** (required): JobManager spec.
       * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External", 
       "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 
-      `External`:accessible from the internet. "NodePort": accessible from within the master port;  
+      `External`:accessible from the internet. "NodePort": accessible through node port;  
       Currently `VPC` and `External` are only available for GKE.
       * **ports** (optional): Ports that JobManager listening on.
         * **rpc** (optional): RPC port, default: 6123.
@@ -221,6 +221,7 @@ FlinkCluster
       * **jobManagerService**: The status of the JobManager service.
         * **name**: The resource name of the JobManager service.
         * **state**: The state of the JobManager service.
+        * *nodePort*: Accessible JobManager service through NodePort 
       * **jobManagerIngress**: The status of the JobManager ingress.
         * **name**: The resource name of the JobManager ingress.
         * **state**: The state of the JobManager ingress.
