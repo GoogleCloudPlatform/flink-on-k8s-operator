@@ -221,7 +221,7 @@ FlinkCluster
       * **jobManagerService**: The status of the JobManager service.
         * **name**: The resource name of the JobManager service.
         * **state**: The state of the JobManager service.
-        * *nodePort*: Accessible JobManager service through NodePort 
+        * *nodePort(optional)*: The node port, present when accessScope is NodePort
       * **jobManagerIngress**: The status of the JobManager ingress.
         * **name**: The resource name of the JobManager ingress.
         * **state**: The state of the JobManager ingress.
