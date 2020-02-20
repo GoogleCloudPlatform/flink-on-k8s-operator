@@ -443,7 +443,7 @@ type JobManagerServiceStatus struct {
 	// The state of the component.
 	State string `json:"state"`
 
-	// nodePort (optional): The node port, present when accessScope is NodePort.
+	// (Optional) The node port, present when `accessScope` is `NodePort`.
 	NodePort int32 `json:"nodePort,omitempty"`
 }
 
