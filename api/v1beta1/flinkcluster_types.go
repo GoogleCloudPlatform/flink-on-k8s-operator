@@ -54,6 +54,7 @@ const (
 	AccessScopeCluster  = "Cluster"
 	AccessScopeVPC      = "VPC"
 	AccessScopeExternal = "External"
+	AccessScopeNodePort = "NodePort"
 )
 
 // JobRestartPolicy defines the restart policy when a job fails.
@@ -376,7 +377,7 @@ type FlinkClusterComponentsStatus struct {
 	JobManagerDeployment FlinkClusterComponentState `json:"jobManagerDeployment"`
 
 	// The state of JobManager service.
-	JobManagerService FlinkClusterComponentState `json:"jobManagerService"`
+	JobManagerService JobManagerServiceStatus `json:"jobManagerService"`
 
 	// The state of JobManager ingress.
 	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
@@ -432,6 +433,18 @@ type JobManagerIngressStatus struct {
 
 	// The URLs of ingress.
 	URLs []string `json:"urls,omitempty"`
+}
+
+// JobManagerServiceStatus defines the observed state of FlinkCluster
+type JobManagerServiceStatus struct {
+	// The name of the Kubernetes jobManager service.
+	Name string `json:"name"`
+
+	// The state of the component.
+	State string `json:"state"`
+
+	// (Optional) The node port, present when `accessScope` is `NodePort`.
+	NodePort int32 `json:"nodePort,omitempty"`
 }
 
 // FlinkClusterStatus defines the observed state of FlinkCluster

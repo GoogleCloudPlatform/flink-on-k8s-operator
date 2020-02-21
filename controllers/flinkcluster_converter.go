@@ -272,6 +272,8 @@ func getDesiredJobManagerService(
 			map[string]string{"cloud.google.com/load-balancer-type": "Internal"}
 	case v1beta1.AccessScopeExternal:
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
+	case v1beta1.AccessScopeNodePort:
+		jobManagerService.Spec.Type = corev1.ServiceTypeNodePort
 	default:
 		panic(fmt.Sprintf(
 			"Unknown service access cope: %v", jobManagerSpec.AccessScope))

@@ -83,6 +83,7 @@ FlinkCluster
         |__ jobManagerService
             |__ name
             |__ state
+            |__ nodePort
         |__ jobManagerIngress
             |__ name
             |__ state
@@ -111,9 +112,10 @@ FlinkCluster
       * **pullPolicy** (optional): Image pull policy.
       * **pullSecrets** (optional): Secrets for image pull.
     * **jobManager** (required): JobManager spec.
-      * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External")`.
-        `Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; `External`:
-        accessible from the internet. Currently `VPC` and `External` are only available for GKE.
+      * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External", 
+      "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 
+      `External`:accessible from the internet. `NodePort`: accessible through node port.  
+      Currently `VPC` and `External` are only available for GKE.
       * **ports** (optional): Ports that JobManager listening on.
         * **rpc** (optional): RPC port, default: 6123.
         * **blob** (optional): Blob port, default: 6124.
@@ -219,6 +221,7 @@ FlinkCluster
       * **jobManagerService**: The status of the JobManager service.
         * **name**: The resource name of the JobManager service.
         * **state**: The state of the JobManager service.
+        * **nodePort** (optional): The node port, present when `accessScope` is `NodePort`.
       * **jobManagerIngress**: The status of the JobManager ingress.
         * **name**: The resource name of the JobManager ingress.
         * **state**: The state of the JobManager ingress.

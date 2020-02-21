@@ -216,6 +216,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var observedJmService = observed.jmService
 	if observedJmService != nil {
 		var state string
+		var nodePort int32
 		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
 			if observedJmService.Spec.ClusterIP != "" {
 				state = v1beta1.ComponentStateReady
@@ -230,15 +231,30 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			} else {
 				state = v1beta1.ComponentStateNotReady
 			}
+		} else if observedJmService.Spec.Type == corev1.ServiceTypeNodePort {
+			if len(observedJmService.Spec.Ports) > 0 {
+				state = v1beta1.ComponentStateReady
+				runningComponents++
+				for _, port := range observedJmService.Spec.Ports {
+					if port.Name == "ui" {
+						nodePort = port.NodePort
+					}
+				}
+			} else {
+				state = v1beta1.ComponentStateNotReady
+			}
+
 		}
+
 		status.Components.JobManagerService =
-			v1beta1.FlinkClusterComponentState{
+			v1beta1.JobManagerServiceStatus{
 				Name:  observedJmService.ObjectMeta.Name,
 				State: state,
+				NodePort: nodePort,
 			}
 	} else if recorded.Components.JobManagerService.Name != "" {
 		status.Components.JobManagerService =
-			v1beta1.FlinkClusterComponentState{
+			v1beta1.JobManagerServiceStatus{
 				Name:  recorded.Components.JobManagerService.Name,
 				State: v1beta1.ComponentStateDeleted,
 			}
