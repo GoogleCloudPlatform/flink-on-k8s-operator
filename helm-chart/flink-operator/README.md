@@ -2,26 +2,6 @@
 
 This is the Helm chart for the Flink operator.
 
-## Install the dependency chart - cert-manager
-
-```bash
-# Install the CustomResourceDefinition resources separately
-kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
-
-# Add the Jetstack Helm repository
-helm repo add jetstack https://charts.jetstack.io
-
-# Update your local Helm chart repository cache
-helm repo update
-
-# Install the cert-manager Helm chart
-helm install \
-  --name cert-manager \
-  --namespace cert-manager \
-  --version v0.10.0 \
-  jetstack/cert-manager
-```
-
 ## Installing the chart
 
 The instructions to install the Flink operator chart:
@@ -36,11 +16,8 @@ The instructions to install the Flink operator chart:
 	helm repo add flink-operator-repo https://googlecloudplatform.github.io/flink-on-k8s-operator/
 	helm install --name [RELEASE_NAME] flink-operator-repo/flink-operator --set operatorImage.name=[IMAGE_NAME]
 	```
+    or to install it using local repo with command:
 
-If you run into webhook related issue when installing operator chart, then disable the cert-manager webhook component and install operator chart again. The command to disable the webhook:
-
-```bash
-helm upgrade cert-manager \
-   --reuse-values \
-   --set webhook.enabled=false
-```
+    ```bash
+    helm install --name [RELEASE_NAME] . --set operatorImage.name=[IMAGE_NAME]
+    ```

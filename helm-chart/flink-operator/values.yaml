@@ -11,10 +11,6 @@ replicas: 1
 rbac:
   create: true
 
-# Enable the cert-manager by default
-cert-manager:
-  enabled: true
-
 # The defination of the operator image
 operatorImage:
   name:

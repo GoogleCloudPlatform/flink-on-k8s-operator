@@ -6,33 +6,6 @@ metadata:
     control-plane: controller-manager
   name: {{ .Values.flinkOperatorNamespace }}
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    certmanager.k8s.io/inject-ca-from: {{ .Values.flinkOperatorNamespace }}/flink-operator-serving-cert
-  creationTimestamp: null
-  name: flink-operator-mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace }}
-      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
-  failurePolicy: Fail
-  name: mflinkcluster.flinkoperator.k8s.io
-  rules:
-  - apiGroups:
-    - flinkoperator.k8s.io
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - flinkclusters
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -202,6 +175,30 @@ rules:
   - ingresses/status
   verbs:
   - get
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - '*'
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - '*'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -350,54 +347,4 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-cert
----
-apiVersion: certmanager.k8s.io/v1alpha1
-kind: Certificate
-metadata:
-  name: flink-operator-serving-cert
-  namespace: {{ .Values.flinkOperatorNamespace }}
-spec:
-  commonName: flink-operator-webhook-service.{{ .Values.flinkOperatorNamespace }}.svc
-  dnsNames:
-  - flink-operator-webhook-service.{{ .Values.flinkOperatorNamespace }}.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: flink-operator-selfsigned-issuer
-  secretName: webhook-server-cert
----
-apiVersion: certmanager.k8s.io/v1alpha1
-kind: Issuer
-metadata:
-  name: flink-operator-selfsigned-issuer
-  namespace: {{ .Values.flinkOperatorNamespace }}
-spec:
-  selfSigned: {}
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  annotations:
-    certmanager.k8s.io/inject-ca-from: {{ .Values.flinkOperatorNamespace }}/flink-operator-serving-cert
-  creationTimestamp: null
-  name: flink-operator-validating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace }}
-      path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
-  failurePolicy: Fail
-  name: vflinkcluster.flinkoperator.k8s.io
-  rules:
-  - apiGroups:
-    - flinkoperator.k8s.io
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - flinkclusters
 {{- end }}
-
