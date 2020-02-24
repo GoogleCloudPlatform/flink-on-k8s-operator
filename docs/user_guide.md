@@ -24,7 +24,7 @@ chart.)
 
 ## Deploy the operator to a Kubernetes cluster
 
-Deploy the Flink Operator to the Kubernetes cluster with
+Deploy the Flink Operator to the Kubernetes cluster with [Helm Chart Installation Instruction](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/helm-chart/flink-operator/README.md) or with
 
 ```bash
 make deploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
