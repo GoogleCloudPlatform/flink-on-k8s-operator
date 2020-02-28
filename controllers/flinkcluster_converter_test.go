@@ -639,14 +639,15 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name:  "main",
 							Image: "flink:1.8.1",
 							Args: []string{
-								"/opt/flink/bin/flink",
-								"run",
+								"bash",
+								"/opt/flink-operator/submit-job.sh",
 								"--jobmanager",
 								"flinkjobcluster-sample-jobmanager:8081",
 								"--class",
 								"org.apache.flink.examples.java.wordcount.WordCount",
 								"--parallelism",
 								"2",
+								"--detached",
 								"/cache/my-job.jar",
 								"--input",
 								"./README.txt",
@@ -661,6 +662,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
+								{
+									Name:      "flink-config-volume",
+									MountPath: "/opt/flink-operator/submit-job.sh",
+									SubPath:   "submit-job.sh",
+								},
 								{
 									Name:      "hadoop-config-volume",
 									MountPath: "/etc/hadoop/conf",
@@ -680,6 +686,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Name: "cache-volume",
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "flink-config-volume",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "flinkjobcluster-sample-configmap",
+									},
+								},
 							},
 						},
 						{
@@ -744,6 +760,7 @@ taskmanager.rpc.port: 6122
 			"flink-conf.yaml":          flinkConfYaml,
 			"log4j-console.properties": getLogConf()["log4j-console.properties"],
 			"logback-console.xml":      getLogConf()["logback-console.xml"],
+			"submit-job.sh":            submitJobScript,
 		},
 	}
 	assert.Assert(t, desiredState.ConfigMap != nil)

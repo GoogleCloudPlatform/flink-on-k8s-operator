@@ -6330,14 +6330,16 @@ spec:
                   description: The state of JobManager service.
                   properties:
                     name:
-                      description: The resource name of the component.
+                      description: The name of the Kubernetes jobManager service.
                       type: string
+                    nodePort:
+                      description: (Optional) The node port, present when `accessScope`
+                        is `NodePort`.
+                      format: int32
+                      type: integer
                     state:
                       description: The state of the component.
                       type: string
-                    port:
-                      description: The port of the component.
-                      type: integer
                   required:
                   - name
                   - state
