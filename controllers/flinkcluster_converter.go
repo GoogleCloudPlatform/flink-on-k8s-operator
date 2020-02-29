@@ -173,26 +173,29 @@ func getDesiredJobManagerDeployment(
 	}
 
 	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+	var containers = []corev1.Container{corev1.Container{
+		Name:            "jobmanager",
+		Image:           imageSpec.Name,
+		ImagePullPolicy: imageSpec.PullPolicy,
+		Args:            []string{"jobmanager"},
+		Ports: []corev1.ContainerPort{
+			rpcPort, blobPort, queryPort, uiPort},
+		LivenessProbe:  &probe,
+		ReadinessProbe: &probe,
+		Resources:      jobManagerSpec.Resources,
+		Env:            envVars,
+		VolumeMounts:   volumeMounts,
+	}}
+
+	containers = append(containers, jobManagerSpec.Sidecars...)
+
 	var podSpec = corev1.PodSpec{
-		Containers: []corev1.Container{
-			corev1.Container{
-				Name:            "jobmanager",
-				Image:           imageSpec.Name,
-				ImagePullPolicy: imageSpec.PullPolicy,
-				Args:            []string{"jobmanager"},
-				Ports: []corev1.ContainerPort{
-					rpcPort, blobPort, queryPort, uiPort},
-				LivenessProbe:  &probe,
-				ReadinessProbe: &probe,
-				Resources:      jobManagerSpec.Resources,
-				Env:            envVars,
-				VolumeMounts:   volumeMounts,
-			},
-		},
+		Containers:       containers,
 		Volumes:          volumes,
 		NodeSelector:     jobManagerSpec.NodeSelector,
 		ImagePullSecrets: imageSpec.PullSecrets,
 	}
+
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
