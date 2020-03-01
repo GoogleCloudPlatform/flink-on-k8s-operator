@@ -152,6 +152,10 @@ type JobManagerSpec struct {
 	// scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Sidecar containers running alongside with the JobManager container in the
+	// pod.
+	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
