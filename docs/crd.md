@@ -32,6 +32,8 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
+        |__ nodeSelector
+        |__ sidecars
     |__ taskManager
         |__ replicas
         |__ ports
@@ -141,6 +143,11 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the JobManager container.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) volume mounts.
+      * **nodeSelector** (optional): Selector which must match a node's labels for the JobManager pod 
+        to be scheduled on that node.
+        See [More info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
+      * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
+        See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.  
     * **taskManager** (required): TaskManager spec.
       * **replicas** (required): The number of TaskManager replicas.
       * **ports** (optional): Ports that TaskManager listening on.
@@ -162,6 +169,9 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the TaskManager containers.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
+      * **nodeSelector** (optional): Selector which must match a node's labels for the TaskManager pod to 
+        be scheduled on that node.
+        See [More info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)  
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
