@@ -9,8 +9,8 @@ document introduces how to setup such a test environment.
 ## Prerequisites
 
 * a running Kubernetes cluster with enough capacity
-* [Helm 2+](https://helm.sh/) initialized in the cluster
 * a running Flink Operator in the cluster
+* [Helm 3+](https://helm.sh/docs/intro/install/) installed on your local machine
 
 ## Steps
 
@@ -21,23 +21,14 @@ Create namespace `kafka` and install Kafka including Zookeeper in it:
 ```bash
 kubectl create ns kafka
 helm repo add incubator http://storage.googleapis.com/kubernetes-charts-incubator
-helm install --name my-kafka --namespace kafka incubator/kafka
-```
-
-If it failed with error like `User "system:serviceaccount:kube-system:default" cannot get resource "namespaces" in API
-group "" in the namespace "kafka"`, you need to grant Helm Tiller the required permissions, for example:
-
-```bash
-kubectl create serviceaccount --namespace kube-system tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-helm init --service-account tiller --upgrade
+helm install my-kafka incubator/kafka --namespace kafka
 ```
 
 After that Kafka broker service will be available at `my-kafka.kafka.svc.cluster.local:9092`, run the following command
 to view more details:
 
 ```bash
-helm status my-kafka
+helm status my-kafka -n kafka
 ```
 
 ### 2. Ingest streaming data into Kafka
@@ -151,5 +142,5 @@ kubectl delete deployments kafka-click-generator
 Delete Kafka:
 
 ```bash
-helm delete --purge my-kafka
+helm uninstall my-kafka -n kafka
 ```
