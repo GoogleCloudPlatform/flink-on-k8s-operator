@@ -38,8 +38,7 @@ But to create the Flink Operator Docker image and deploy it to a Kubernetes
 cluster, the following dependencies are required on your local machine:
 
 * [Docker](https://docs.docker.com/install/)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [Kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)
+* [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
 ## Local build and test
 

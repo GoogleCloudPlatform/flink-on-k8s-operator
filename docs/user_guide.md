@@ -22,7 +22,8 @@ then switch to the repo directory, we need to use the scripts in the repo for
 deployment. (This step will not be needed in the future after we have a Helm
 chart.)
 
-To execute the install scripts, you'll also need [kustomize v3.1+](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) and [go v.1.12+](https://golang.org/doc/install) installed on your local machine
+To execute the install scripts, you'll also need [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+and [go v1.12+](https://golang.org/doc/install) installed on your local machine.
 
 ## Deploy the operator to a Kubernetes cluster
 
