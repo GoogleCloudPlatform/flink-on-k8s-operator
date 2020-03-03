@@ -4,7 +4,7 @@ IMG="${IMG:-flink-operator:latest}"
 
 sed -e 's#image: .*#image: '"${IMG}"'#' ../../config/default/manager_image_patch.template >../../config/default/manager_image_patch.yaml
 sed -i '/- \.\.\/crd/d' ../../config/default/kustomization.yaml
-kustomize build ../../config/default | tee templates/flink-operator.yaml
+kubectl kustomize ../../config/default | tee templates/flink-operator.yaml
 sed -i '1s/^/{{- if .Values.rbac.create }}\n/' templates/flink-operator.yaml
 sed -i -e "\$a{{- end }}\n" templates/flink-operator.yaml
 sed -i 's/flink-operator-system/{{ .Values.flinkOperatorNamespace }}/g' templates/flink-operator.yaml

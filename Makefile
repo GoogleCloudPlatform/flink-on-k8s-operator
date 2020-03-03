@@ -90,13 +90,13 @@ config/default/manager_image_patch.yaml:
 deploy: manifests webhook-cert config/default/manager_image_patch.yaml
 	kubectl apply -f config/crd/bases
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
-	kustomize build config/default \
+	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| sed -e "s/Cg==/$(CA_BUNDLE)/g" \
 			| kubectl apply -f -
 
 undeploy:
-	kustomize build config/default \
+	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| kubectl delete -f - \
 			|| true
