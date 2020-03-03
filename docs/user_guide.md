@@ -23,7 +23,7 @@ deployment. (This step will not be needed in the future after we have a Helm
 chart.)
 
 To execute the install scripts, you'll also need [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-and [go v.1.12+](https://golang.org/doc/install) installed on your local machine.
+and [go v1.12+](https://golang.org/doc/install) installed on your local machine.
 
 ## Deploy the operator to a Kubernetes cluster
 
