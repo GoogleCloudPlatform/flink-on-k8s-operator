@@ -56,7 +56,7 @@ make test-in-docker
 make test
 ```
 
-## Build and push the docker image
+## Build and push the operator image
 
 Build a Docker image for the Flink Operator and then push it to an image
 registry with
@@ -65,9 +65,9 @@ registry with
 make operator-image push-operator-image IMG=<tag>
 ```
 
-If you are using gcr.io as Container Registry, then authenticate the credentials
-using gcloud or check [here](https://cloud.google.com/container-registry/docs/pushing-and-pulling)
-then build the images and push to GCR with:
+For example, if you are using [Google Container Registry](https://cloud.google.com/container-registry/docs/),
+follow the instructions [here](https://cloud.google.com/container-registry/docs/pushing-and-pulling)
+to set it up, then build the image and push it to GCR with:
 
 ```bash
 PROJECT=<gcp-project>
@@ -75,15 +75,11 @@ IMAGE_TAG=gcr.io/${PROJECT}/flink-operator:latest
 make operator-image push-operator-image IMG=${IMAGE_TAG}
 ```
 
-Depending on which image registry you want to use, choose a tag accordingly,
-e.g., if you are using [Google Container Registry](https://cloud.google.com/container-registry/docs/)
-you want to use a tag like `gcr.io/<project>/flink-operator:latest`.
-
-After building the image, it automatically saves the image tag in
-`config/default/manager_image_patch.yaml`, so that when you run `make deploy`
-later, it knows what image to use.
+After building the image, the image tag will be automatically saved in
+`config/default/manager_image_patch.yaml`, when you run `make deploy` later,
+it knows what image to use.
 
 ## Deploy the operator and run jobs
 
-Then you can follow the [User Guide](./user_guide.md) to deploy the operator
+Now you can follow the [User Guide](./user_guide.md) to deploy the operator
 and run jobs.
