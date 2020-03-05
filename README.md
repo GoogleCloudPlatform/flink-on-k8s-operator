@@ -61,16 +61,24 @@ The operator is still under active development, there is no Helm chart available
 
 ## Documentation
 
+### Quickstart guide
+
 * [User Guide](docs/user_guide.md)
 * [Developer Guide](docs/developer_guide.md)
-* [Custom resource definition (v1beta1)](docs/crd.md)
-* [Managing savepoints with the Flink Operator](docs/savepoints_guide.md)
-* [Using GCS connector with custom Flink images](images/flink/README.md)
-* [Using init container to download remote job jar](config/samples/flinkoperator_v1beta1_remotejobjar.yaml)
-* [Testing the Flink Operator with Apache Kafka](docs/kafka_test_guide.md)
-* [Running Apache Beam Python jobs with the Flink Operator](docs/beam_guide.md)
 
-## Tech talks
+### API
+
+* [Custom Resource Definition (v1beta1)](docs/crd.md)
+
+### How to
+
+* [Manage savepoints](docs/savepoints_guide.md)
+* [Use remote job jars](config/samples/flinkoperator_v1beta1_remotejobjar.yaml)
+* [Run Apache Beam Python jobs](docs/beam_guide.md)
+* [Use GCS connector](images/flink/README.md)
+* [Test with Apache Kafka](docs/kafka_test_guide.md)
+
+### Tech talks
 
 * CNCF Webinar: Apache Flink on Kubernetes Operator ([video](https://www.youtube.com/watch?v=MXj4lo8XHUE), [slides](docs/apache-flink-on-kubernetes-operator-20200212.pdf))
 
