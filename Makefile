@@ -92,12 +92,14 @@ deploy: manifests webhook-cert config/default/manager_image_patch.yaml
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
 	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| sed -e "s/--watch-namespace=/--watch-namespace=$(WATCH_NAMESPACE)/" \
 			| sed -e "s/Cg==/$(CA_BUNDLE)/g" \
 			| kubectl apply -f -
 
 undeploy:
 	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
+			| sed -e "s/--watch-namespace=/--watch-namespace=$(WATCH_NAMESPACE)/" \
 			| kubectl delete -f - \
 			|| true
 	kubectl delete -f config/crd/bases || true

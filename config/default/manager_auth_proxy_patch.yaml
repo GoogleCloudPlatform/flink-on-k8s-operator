@@ -36,3 +36,4 @@ spec:
       - name: flink-operator
         args:
         - "--metrics-addr=127.0.0.1:8080"
+        - "--watch-namespace="
