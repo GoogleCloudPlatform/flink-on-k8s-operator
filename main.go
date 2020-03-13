@@ -67,6 +67,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
+		Namespace:          watchNamespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "Unable to start manager")
@@ -76,7 +77,6 @@ func main() {
 	err = (&controllers.FlinkClusterReconciler{
 		Client:         mgr.GetClient(),
 		Log:            ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
-		WatchNamespace: watchNamespace,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")
