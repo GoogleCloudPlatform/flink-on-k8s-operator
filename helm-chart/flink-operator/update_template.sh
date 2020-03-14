@@ -11,9 +11,6 @@ sed -i 's/flink-operator-system/{{ .Values.flinkOperatorNamespace }}/g' template
 sed -i 's/replicas: 1/replicas: {{ .Values.replicas }}/g' templates/flink-operator.yaml
 sed -i "s/$IMG/{{ .Values.operatorImage.name }}/g" templates/flink-operator.yaml
 sed -i 's/--watch-namespace=/--watch-namespace={{ .Values.watchNamespace }}/' templates/flink-operator.yaml
-cp ../../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml templates/flink-cluster-crd.yaml
-sed -i '1s/^/{{ if .Values.rbac.create }}\n/' templates/flink-cluster-crd.yaml
-sed -i -e "\$a{{ end }}\n" templates/flink-cluster-crd.yaml
-sed -i 's/{{$clusterName}}.example.com/clusterName.example.com/g' templates/flink-cluster-crd.yaml
+cp ../../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml crds/
 
 git checkout ../../config/default/kustomization.yaml
