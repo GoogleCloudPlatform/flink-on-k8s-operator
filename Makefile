@@ -87,8 +87,7 @@ config/default/manager_image_patch.yaml:
 	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
 
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests webhook-cert config/default/manager_image_patch.yaml
-	kubectl apply -f config/crd/bases
+deploy: install webhook-cert config/default/manager_image_patch.yaml
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
 	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
@@ -96,13 +95,17 @@ deploy: manifests webhook-cert config/default/manager_image_patch.yaml
 			| sed -e "s/Cg==/$(CA_BUNDLE)/g" \
 			| kubectl apply -f -
 
-undeploy:
+undeploy-crd:
+	kubectl delete -f config/crd/bases
+
+undeploy-controller:
 	kubectl kustomize config/default \
 			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| sed -e "s/--watch-namespace=/--watch-namespace=$(WATCH_NAMESPACE)/" \
 			| kubectl delete -f - \
 			|| true
-	kubectl delete -f config/crd/bases || true
+
+undeploy: undeploy-controller undeploy-crd
 
 # Deploy the sample Flink clusters in the Kubernetes cluster
 samples:
