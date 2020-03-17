@@ -66,7 +66,7 @@ function wait_for_job() {
 	while true; do
 		echo -e "\nWaiting for job to finish..."
 		list_jobs
-		if list_jobs | grep -e "(FINISHED)" -e "(FAILED)"; then
+		if list_jobs | grep -e "(FINISHED)" -e "(FAILED)" -e "(CANCELED)"; then
 			echo -e "\nJob has terminated, exiting..."
 			break
 		fi
