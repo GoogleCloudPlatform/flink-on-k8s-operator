@@ -5,6 +5,10 @@ IMG ?= gcr.io/flink-operator/flink-operator:latest
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 # The Kubernetes namespace in which the operator will be deployed.
 FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
+# Prefix for Kubernetes resource names. When deploying multiple operators, make sure that the names of cluster-scoped resources are not duplicated.
+RESOURCE_PREFIX ?= flink-operator-
+# The Kubernetes namespace to limit watching.
+WATCH_NAMESPACE ?=
 
 #################### Local build and test ####################
 
@@ -81,29 +85,54 @@ install: manifests
 
 # Deploy cert-manager which is required by webhooks of the operator.
 webhook-cert:
-	bash scripts/generate_cert.sh --service flink-operator-webhook-service --secret webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE)
+	bash scripts/generate_cert.sh --service $(RESOURCE_PREFIX)webhook-service --secret webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE)
 
 config/default/manager_image_patch.yaml:
 	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
 
+# Build kustomize overlay for deploy/undeploy.
+build-overlay:
+	rm -rf config/deploy && cp -rf config/default config/deploy && cd config/deploy \
+			&& kustomize edit set nameprefix $(RESOURCE_PREFIX) \
+			&& kustomize edit set namespace $(FLINK_OPERATOR_NAMESPACE)
+ifneq ($(WATCH_NAMESPACE),)
+	cd config/deploy \
+			&& sed -E -i.bak  "s/(\-\-watch\-namespace\=)/\1$(WATCH_NAMESPACE)/" manager_auth_proxy_patch.yaml \
+			&& kustomize edit add patch webhook_namespace_selector_patch.yaml \
+			|| true
+endif
+	sed -E -i.bak "s/resources:/bases:/" config/deploy/kustomization.yaml
+	rm config/deploy/*.bak
+
+# Generate deploy template.
+template: build-overlay
+	kubectl kustomize config/deploy \
+			| sed -e "s/$(RESOURCE_PREFIX)system/$(FLINK_OPERATOR_NAMESPACE)/g"
+
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
-deploy: install webhook-cert config/default/manager_image_patch.yaml
+deploy: install webhook-cert config/default/manager_image_patch.yaml build-overlay
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
-	kubectl kustomize config/default \
-			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
-			| sed -e "s/--watch-namespace=/--watch-namespace=$(WATCH_NAMESPACE)/" \
+	kubectl kustomize config/deploy \
+			| sed -e "s/$(RESOURCE_PREFIX)system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| sed -e "s/Cg==/$(CA_BUNDLE)/g" \
 			| kubectl apply -f -
+ifneq ($(WATCH_NAMESPACE),)
+    # Set the label on watch-target namespace to support webhook namespaceSelector.
+	kubectl label ns $(WATCH_NAMESPACE) flink-operator-namespace=$(FLINK_OPERATOR_NAMESPACE)
+endif
 
 undeploy-crd:
 	kubectl delete -f config/crd/bases
 
-undeploy-controller:
-	kubectl kustomize config/default \
-			| sed -e "s/flink-operator-system/$(FLINK_OPERATOR_NAMESPACE)/g" \
-			| sed -e "s/--watch-namespace=/--watch-namespace=$(WATCH_NAMESPACE)/" \
+undeploy-controller: build-overlay
+	kubectl kustomize config/deploy \
+			| sed -e "s/$(RESOURCE_PREFIX)system/$(FLINK_OPERATOR_NAMESPACE)/g" \
 			| kubectl delete -f - \
 			|| true
+ifneq ($(WATCH_NAMESPACE),)
+    # Remove the label, which is set when operator is deployed to support webhook namespaceSelector
+	kubectl label ns $(WATCH_NAMESPACE) flink-operator-namespace-
+endif
 
 undeploy: undeploy-controller undeploy-crd
 
