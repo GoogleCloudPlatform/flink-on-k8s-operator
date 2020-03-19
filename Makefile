@@ -90,6 +90,7 @@ webhook-cert:
 config/default/manager_image_patch.yaml:
 	cp config/default/manager_image_patch.template config/default/manager_image_patch.yaml
 
+# Build kustomize overlay for deploy/undeploy.
 build-overlay:
 	rm -rf config/deploy && cp -rf config/default config/deploy && cd config/deploy \
 			&& kustomize edit set nameprefix $(RESOURCE_PREFIX) \
@@ -103,6 +104,7 @@ endif
 	sed -E -i.bak "s/resources:/bases:/" config/deploy/kustomization.yaml
 	rm config/deploy/*.bak
 
+# Generate deploy template.
 template: build-overlay
 	kubectl kustomize config/deploy \
 			| sed -e "s/$(RESOURCE_PREFIX)system/$(FLINK_OPERATOR_NAMESPACE)/g"
@@ -115,7 +117,7 @@ deploy: install webhook-cert config/default/manager_image_patch.yaml build-overl
 			| sed -e "s/Cg==/$(CA_BUNDLE)/g" \
 			| kubectl apply -f -
 ifneq ($(WATCH_NAMESPACE),)
-    # Set the label on target namespace to support webhook namespaceSelector.
+    # Set the label on watch-target namespace to support webhook namespaceSelector.
 	kubectl label ns $(WATCH_NAMESPACE) flink-operator-namespace=$(FLINK_OPERATOR_NAMESPACE)
 endif
 
@@ -128,6 +130,7 @@ undeploy-controller: build-overlay
 			| kubectl delete -f - \
 			|| true
 ifneq ($(WATCH_NAMESPACE),)
+    # Remove the label, which is set when operator is deployed to support webhook namespaceSelector
 	kubectl label ns $(WATCH_NAMESPACE) flink-operator-namespace-
 endif
 
