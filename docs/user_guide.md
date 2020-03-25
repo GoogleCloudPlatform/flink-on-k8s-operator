@@ -61,10 +61,10 @@ make deploy
 * `RESOURCE_PREFIX`: the prefix to avoid conflict of cluster-scoped resources. The default value is `flink-operator-`.
 * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
   watches. The default value is empty string which means all namespaces.
-  
+
 It is highly recommended to just use the default values unless you want to
-deploy multiple instances of the operator in a cluster, see more details in a
-later section of this doc.
+deploy multiple instances of the operator in a cluster, see more details in the
+How-to section of this doc.
 
 ### Option 2: Helm Chart
 
