@@ -40,9 +40,10 @@ Kubernetes cluster can access.
 
 ## Deploy the operator to a Kubernetes cluster
 
-You can deploy the Flink Operator to the Kubernetes cluster through
+You can deploy the Flink Operator to the Kubernetes cluster through one of the
+following 2 ways:
 
-### Make
+### Option 1: Make
 
 Run the following command from the source repo
 
@@ -61,7 +62,7 @@ make deploy [IMG=<image>] [FLINK_OPERATOR_NAMESPACE=<operator-namespace>] [WATCH
   might want to set this variable when you have multiple instances of the
   operator in a cluster and each handles CRs in a particular namespace.
 
-### Helm Chart
+### Option 2: Helm Chart
 
 Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to install the operator through Helm Chart.
 
