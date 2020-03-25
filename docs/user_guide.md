@@ -48,20 +48,23 @@ following 2 ways:
 Run the following command from the source repo
 
 ```bash
-make deploy [IMG=<image>] [FLINK_OPERATOR_NAMESPACE=<operator-namespace>] [WATCH_NAMESPACE=<watch-namespace>]
+make deploy
+    [IMG=<operator-image>] \
+    [FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>] \
+    [RESOURCE_PREFIX=<kuberntes-resource-name-prefix>] \
+    [WATCH_NAMESPACE=<namespace-to-watch>]
 ```
 
 * `IMG`: The Flink Operator image. The default value is `gcr.io/flink-operator/flink-operator:latest`.
 * `FLINK_OPERATOR_NAMESPACE`: the namespace of the operator. The default value is
-  `flink-operator-system`. It is highly recommended to use the default namespace
-  unless you want to deploy multiple instances of the operator in a cluster. In
-  this case, we recommend to specify a dedicated namespace for each instance.
-  The deploy/undeploy process will create/delete the namespace automatically.
+  `flink-operator-system`.
+* `RESOURCE_PREFIX`: the prefix to avoid conflict of cluster-scoped resources. The default value is `flink-operator-`.
 * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
-  watches. The default value is empty string which means all namespaces. You
-  might want to set this variable when you have multiple instances of the
-  operator in a cluster and each handles CRs in a particular namespace. See more
-  details in a later section of this doc.
+  watches. The default value is empty string which means all namespaces.
+  
+It is highly recommended to just use the default values unless you want to
+deploy multiple instances of the operator in a cluster, see more details in a
+later section of this doc.
 
 ### Option 2: Helm Chart
 
@@ -282,7 +285,9 @@ Undeploy the operator and CRDs from the Kubernetes cluster with
 make undeploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
 ```
 
-## How-to: deploy multiple instances of the operator in a cluster
+## How-to
+
+### Deploy multiple instances of the operator in a cluster
 
 The Flink operator basically detects and processes all FlinkCluster resources
 created in one kubernetes cluster. However, depending on the usage environment,
@@ -294,7 +299,9 @@ Deploy by specifying the namespace to manage and prefix to avoid duplication
 of cluster-scoped resources:
 
 ```bash
-make deploy RESOURCE_PREFIX=<kuberntes-resource-name-prefix> \
-            WATCH_NAMESPACE=<namespace-to-watch> \
-            FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>
+make deploy
+    IMG=<operator-image> \
+    FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator> \
+    RESOURCE_PREFIX=<kuberntes-resource-name-prefix> \
+    WATCH_NAMESPACE=<namespace-to-watch>
 ```
