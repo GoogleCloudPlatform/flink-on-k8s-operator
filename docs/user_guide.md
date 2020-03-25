@@ -19,26 +19,54 @@ git clone git@github.com:GoogleCloudPlatform/flink-on-k8s-operator.git
 ```
 
 then switch to the repo directory, we need to use the scripts in the repo for
-deployment. (This step will not be needed in the future after we have a Helm
-chart.)
+deployment. (This step is not needed if you choose to install through Helm
+Chart.)
 
 To execute the install scripts, you'll also need [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 and [go v1.12+](https://golang.org/doc/install) installed on your local machine.
 
-## Deploy the operator to a Kubernetes cluster
+## (Optional) Get a Flink Operator image
 
-Deploy the Flink Operator to the Kubernetes cluster with [Helm Chart Installation Instruction](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/helm-chart/flink-operator/README.md) or with
+By default, the deployment uses the image `gcr.io/flink-operator/flink-operator:latest`,
+but you can find and choose other released images by running the following command:
 
 ```bash
-make deploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
+gcloud container images list-tags gcr.io/flink-operator/flink-operator
 ```
 
-By default, the operator will be deployed to namespace `flink-operator-system`,
-but you can configure it with the environment variable
-`FLINK_OPERATOR_NAMESPACE`.
+You can also follow the [Deverloper Guide](./developer_guide.md) to build your
+own image from the source code and push the image to a registry where your
+Kubernetes cluster can access.
 
-After that, you can verify CRD `flinkclusters.flinkoperator.k8s.io` has been
-created with
+## Deploy the operator to a Kubernetes cluster
+
+You can deploy the Flink Operator to the Kubernetes cluster through
+
+### Make
+
+Run the following command from the source repo
+
+```bash
+make deploy [IMG=<image>] [FLINK_OPERATOR_NAMESPACE=<operator-namespace>] [WATCH_NAMESPACE=<watch-namespace>]
+```
+
+* `IMG`: The Flink Operator image. The default value is `gcr.io/flink-operator/flink-operator:latest`.
+* `FLINK_OPERATOR_NAMESPACE`: the namespace of the operator. The default value is
+  `flink-operator-system`. It is highly recommended to use the default namespace
+  unless you want to deploy multiple instances of the operator in a cluster. In
+  this case, we recommend to specify a dedicated namespace for each instance.
+  The deploy/undeploy process will create/delete the namespace automatically.
+* `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
+  watches. The default value is empty string which means all namespaces. You
+  might want to set this variable when you have multiple instances of the
+  operator in a cluster and each handles CRs in a particular namespace.
+
+### Helm Chart
+
+Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to install the operator through Helm Chart.
+
+After deploying the operator, you can verify CRD `flinkclusters.flinkoperator.k8s.io`
+has been created with
 
 ```bash
 kubectl get crds | grep flinkclusters.flinkoperator.k8s.io
