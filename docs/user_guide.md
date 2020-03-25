@@ -60,11 +60,14 @@ make deploy [IMG=<image>] [FLINK_OPERATOR_NAMESPACE=<operator-namespace>] [WATCH
 * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
   watches. The default value is empty string which means all namespaces. You
   might want to set this variable when you have multiple instances of the
-  operator in a cluster and each handles CRs in a particular namespace.
+  operator in a cluster and each handles CRs in a particular namespace. See more
+  details in a later section of this doc.
 
 ### Option 2: Helm Chart
 
 Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to install the operator through Helm Chart.
+
+## Verify the deployment
 
 After deploying the operator, you can verify CRD `flinkclusters.flinkoperator.k8s.io`
 has been created with
@@ -104,23 +107,6 @@ you should be able see logs like:
 INFO    setup   Starting manager
 INFO    controller-runtime.certwatcher  Starting certificate watcher
 INFO    controller-runtime.controller   Starting workers        {"controller": "flinkcluster", "worker count": 1}
-```
-
-## Deploy multiple operators handle limited namespace.
-
-The Flink operator basically detects and processes all FlinkCluster resources
-created in one kubernetes cluster. However, depending on the usage environment,
-such as a multi-tenant cluster, the namespace to be managed by the operator
-may need to be limited. In this case, dedicated operators must be deployed
-for each namespace, and multiple operators may be deployed in one cluster.
-
-Deploy by specifying the namespace to manage and prefix to avoid duplication
-of cluster-scoped resources:
-
-```bash
-make deploy RESOURCE_PREFIX=<kuberntes-resource-name-prefix> \
-            WATCH_NAMESPACE=<namespace-to-watch> \
-            FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>
 ```
 
 ## Create a sample Flink cluster
@@ -294,4 +280,21 @@ Undeploy the operator and CRDs from the Kubernetes cluster with
 
 ```
 make undeploy [FLINK_OPERATOR_NAMESPACE=<namespace>]
+```
+
+## How-to: deploy multiple instances of the operator in a cluster
+
+The Flink operator basically detects and processes all FlinkCluster resources
+created in one kubernetes cluster. However, depending on the usage environment,
+such as a multi-tenant cluster, the namespace to be managed by the operator
+may need to be limited. In this case, dedicated operators must be deployed
+for each namespace, and multiple operators may be deployed in one cluster.
+
+Deploy by specifying the namespace to manage and prefix to avoid duplication
+of cluster-scoped resources:
+
+```bash
+make deploy RESOURCE_PREFIX=<kuberntes-resource-name-prefix> \
+            WATCH_NAMESPACE=<namespace-to-watch> \
+            FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>
 ```
