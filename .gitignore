@@ -24,7 +24,8 @@ bin
 *.swo
 *~
 
-# Dynamic patch files
+# Dynamic files
 config/default/manager_image_patch.yaml
+config/deploy
 ./helm-chart/.deploy
 .deploy
