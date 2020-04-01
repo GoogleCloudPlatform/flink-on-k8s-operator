@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -54,6 +56,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	if reconciler.observed.cluster == nil {
 		reconciler.log.Info("The cluster has been deleted, no action to take")
 		return ctrl.Result{}, nil
+	}
+
+	err = reconciler.reconcileControlAnnotations()
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	err = reconciler.reconcileConfigMap()
@@ -279,6 +286,44 @@ func (reconciler *ClusterReconciler) deleteIngress(
 		log.Info("Ingress deleted")
 	}
 	return err
+}
+
+type objectForPatch struct {
+	Metadata objectMetaForPatch `json:"metadata"`
+}
+
+// objectMetaForPatch define object meta struct for patch operation
+type objectMetaForPatch struct {
+	Annotations map[string]interface{} `json:"annotations"`
+}
+
+// Clear finished or improper desired control in annotations
+func (reconciler *ClusterReconciler) reconcileControlAnnotations() error {
+	var observed = reconciler.observed
+	var desiredControl = observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
+	if desiredControl == "" {
+		return nil
+	}
+	if observed.cluster.Status.Control == nil || // refused control in updater
+		desiredControl != observed.cluster.Status.Control.Name || // refused control in updater
+		(desiredControl == observed.cluster.Status.Control.Name && // finished control
+			observed.cluster.Status.Control.State != v1beta1.ControlStateProgressing) {
+		// make annotation patch cleared
+		annotationPatch := objectForPatch{
+			Metadata: objectMetaForPatch{
+				Annotations: map[string]interface{}{
+					v1beta1.ControlDesiredAnnotation: nil,
+				},
+			},
+		}
+		patchBytes, err := json.Marshal(&annotationPatch)
+		if err != nil {
+			return err
+		}
+		return reconciler.k8sClient.Patch(reconciler.context, reconciler.observed.cluster, client.ConstantPatch(types.MergePatchType, patchBytes))
+	}
+
+	return nil
 }
 
 func (reconciler *ClusterReconciler) reconcileConfigMap() error {

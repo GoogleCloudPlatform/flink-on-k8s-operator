@@ -66,6 +66,11 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
+	err := v.checkControlAnnotations(old, new)
+	if err != nil {
+		return err
+	}
+
 	cancelRequested, err := v.checkCancelRequested(old, new)
 	if err != nil {
 		return err
@@ -86,6 +91,29 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return fmt.Errorf("the cluster properties are immutable")
 	}
 
+	return nil
+}
+
+func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster) error {
+	oldDesiredControl, _ := old.Annotations[ControlDesiredAnnotation]
+	newDesiredControl, ok := new.Annotations[ControlDesiredAnnotation]
+	if ok {
+		if oldDesiredControl != newDesiredControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
+			return fmt.Errorf("change is not allowed for control in progress, annotation: %v", ControlDesiredAnnotation)
+		}
+		switch newDesiredControl {
+		case ControlNameCancel:
+			if old.Spec.Job == nil {
+				return fmt.Errorf("cancel is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
+			} else if old.Status.Components.Job.State == JobStateSucceeded ||
+				old.Status.Components.Job.State == JobStateCancelled ||
+				(old.Status.Components.Job.State == JobStateFailed && *old.Spec.Job.RestartPolicy == JobRestartPolicyNever) {
+				return fmt.Errorf("cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
+			}
+		default:
+			return fmt.Errorf("desired control is not valid, annotation key: %v, value: %v", ControlDesiredAnnotation, newDesiredControl)
+		}
+	}
 	return nil
 }
 

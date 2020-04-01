@@ -21,6 +21,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -149,6 +150,15 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	// Cluster.
 	if oldStatus.State != newStatus.State {
 		updater.createStatusChangeEvent("Cluster", oldStatus.State, newStatus.State)
+	}
+
+	// Control.
+	if (oldStatus.Control == nil && newStatus.Control != nil) ||
+		(oldStatus.Control != nil && newStatus.Control != nil && oldStatus.Control.Name != newStatus.Control.Name) {
+		updater.createStatusChangeEvent(fmt.Sprintf("Control(%v)", newStatus.Control.Name), "", newStatus.Control.State)
+	} else if oldStatus.Control != nil && newStatus.Control != nil &&
+		oldStatus.Control.State != newStatus.Control.State {
+		updater.createStatusChangeEvent("Control", oldStatus.Control.State, newStatus.Control.State)
 	}
 }
 
@@ -405,7 +415,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		jobStatus = recordedJobStatus.DeepCopy()
 		jobStopped = true
 		var cancelRequested = observed.cluster.Spec.Job.CancelRequested
-		if cancelRequested != nil && *cancelRequested {
+		if (cancelRequested != nil && *cancelRequested) ||
+			(observed.cluster.Status.Control != nil && observed.cluster.Status.Control.Name == v1beta1.ControlNameCancel) {
 			jobStatus.State = v1beta1.JobStateCancelled
 			jobCancelled = true
 		}
@@ -456,6 +467,42 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		panic(fmt.Sprintf("Unknown cluster state: %v", recorded.State))
 	}
 
+	// User requested control
+	var desiredControl = observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
+	// update control status in progress
+	if recorded.Control != nil && desiredControl == recorded.Control.Name {
+		if recorded.Control.State == v1beta1.ControlStateProgressing {
+			switch recorded.Control.Name {
+			case v1beta1.ControlNameCancel:
+				if observed.job == nil {
+					status.Control = new(v1beta1.FlinkClusterControlState)
+					status.Control.Name = recorded.Control.Name
+					status.Control.State = v1beta1.ControlStateSucceeded
+					setTimestamp(&status.Control.UpdateTime)
+				}
+			}
+		}
+		// handle new desired control
+	} else {
+		if desiredControl != v1beta1.ControlNameCancel && desiredControl != v1beta1.ControlNameSavepoint {
+			if desiredControl != "" {
+				updater.log.Error(errors.New("control name is not valid"), "control name", "new control", desiredControl)
+			}
+		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
+			updater.log.Error(errors.New("control change is not allowed while it is in progress"), "current control", recorded.Control.Name, "new control", desiredControl)
+		} else {
+			status.Control = new(v1beta1.FlinkClusterControlState)
+			status.Control.Name = desiredControl
+			status.Control.State = v1beta1.ControlStateProgressing
+			setTimestamp(&status.Control.UpdateTime)
+		}
+	}
+	// maintain control status if there is no change
+	if recorded.Control != nil && status.Control == nil {
+		status.Control = new(v1beta1.FlinkClusterControlState)
+		recorded.Control.DeepCopyInto(status.Control)
+	}
+
 	return status
 }
 
@@ -491,6 +538,14 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			currentStatus.State,
 			"new",
 			newStatus.State)
+	}
+	if !reflect.DeepEqual(newStatus.Control, currentStatus.Control) {
+		updater.log.Info(
+			"Control status changed", "current",
+			currentStatus.Control,
+			"new",
+			newStatus.Control)
+		changed = true
 	}
 	if newStatus.Components.ConfigMap !=
 		currentStatus.Components.ConfigMap {
