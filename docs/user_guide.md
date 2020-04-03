@@ -326,7 +326,40 @@ kubectl describe flinkcluster <CLUSTER-NAME>
 
 Status:
   Control:
+    Data:            <nil>
     Name:            job-cancel
     State:           Succeeded
     Update Time:     2020-04-03T10:04:50+09:00
+```
+
+### Create savepoint
+
+If you want to trigger savepoint, attach control annotation to your FlinkCluster's metadata:
+```
+metadata:
+  annotations:
+    flinkclusters.flinkoperator.k8s.io/desired-control: savepoint
+```
+When savepoint control is finished, the progress can be checked in component.job and control section of FlinkCluster status:
+```bash
+kubectl describe flinkcluster <CLUSTER-NAME>
+
+...
+Status:
+  Components:
+    Job:
+      Id:                         <JOB-ID>
+      Last Savepoint Time:        2020-04-04T02:28:26+09:00
+      Last Savepoint Trigger ID:  <SAVEPOINT-TRIGGER-ID>
+      Name:                       <CLUSTER-NAME>-job
+      Savepoint Generation:       1
+      Savepoint Location:         <SAVEPOINT-PATH>
+      State:                      Running
+...
+  Control:
+    Data:
+      Last Savepoint Generation:  0
+    Name:            savepoint
+    State:           Succeeded
+    Update Time:     2020-04-04T02:28:30+09:00
 ```

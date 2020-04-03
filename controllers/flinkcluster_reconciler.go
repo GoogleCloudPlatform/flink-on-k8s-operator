@@ -58,11 +58,6 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	err = reconciler.reconcileControlAnnotations()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	err = reconciler.reconcileConfigMap()
 	if err != nil {
 		return ctrl.Result{}, err
@@ -564,6 +559,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint(
 	var log = reconciler.log
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
+	var controlStatus = reconciler.observed.cluster.Status.Control
 
 	if !reconciler.canTakeSavepoint() {
 		return false
@@ -575,6 +571,15 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint(
 			"Savepoint is requested",
 			"statusGen", jobStatus.SavepointGeneration,
 			"specGen", jobSpec.SavepointGeneration)
+		return true
+	// Triggered by control annotation
+	} else if controlStatus != nil &&
+		controlStatus.Name == v1beta1.ControlNameSavepoint &&
+		controlStatus.State == v1beta1.ControlStateProgressing {
+		log.Info(
+			"Savepoint is requested",
+			"control name", controlStatus.Name,
+			"control state", controlStatus.State)
 		return true
 	}
 
@@ -642,5 +647,6 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	jobStatus.SavepointLocation = savepointStatus.Location
 	setTimestamp(&jobStatus.LastSavepointTime)
 	setTimestamp(&cluster.Status.LastUpdateTime)
+
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

@@ -413,6 +413,9 @@ type FlinkClusterControlState struct {
 	// Control name
 	Name string `json:"name"`
 
+	// Control data
+	Data map[string]string
+
 	// State
 	State string `json:"state"`
 
