@@ -75,14 +75,13 @@ const (
 	ControlDesiredAnnotation = "flinkclusters.flinkoperator.k8s.io/desired-control"
 
 	// control name
-	ControlNameCancel    = "cancel"
+	ControlNameCancel    = "job-cancel"
 	ControlNameSavepoint = "savepoint"
 
 	// control state
-	ControlStateRequested   = "requested"
-	ControlStateProgressing = "progressing"
-	ControlStateSucceeded   = "succeeded"
-	ControlStateFailed      = "failed"
+	ControlStateProgressing = "Progressing"
+	ControlStateSucceeded   = "Succeeded"
+	ControlStateFailed      = "Failed"
 )
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
