@@ -572,7 +572,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint(
 			"statusGen", jobStatus.SavepointGeneration,
 			"specGen", jobSpec.SavepointGeneration)
 		return true
-	// Triggered by control annotation
+		// Triggered by control annotation
 	} else if controlStatus != nil &&
 		controlStatus.Name == v1beta1.ControlNameSavepoint &&
 		controlStatus.State == v1beta1.ControlStateProgressing {

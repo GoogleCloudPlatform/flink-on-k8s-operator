@@ -110,6 +110,14 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 				(old.Status.Components.Job.State == JobStateFailed && *old.Spec.Job.RestartPolicy == JobRestartPolicyNever) {
 				return fmt.Errorf("cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
 			}
+		case ControlNameSavepoint:
+			if old.Spec.Job == nil {
+				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
+			} else if old.Status.Components.Job.State == JobStateSucceeded ||
+				old.Status.Components.Job.State == JobStateCancelled ||
+				(old.Status.Components.Job.State == JobStateFailed && *old.Spec.Job.RestartPolicy == JobRestartPolicyNever) {
+				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
+			}
 		default:
 			return fmt.Errorf("desired control is not valid, annotation key: %v, value: %v", ControlDesiredAnnotation, newDesiredControl)
 		}
