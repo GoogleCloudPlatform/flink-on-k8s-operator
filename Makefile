@@ -10,6 +10,10 @@ RESOURCE_PREFIX ?= flink-operator-
 # The Kubernetes namespace to limit watching.
 WATCH_NAMESPACE ?=
 
+GREEN=\033[1;32m
+RED=\033[1;31m
+RESET=\033[0m
+
 #################### Local build and test ####################
 
 # Build the flink-operator binary
@@ -70,7 +74,6 @@ builder-image:
 operator-image: builder-image test-in-docker
 	docker build  -t ${IMG} --label git-commit=$(shell git rev-parse HEAD) .
 	@echo "updating kustomize image patch file for Flink Operator resource"
-	sed -e 's#image: .*#image: '"${IMG}"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
 
 # Push the Flink Operator docker image to container registry.
 push-operator-image:
@@ -111,6 +114,8 @@ template: build-overlay
 
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: install webhook-cert config/default/manager_image_patch.yaml build-overlay
+	sed -e 's#image: .*#image: '"$(IMG)"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
+	@echo "Getting webhook server certificate"
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
 	kubectl kustomize config/deploy \
 			| sed -e "s/$(RESOURCE_PREFIX)system/$(FLINK_OPERATOR_NAMESPACE)/g" \
@@ -120,6 +125,7 @@ ifneq ($(WATCH_NAMESPACE),)
     # Set the label on watch-target namespace to support webhook namespaceSelector.
 	kubectl label ns $(WATCH_NAMESPACE) flink-operator-namespace=$(FLINK_OPERATOR_NAMESPACE)
 endif
+	@printf "$(GREEN)Flink Operator deployed, image=$(IMG), operator_namespace=$(FLINK_OPERATOR_NAMESPACE), watch_namespace=$(WATCH_NAMESPACE)$(RESET)\n"
 
 undeploy-crd:
 	kubectl delete -f config/crd/bases
@@ -135,6 +141,7 @@ ifneq ($(WATCH_NAMESPACE),)
 endif
 
 undeploy: undeploy-controller undeploy-crd
+	@printf "$(GREEN)Flink Operator undeployed, namespace=$(FLINK_OPERATOR_NAMESPACE)$(RESET)\n"
 
 # Deploy the sample Flink clusters in the Kubernetes cluster
 samples:
