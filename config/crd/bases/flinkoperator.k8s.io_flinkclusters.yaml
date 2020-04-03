@@ -7238,6 +7238,11 @@ spec:
             control:
               description: The status of control requested by user
               properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  description: Control data
+                  type: object
                 name:
                   description: Control name
                   type: string
