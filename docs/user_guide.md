@@ -358,8 +358,8 @@ Status:
 ...
   Control:
     Data:
-      Last Savepoint Generation:  0
-    Name:            savepoint
-    State:           Succeeded
-    Update Time:     2020-04-04T02:28:30+09:00
+      Savepoint Trigger ID:  <SAVEPOINT-TRIGGER-ID>
+    Name:                    savepoint
+    State:                   Succeeded
+    Update Time:             2020-04-05T01:17:39+09:00
 ```

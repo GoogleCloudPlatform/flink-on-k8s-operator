@@ -648,5 +648,13 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	setTimestamp(&jobStatus.LastSavepointTime)
 	setTimestamp(&cluster.Status.LastUpdateTime)
 
+	// case in which savepointing is triggered by control annotation
+	var controlStatus = cluster.Status.Control
+	if controlStatus != nil && controlStatus.Name == v1beta1.ControlNameSavepoint &&
+		controlStatus.State == v1beta1.ControlStateProgressing {
+		controlStatus.Data = make(map[string]string)
+		controlStatus.Data["savepointTriggerID"] = savepointStatus.TriggerID
+	}
+
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

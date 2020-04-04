@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -161,7 +160,7 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	// Control.
 	if (oldStatus.Control == nil && newStatus.Control != nil) ||
 		(oldStatus.Control != nil && newStatus.Control != nil &&
-			(oldStatus.Control.State == v1beta1.ControlStateFailed || oldStatus.Control.State == v1beta1.ControlStateSucceeded)) {
+			isDesiredControlFinished(oldStatus.Control) && isDesiredControlRequested(newStatus.Control)) {
 		updater.createStatusChangeEvent(fmt.Sprintf("Control(%v)", newStatus.Control.Name), "", newStatus.Control.State)
 	} else if oldStatus.Control != nil && newStatus.Control != nil &&
 		oldStatus.Control.State != newStatus.Control.State {
@@ -489,18 +488,15 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				setTimestamp(&status.Control.UpdateTime)
 			}
 		case v1beta1.ControlNameSavepoint:
-			status.Control = new(v1beta1.FlinkClusterControlState)
-			status.Control = recorded.Control.DeepCopy()
-			setTimestamp(&status.Control.UpdateTime)
-			lastSavepointGeneration, err := strconv.Atoi(recorded.Control.Data["lastSavepointGeneration"])
-			if err == nil {
-				if lastSavepointGeneration < int(jobStatus.SavepointGeneration) {
-					status.Control.State = v1beta1.ControlStateSucceeded
-				} else {
-					updater.log.Info("savepointing is not finished yet.")
-				}
+			_, ok := recorded.Control.Data["savepointTriggerID"]
+			if ok {
+				// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
+				status.Control = new(v1beta1.FlinkClusterControlState)
+				status.Control = recorded.Control.DeepCopy()
+				status.Control.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&status.Control.UpdateTime)
 			} else {
-				updater.log.Error(err, "failed to get status.control.data[\"lastSavepointGeneration\"] for control state update.")
+				updater.log.Info("savepointing is not finished yet.")
 			}
 		}
 	} else {
@@ -516,11 +512,6 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			status.Control.Name = desiredControl
 			status.Control.State = v1beta1.ControlStateProgressing
 			setTimestamp(&status.Control.UpdateTime)
-			switch status.Control.Name {
-			case v1beta1.ControlNameSavepoint:
-				status.Control.Data = make(map[string]string)
-				status.Control.Data["lastSavepointGeneration"] = strconv.Itoa(int(jobStatus.SavepointGeneration))
-			}
 		}
 	}
 	// maintain control status if there is no change
@@ -669,13 +660,6 @@ func (updater *ClusterStatusUpdater) updateClusterStatus(
 	return updater.k8sClient.Status().Update(updater.context, &cluster)
 }
 
-func getDeploymentState(deployment *appsv1.Deployment) string {
-	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
-		return v1beta1.ComponentStateReady
-	}
-	return v1beta1.ComponentStateNotReady
-}
-
 // Clear finished or improper desired control in annotations
 func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlState) error {
 	var desiredControl = updater.observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
@@ -703,4 +687,19 @@ func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v
 	}
 
 	return nil
+}
+
+func getDeploymentState(deployment *appsv1.Deployment) string {
+	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
+		return v1beta1.ComponentStateReady
+	}
+	return v1beta1.ComponentStateNotReady
+}
+
+func isDesiredControlFinished(controlStatus *v1beta1.FlinkClusterControlState) bool {
+	return controlStatus.State == v1beta1.ControlStateSucceeded || controlStatus.State == v1beta1.ControlStateFailed
+}
+
+func isDesiredControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {
+	return controlStatus.State == v1beta1.ControlStateProgressing
 }
