@@ -121,12 +121,59 @@ Status:
       Id:                         c0c55ce62eba6ab41b6bb9288ef79c12
       Savepoint Generation:       3
       Savepoint Location:         gs://my-bucket/savepoints/savepoint-c0c55c-75ed63ba63b2
+      Last Savepoint Trigger ID:  21db90b88ce7a6e201032d9f764cdd64
       Last Savepoint Time:        2019-11-20T02:10:19Z
       State:                      Running
       ...
 ```
 
-### 3. Taking savepoints with the Flink CLI or through the REST API
+### 3. Taking savepoints by attaching annotation to the FlinkCluster custom resource
+
+You can take a savepoint by attaching control annotation to your FlinkCluster's metadata:
+
+```
+metadata:
+  annotations:
+    flinkclusters.flinkoperator.k8s.io/desired-control: savepoint
+```
+
+You can attach the annotation with "kubectl apply" like above or "kubectl annotate":
+
+```bash
+kubectl annotate flinkclusters <name> flinkclusters.flinkoperator.k8s.io/desired-control=savepoint
+```
+
+When savepoint control is finished, you can check the progress and the result in the control status and the job status
+```bash
+kubectl describe flinkcluster flinkjobcluster-sample
+
+Name:         flinkjobcluster-sample
+Namespace:    default
+API Version:  flinkoperator.k8s.io/v1beta1
+Kind:         FlinkCluster
+Spec:
+  ...
+Status:
+  Components:
+    ...
+    Job:
+      Name:                       flinkjobcluster-sample-job
+      Id:                         c0c55ce62eba6ab41b6bb9288ef79c12
+      Savepoint Generation:       3
+      Savepoint Location:         gs://my-bucket/savepoints/savepoint-c0c55c-75ed63ba63b2
+      Last Savepoint Trigger ID:  21db90b88ce7a6e201032d9f764cdd64
+      Last Savepoint Time:        2019-11-20T02:10:19Z
+      State:                      Running
+  ...
+  Control:
+    Data:
+      Savepoint Trigger ID:  21db90b88ce7a6e201032d9f764cdd64
+    Name:                    savepoint
+    State:                   Succeeded
+    Update Time:             2020-04-05T01:17:39+09:00
+```
+
+### 4. Taking savepoints with the Flink CLI or through the REST API
 
 In some situations, e.g., you didn't specify `savepointsDir` in the FlinkCluster custom resource, you might want to
 bypass the operator and take savepoints by running the [Flink CLI](https://ci.apache.org/projects/flink/flink-docs-stable/ops/cli.html)

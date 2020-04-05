@@ -315,6 +315,11 @@ metadata:
     flinkclusters.flinkoperator.k8s.io/desired-control: job-cancel
 ```
 
+You can attach the annotation:
+```bash
+kubectl annotate flinkclusters <name> flinkclusters.flinkoperator.k8s.io/desired-control=job-cancel
+```
+
 When canceling, all pods that make up the Flink cluster are basically terminated.
 If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled according to [FlinkCluster CRD doc](../docs/crd.md)
 
@@ -330,36 +335,4 @@ Status:
     Name:            job-cancel
     State:           Succeeded
     Update Time:     2020-04-03T10:04:50+09:00
-```
-
-### Create savepoint
-
-If you want to trigger savepoint, attach control annotation to your FlinkCluster's metadata:
-```
-metadata:
-  annotations:
-    flinkclusters.flinkoperator.k8s.io/desired-control: savepoint
-```
-When savepoint control is finished, the progress can be checked in component.job and control section of FlinkCluster status:
-```bash
-kubectl describe flinkcluster <CLUSTER-NAME>
-
-...
-Status:
-  Components:
-    Job:
-      Id:                         <JOB-ID>
-      Last Savepoint Time:        2020-04-04T02:28:26+09:00
-      Last Savepoint Trigger ID:  <SAVEPOINT-TRIGGER-ID>
-      Name:                       <CLUSTER-NAME>-job
-      Savepoint Generation:       1
-      Savepoint Location:         <SAVEPOINT-PATH>
-      State:                      Running
-...
-  Control:
-    Data:
-      Savepoint Trigger ID:  <SAVEPOINT-TRIGGER-ID>
-    Name:                    savepoint
-    State:                   Succeeded
-    Update Time:             2020-04-05T01:17:39+09:00
 ```
