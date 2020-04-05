@@ -22,7 +22,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
@@ -488,30 +487,50 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				setTimestamp(&status.Control.UpdateTime)
 			}
 		case v1beta1.ControlNameSavepoint:
-			_, ok := recorded.Control.Data["savepointTriggerID"]
-			if ok {
-				// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
-				status.Control = new(v1beta1.FlinkClusterControlState)
-				status.Control = recorded.Control.DeepCopy()
-				status.Control.State = v1beta1.ControlStateSucceeded
-				setTimestamp(&status.Control.UpdateTime)
+			if recorded.Components.Job != nil {
+				var controlSavepointTriggerID = recorded.Control.Data["savepointTriggerID"]
+				var jobLastSavepointTriggerID = recorded.Components.Job.LastSavepointTriggerID
+				var retries = recorded.Control.Data["retries"]
+				// TODO: configurable max retry count
+				var maxRetries = "3"
+				if controlSavepointTriggerID != "" && controlSavepointTriggerID == jobLastSavepointTriggerID {
+					// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
+					status.Control = new(v1beta1.FlinkClusterControlState)
+					status.Control = recorded.Control.DeepCopy()
+					status.Control.State = v1beta1.ControlStateSucceeded
+					setTimestamp(&status.Control.UpdateTime)
+				} else if retries == maxRetries || !v1beta1.IsJobActive(observed.cluster) {
+					status.Control = new(v1beta1.FlinkClusterControlState)
+					status.Control = recorded.Control.DeepCopy()
+					status.Control.State = v1beta1.ControlStateFailed
+					setTimestamp(&status.Control.UpdateTime)
+					if retries == maxRetries {
+						status.Control.Message = "Savepoint is aborted. The maximum number of retries has been reached."
+					} else if !v1beta1.IsJobActive(observed.cluster) {
+						status.Control.Message = "Savepoint is aborted. Job is not in active state."
+					}
+				}
 			} else {
-				updater.log.Info("savepointing is not finished yet.")
+				updater.log.Info("there is no recorded job status.")
 			}
 		}
 	} else {
 		// handle new desired control
 		if desiredControl != v1beta1.ControlNameCancel && desiredControl != v1beta1.ControlNameSavepoint {
 			if desiredControl != "" {
-				updater.log.Error(errors.New("control name is not valid"), "control name", "new control", desiredControl)
+				updater.log.Info("control name is not valid", "desired control", desiredControl)
 			}
 		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
-			updater.log.Error(errors.New("control change is not allowed while it is in progress"), "current control", recorded.Control.Name, "new control", desiredControl)
+			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", desiredControl)
 		} else {
-			status.Control = new(v1beta1.FlinkClusterControlState)
-			status.Control.Name = desiredControl
-			status.Control.State = v1beta1.ControlStateProgressing
-			setTimestamp(&status.Control.UpdateTime)
+			if v1beta1.IsJobActive(observed.cluster) {
+				status.Control = new(v1beta1.FlinkClusterControlState)
+				status.Control.Name = desiredControl
+				status.Control.State = v1beta1.ControlStateProgressing
+				setTimestamp(&status.Control.UpdateTime)
+			} else {
+				updater.log.Info("control request is not allowed because job is in inactive state", "desired control", desiredControl)
+			}
 		}
 	}
 	// maintain control status if there is no change
@@ -666,11 +685,8 @@ func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v
 	if desiredControl == "" {
 		return nil
 	}
-	if newControlStatus == nil || // refused control in updater
-		desiredControl != newControlStatus.Name || // refused control in updater
-		(desiredControl == newControlStatus.Name && // finished control
-			newControlStatus.State == v1beta1.ControlStateSucceeded ||
-			newControlStatus.State == v1beta1.ControlStateFailed) {
+	if newControlStatus == nil || desiredControl != newControlStatus.Name || // refused control in updater
+		(desiredControl == newControlStatus.Name && isDesiredControlFinished(newControlStatus)) /* finished control */ {
 		// make annotation patch cleared
 		annotationPatch := objectForPatch{
 			Metadata: objectMetaForPatch{
@@ -697,7 +713,8 @@ func getDeploymentState(deployment *appsv1.Deployment) string {
 }
 
 func isDesiredControlFinished(controlStatus *v1beta1.FlinkClusterControlState) bool {
-	return controlStatus.State == v1beta1.ControlStateSucceeded || controlStatus.State == v1beta1.ControlStateFailed
+	return controlStatus.State == v1beta1.ControlStateSucceeded ||
+		controlStatus.State == v1beta1.ControlStateFailed
 }
 
 func isDesiredControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {

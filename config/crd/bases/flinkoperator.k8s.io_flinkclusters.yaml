@@ -7243,6 +7243,9 @@ spec:
                     type: string
                   description: Control data
                   type: object
+                message:
+                  description: Message
+                  type: string
                 name:
                   description: Control name
                   type: string

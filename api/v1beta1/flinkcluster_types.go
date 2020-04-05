@@ -419,6 +419,9 @@ type FlinkClusterControlState struct {
 	// State
 	State string `json:"state"`
 
+	// Message
+	Message string `json:"message,omitempty"`
+
 	// State update time
 	UpdateTime string `json:"updateTime"`
 }

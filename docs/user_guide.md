@@ -317,7 +317,7 @@ metadata:
 
 You can attach the annotation:
 ```bash
-kubectl annotate flinkclusters <name> flinkclusters.flinkoperator.k8s.io/desired-control=job-cancel
+kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io/desired-control=job-cancel
 ```
 
 When canceling, all pods that make up the Flink cluster are basically terminated.

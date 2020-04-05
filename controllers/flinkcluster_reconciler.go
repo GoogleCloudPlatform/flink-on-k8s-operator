@@ -19,8 +19,10 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -624,37 +626,54 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 		err = fmt.Errorf("%s", status.FailureCause.StackTrace)
 	}
 
-	if status.Completed && err == nil {
-		err = reconciler.updateSavepointStatus(status)
-		if err != nil {
-			log.Error(
-				err, "Failed to update savepoint status.", "error", err)
-		}
-	} else {
+	if err != nil || !status.Completed {
 		log.Info("Failed to take savepoint.", "jobID", jobID)
 	}
+
+	statusUpdateErr := reconciler.updateSavepointStatus(status)
+	if statusUpdateErr != nil {
+		log.Error(
+			statusUpdateErr, "Failed to update savepoint status.", "error", statusUpdateErr)
+	}
+
 	return err
 }
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
 	savepointStatus flinkclient.SavepointStatus) error {
 	var cluster = v1beta1.FlinkCluster{}
+	var isSavepointSucceeded = savepointStatus.Completed && savepointStatus.FailureCause.StackTrace == ""
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
-	cluster.Status = reconciler.observed.cluster.Status
-	var jobStatus = cluster.Status.Components.Job
-	jobStatus.SavepointGeneration++
-	jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
-	jobStatus.SavepointLocation = savepointStatus.Location
-	setTimestamp(&jobStatus.LastSavepointTime)
-	setTimestamp(&cluster.Status.LastUpdateTime)
-
+	if isSavepointSucceeded {
+		var jobStatus = cluster.Status.Components.Job
+		jobStatus.SavepointGeneration++
+		jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
+		jobStatus.SavepointLocation = savepointStatus.Location
+		setTimestamp(&jobStatus.LastSavepointTime)
+		setTimestamp(&cluster.Status.LastUpdateTime)
+	}
 	// case in which savepointing is triggered by control annotation
 	var controlStatus = cluster.Status.Control
 	if controlStatus != nil && controlStatus.Name == v1beta1.ControlNameSavepoint &&
 		controlStatus.State == v1beta1.ControlStateProgressing {
-		controlStatus.Data = make(map[string]string)
+		if controlStatus.Data == nil {
+			controlStatus.Data = make(map[string]string)
+			controlStatus.Data["retries"] = "0"
+		} else {
+			retries, ok := controlStatus.Data["retries"]
+			if ok {
+				retryCount, err := strconv.Atoi(retries)
+				if err == nil {
+					retryCount++
+					controlStatus.Data["retries"] = strconv.Itoa(retryCount)
+				} else {
+					reconciler.log.Error(errors.New("failed to get retries from status.control.data"), "")
+				}
+			}
+		}
 		controlStatus.Data["savepointTriggerID"] = savepointStatus.TriggerID
+		controlStatus.Data["jobID"] = savepointStatus.JobID
+		setTimestamp(&controlStatus.UpdateTime)
 	}
-
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

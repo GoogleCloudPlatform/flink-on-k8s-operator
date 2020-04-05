@@ -105,19 +105,13 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 		case ControlNameCancel:
 			if old.Spec.Job == nil {
 				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
-			} else if old.Status.Components.Job == nil ||
-				old.Status.Components.Job.State == JobStateSucceeded ||
-				old.Status.Components.Job.State == JobStateCancelled ||
-				(old.Status.Components.Job.State == JobStateFailed && *old.Spec.Job.RestartPolicy == JobRestartPolicyNever) {
+			} else if !IsJobActive(old) {
 				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
 			}
 		case ControlNameSavepoint:
 			if old.Spec.Job == nil {
 				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
-			} else if old.Status.Components.Job == nil ||
-				old.Status.Components.Job.State == JobStateSucceeded ||
-				old.Status.Components.Job.State == JobStateCancelled ||
-				(old.Status.Components.Job.State == JobStateFailed && *old.Spec.Job.RestartPolicy == JobRestartPolicyNever) {
+			} else if !IsJobActive(old) {
 				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
 			}
 		default:
@@ -418,4 +412,12 @@ func (v *Validator) validateMemoryOffHeapMin(
 		}
 	}
 	return nil
+}
+
+func IsJobActive(cluster *FlinkCluster) bool {
+	var jobStatus = cluster.Status.Components.Job
+	return jobStatus != nil &&
+		jobStatus.State != JobStateSucceeded &&
+		jobStatus.State != JobStateCancelled &&
+		(jobStatus.State != JobStateFailed || *cluster.Spec.Job.RestartPolicy != JobRestartPolicyNever)
 }
