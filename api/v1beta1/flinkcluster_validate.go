@@ -95,29 +95,30 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 }
 
 func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster) error {
-	oldDesiredControl, _ := old.Annotations[ControlDesiredAnnotation]
-	newDesiredControl, ok := new.Annotations[ControlDesiredAnnotation]
+	oldUserControl, _ := old.Annotations[ControlAnnotation]
+	newUserControl, ok := new.Annotations[ControlAnnotation]
 	if ok {
-		if oldDesiredControl != newDesiredControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
-			return fmt.Errorf("change is not allowed for control in progress, annotation: %v", ControlDesiredAnnotation)
+		if oldUserControl != newUserControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
+			return fmt.Errorf("change is not allowed for control in progress, annotation: %v", ControlAnnotation)
 		}
-		switch newDesiredControl {
+		switch newUserControl {
 		case ControlNameCancel:
 			if old.Spec.Job == nil {
-				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
+				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlAnnotation)
 			} else if !IsJobActive(old) {
-				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
+				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
 			}
 		case ControlNameSavepoint:
 			if old.Spec.Job == nil {
-				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
-			} else if old.Spec.Job.SavepointsDir == nil {
-				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlDesiredAnnotation)
+				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlAnnotation)
+			} else if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
+				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlAnnotation)
 			} else if !IsJobActive(old) {
-				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
+				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
 			}
 		default:
-			return fmt.Errorf("desired control is not valid, annotation key: %v, value: %v", ControlDesiredAnnotation, newDesiredControl)
+			return fmt.Errorf("invalid value for annotation key: %v, value: %v, available values: %v, %v",
+				ControlAnnotation, newUserControl, ControlNameCancel, ControlNameSavepoint)
 		}
 	}
 	return nil

@@ -312,12 +312,12 @@ If you want to cancel a running Flink job, attach control annotation to your Fli
 ```
 metadata:
   annotations:
-    flinkclusters.flinkoperator.k8s.io/desired-control: job-cancel
+    flinkclusters.flinkoperator.k8s.io/user-control: job-cancel
 ```
 
 You can attach the annotation:
 ```bash
-kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io/desired-control=job-cancel
+kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io/user-control=job-cancel
 ```
 
 When canceling, all pods that make up the Flink cluster are basically terminated.
@@ -331,6 +331,8 @@ kubectl describe flinkcluster <CLUSTER-NAME>
 
 Status:
   Control:
+    Details:
+      Job ID:        e689263060695231f62fa8b00f97b383
     Name:            job-cancel
     State:           Succeeded
     Update Time:     2020-04-03T10:04:50+09:00

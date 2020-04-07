@@ -72,7 +72,7 @@ const (
 // User requested control
 const (
 	// control annotation key
-	ControlDesiredAnnotation = "flinkclusters.flinkoperator.k8s.io/desired-control"
+	ControlAnnotation = "flinkclusters.flinkoperator.k8s.io/user-control"
 
 	// control name
 	ControlNameCancel    = "job-cancel"
@@ -414,7 +414,7 @@ type FlinkClusterControlState struct {
 	Name string `json:"name"`
 
 	// Control data
-	Data map[string]string `json:"data,omitempty"`
+	Details map[string]string `json:"details,omitempty"`
 
 	// State
 	State string `json:"state"`

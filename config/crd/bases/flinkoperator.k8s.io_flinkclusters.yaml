@@ -7238,7 +7238,7 @@ spec:
             control:
               description: The status of control requested by user
               properties:
-                data:
+                details:
                   additionalProperties:
                     type: string
                   description: Control data

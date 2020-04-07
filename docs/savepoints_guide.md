@@ -134,13 +134,13 @@ You can take a savepoint by attaching control annotation to your FlinkCluster's 
 ```
 metadata:
   annotations:
-    flinkclusters.flinkoperator.k8s.io/desired-control: savepoint
+    flinkclusters.flinkoperator.k8s.io/user-control: savepoint
 ```
 
 You can attach the annotation with "kubectl apply" like above or "kubectl annotate":
 
 ```bash
-kubectl annotate flinkclusters flinkjobcluster-sample flinkclusters.flinkoperator.k8s.io/desired-control=savepoint
+kubectl annotate flinkclusters flinkjobcluster-sample flinkclusters.flinkoperator.k8s.io/user-control=savepoint
 ```
 
 When savepoint control is finished, you can check the progress and the result in the control status and the job status
@@ -166,7 +166,7 @@ Status:
       State:                      Running
   ...
   Control:
-    Data:
+    Details:
       Job ID:                e689263060695231f62fa8b00f97b383
       Savepoint Trigger ID:  240c9340399d84d2bb7bfb63ff516167
     Name:                    savepoint

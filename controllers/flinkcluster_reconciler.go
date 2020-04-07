@@ -624,19 +624,19 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 	var controlStatus = cluster.Status.Control
 	if controlStatus != nil && controlStatus.Name == v1beta1.ControlNameSavepoint &&
 		controlStatus.State == v1beta1.ControlStateProgressing {
-		if controlStatus.Data == nil {
-			controlStatus.Data = make(map[string]string)
+		if controlStatus.Details == nil {
+			controlStatus.Details = make(map[string]string)
 		}
-		var retries, err = getRetryCount(controlStatus.Data)
+		var retries, err = getRetryCount(controlStatus.Details)
 		if err == nil {
 			if !isSavepointSucceeded || retries != "1" {
-				controlStatus.Data["retries"] = retries
+				controlStatus.Details["retries"] = retries
 			}
 		} else {
 			reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
 		}
-		controlStatus.Data["savepointTriggerID"] = savepointStatus.TriggerID
-		controlStatus.Data["jobID"] = savepointStatus.JobID
+		controlStatus.Details["savepointTriggerID"] = savepointStatus.TriggerID
+		controlStatus.Details["jobID"] = savepointStatus.JobID
 		setTimestamp(&controlStatus.UpdateTime)
 	}
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
@@ -653,18 +653,18 @@ func (reconciler *ClusterReconciler) updateCancelStatus(cancelErr error) error {
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
 
 	var controlStatus = cluster.Status.Control
-	if controlStatus.Data == nil {
-		controlStatus.Data = make(map[string]string)
+	if controlStatus.Details == nil {
+		controlStatus.Details = make(map[string]string)
 	}
-	var retries, err = getRetryCount(controlStatus.Data)
+	var retries, err = getRetryCount(controlStatus.Details)
 	if err == nil {
 		if cancelErr != nil || retries != "1" {
-			controlStatus.Data["retries"] = retries
+			controlStatus.Details["retries"] = retries
 		}
 	} else {
 		reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
 	}
-	controlStatus.Data["jobID"] = cluster.Status.Components.Job.ID
+	controlStatus.Details["jobID"] = cluster.Status.Components.Job.ID
 	setTimestamp(&controlStatus.UpdateTime)
 
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)

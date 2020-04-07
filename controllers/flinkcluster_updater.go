@@ -159,7 +159,7 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	// Control.
 	if (oldStatus.Control == nil && newStatus.Control != nil) ||
 		(oldStatus.Control != nil && newStatus.Control != nil &&
-			isDesiredControlFinished(oldStatus.Control) && isDesiredControlRequested(newStatus.Control)) {
+			isUserControlFinished(oldStatus.Control) && isUserControlRequested(newStatus.Control)) {
 		updater.createStatusChangeEvent(fmt.Sprintf("Control(%v)", newStatus.Control.Name), "", newStatus.Control.State)
 	} else if oldStatus.Control != nil && newStatus.Control != nil &&
 		oldStatus.Control.State != newStatus.Control.State {
@@ -473,11 +473,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	}
 
 	// User requested control
-	var desiredControl = observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
+	var userControl = observed.cluster.Annotations[v1beta1.ControlAnnotation]
 
 	// update control status in progress
 	var controlStatus *v1beta1.FlinkClusterControlState
-	if recorded.Control != nil && desiredControl == recorded.Control.Name &&
+	if recorded.Control != nil && userControl == recorded.Control.Name &&
 		recorded.Control.State == v1beta1.ControlStateProgressing {
 		controlStatus = recorded.Control.DeepCopy()
 		switch recorded.Control.Name {
@@ -489,7 +489,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				updater.updateJobControlStatus(controlStatus)
 			}
 		case v1beta1.ControlNameSavepoint:
-			var controlSavepointTriggerID = recorded.Control.Data["savepointTriggerID"]
+			var controlSavepointTriggerID = recorded.Control.Details["savepointTriggerID"]
 			var jobLastSavepointTriggerID = recorded.Components.Job.LastSavepointTriggerID
 			if controlSavepointTriggerID != "" && controlSavepointTriggerID == jobLastSavepointTriggerID {
 				// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
@@ -500,26 +500,25 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 		}
 	} else {
-		// handle new desired control
-
-
-		if desiredControl != v1beta1.ControlNameCancel && desiredControl != v1beta1.ControlNameSavepoint {
-			if desiredControl != "" {
-				updater.log.Info("control name is not valid", "desired control", desiredControl)
+		// handle new user control
+		if userControl != v1beta1.ControlNameCancel && userControl != v1beta1.ControlNameSavepoint {
+			if userControl != "" {
+				updater.log.Info(fmt.Sprintf("invalid value for annotation key: %v", v1beta1.ControlAnnotation),
+					"value", userControl, "available controls", v1beta1.ControlNameCancel+", "+v1beta1.ControlNameSavepoint)
 			}
-		} else if desiredControl == v1beta1.ControlNameSavepoint &&
+		} else if userControl == v1beta1.ControlNameSavepoint &&
 			(observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "") {
 			updater.log.Info("savepoint control is not allowed without spec.job.savepointsDir,")
 		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
-			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", desiredControl)
+			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", userControl)
 		} else {
 			if v1beta1.IsJobActive(observed.cluster) {
 				controlStatus = new(v1beta1.FlinkClusterControlState)
-				controlStatus.Name = desiredControl
+				controlStatus.Name = userControl
 				controlStatus.State = v1beta1.ControlStateProgressing
 				setTimestamp(&controlStatus.UpdateTime)
 			} else {
-				updater.log.Info("control request is not allowed because job is in inactive state", "desired control", desiredControl)
+				updater.log.Info("control request is not allowed because job is in inactive state", "desired control", userControl)
 			}
 		}
 	}
@@ -679,19 +678,19 @@ type objectMetaForPatch struct {
 	Annotations map[string]interface{} `json:"annotations"`
 }
 
-// Clear finished or improper desired control in annotations
+// Clear finished or improper user control in annotations
 func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlState) error {
-	var desiredControl = updater.observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
-	if desiredControl == "" {
+	var userControl = updater.observed.cluster.Annotations[v1beta1.ControlAnnotation]
+	if userControl == "" {
 		return nil
 	}
-	if newControlStatus == nil || desiredControl != newControlStatus.Name || // refused control in updater
-		(desiredControl == newControlStatus.Name && isDesiredControlFinished(newControlStatus)) /* finished control */ {
+	if newControlStatus == nil || userControl != newControlStatus.Name || // refused control in updater
+		(userControl == newControlStatus.Name && isUserControlFinished(newControlStatus)) /* finished control */ {
 		// make annotation patch cleared
 		annotationPatch := objectForPatch{
 			Metadata: objectMetaForPatch{
 				Annotations: map[string]interface{}{
-					v1beta1.ControlDesiredAnnotation: nil,
+					v1beta1.ControlAnnotation: nil,
 				},
 			},
 		}
@@ -712,12 +711,12 @@ func getDeploymentState(deployment *appsv1.Deployment) string {
 	return v1beta1.ComponentStateNotReady
 }
 
-func isDesiredControlFinished(controlStatus *v1beta1.FlinkClusterControlState) bool {
+func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlState) bool {
 	return controlStatus.State == v1beta1.ControlStateSucceeded ||
 		controlStatus.State == v1beta1.ControlStateFailed
 }
 
-func isDesiredControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {
+func isUserControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {
 	return controlStatus.State == v1beta1.ControlStateProgressing
 }
 
@@ -729,7 +728,7 @@ func (updater *ClusterStatusUpdater) updateJobControlStatus(controlStatus *v1bet
 	if !v1beta1.IsJobActive(cluster) {
 		isControlFailed = true
 		controlStatus.Message = "Job control is aborted. Job is not in active state."
-	} else if controlStatus.Data != nil && controlStatus.Data["retries"] == maxRetries {
+	} else if controlStatus.Details != nil && controlStatus.Details["retries"] == maxRetries {
 		isControlFailed = true
 		controlStatus.Message = "Job control is aborted. The maximum number of retries has been reached."
 	}
