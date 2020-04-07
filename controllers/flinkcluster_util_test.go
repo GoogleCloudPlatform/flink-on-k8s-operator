@@ -60,3 +60,13 @@ func TestShouldRestartJob(t *testing.T) {
 	var restart3 = shouldRestartJob(&neverRestart, &jobStatus3)
 	assert.Equal(t, restart3, false)
 }
+
+func TestGetRetryCount(t *testing.T) {
+	var data1 = map[string]string{}
+	var result1, _ = getRetryCount(data1)
+	assert.Equal(t, result1, "1")
+
+	var data2 = map[string]string{"retries": "1"}
+	var result2, _ = getRetryCount(data2)
+	assert.Equal(t, result2, "2")
+}

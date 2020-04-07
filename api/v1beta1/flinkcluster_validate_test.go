@@ -626,6 +626,7 @@ func TestInvalidHadoopConfig(t *testing.T) {
 func TestDesiredControlSavepoint(t *testing.T) {
 	var validator = &Validator{}
 	var restartPolicy = JobRestartPolicyNever
+	var savepointsDir = "gs://my-bucket/savepoints/"
 	var newCluster = FlinkCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -649,24 +650,29 @@ func TestDesiredControlSavepoint(t *testing.T) {
 
 	var oldCluster3 = FlinkCluster{Spec: FlinkClusterSpec{Job: &JobSpec{}}}
 	var err3 = validator.ValidateUpdate(&oldCluster3, &newCluster)
-	var expectedErr3 = "savepoint is not allowed because job is not existing or already stopped, annotation: flinkclusters.flinkoperator.k8s.io/desired-control"
+	var expectedErr3 = "savepoint is not allowed without spec.job.savepointsDir, annotation: flinkclusters.flinkoperator.k8s.io/desired-control"
 	assert.Equal(t, err3.Error(), expectedErr3)
 
-	var oldCluster4 = FlinkCluster{
-		Spec:   FlinkClusterSpec{Job: &JobSpec{}},
-		Status: FlinkClusterStatus{Components: FlinkClusterComponentsStatus{Job: &JobStatus{State: JobStateSucceeded}}},
-	}
+	var oldCluster4 = FlinkCluster{Spec: FlinkClusterSpec{Job: &JobSpec{SavepointsDir: &savepointsDir}}}
 	var err4 = validator.ValidateUpdate(&oldCluster4, &newCluster)
 	var expectedErr4 = "savepoint is not allowed because job is not existing or already stopped, annotation: flinkclusters.flinkoperator.k8s.io/desired-control"
 	assert.Equal(t, err4.Error(), expectedErr4)
 
 	var oldCluster5 = FlinkCluster{
-		Spec:   FlinkClusterSpec{Job: &JobSpec{RestartPolicy: &restartPolicy}},
-		Status: FlinkClusterStatus{Components: FlinkClusterComponentsStatus{Job: &JobStatus{State: JobStateFailed}}},
+		Spec:   FlinkClusterSpec{Job: &JobSpec{SavepointsDir: &savepointsDir}},
+		Status: FlinkClusterStatus{Components: FlinkClusterComponentsStatus{Job: &JobStatus{State: JobStateSucceeded}}},
 	}
 	var err5 = validator.ValidateUpdate(&oldCluster5, &newCluster)
 	var expectedErr5 = "savepoint is not allowed because job is not existing or already stopped, annotation: flinkclusters.flinkoperator.k8s.io/desired-control"
 	assert.Equal(t, err5.Error(), expectedErr5)
+
+	var oldCluster6 = FlinkCluster{
+		Spec:   FlinkClusterSpec{Job: &JobSpec{RestartPolicy: &restartPolicy, SavepointsDir: &savepointsDir}},
+		Status: FlinkClusterStatus{Components: FlinkClusterComponentsStatus{Job: &JobStatus{State: JobStateFailed}}},
+	}
+	var err6 = validator.ValidateUpdate(&oldCluster6, &newCluster)
+	var expectedErr6 = "savepoint is not allowed because job is not existing or already stopped, annotation: flinkclusters.flinkoperator.k8s.io/desired-control"
+	assert.Equal(t, err6.Error(), expectedErr6)
 }
 
 func TestDesiredControlJobCancel(t *testing.T) {

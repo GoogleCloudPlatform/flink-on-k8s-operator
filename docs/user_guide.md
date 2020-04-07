@@ -331,7 +331,6 @@ kubectl describe flinkcluster <CLUSTER-NAME>
 
 Status:
   Control:
-    Data:            <nil>
     Name:            job-cancel
     State:           Succeeded
     Update Time:     2020-04-03T10:04:50+09:00

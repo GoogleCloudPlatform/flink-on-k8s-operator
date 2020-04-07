@@ -18,11 +18,7 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
-	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -285,44 +281,6 @@ func (reconciler *ClusterReconciler) deleteIngress(
 	return err
 }
 
-type objectForPatch struct {
-	Metadata objectMetaForPatch `json:"metadata"`
-}
-
-// objectMetaForPatch define object meta struct for patch operation
-type objectMetaForPatch struct {
-	Annotations map[string]interface{} `json:"annotations"`
-}
-
-// Clear finished or improper desired control in annotations
-func (reconciler *ClusterReconciler) reconcileControlAnnotations() error {
-	var observed = reconciler.observed
-	var desiredControl = observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
-	if desiredControl == "" {
-		return nil
-	}
-	if observed.cluster.Status.Control == nil || // refused control in updater
-		desiredControl != observed.cluster.Status.Control.Name || // refused control in updater
-		(desiredControl == observed.cluster.Status.Control.Name && // finished control
-			observed.cluster.Status.Control.State != v1beta1.ControlStateProgressing) {
-		// make annotation patch cleared
-		annotationPatch := objectForPatch{
-			Metadata: objectMetaForPatch{
-				Annotations: map[string]interface{}{
-					v1beta1.ControlDesiredAnnotation: nil,
-				},
-			},
-		}
-		patchBytes, err := json.Marshal(&annotationPatch)
-		if err != nil {
-			return err
-		}
-		return reconciler.k8sClient.Patch(reconciler.context, reconciler.observed.cluster, client.ConstantPatch(types.MergePatchType, patchBytes))
-	}
-
-	return nil
-}
-
 func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 	var desiredConfigMap = reconciler.desired.ConfigMap
 	var observedConfigMap = reconciler.observed.configMap
@@ -438,10 +396,20 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			var err = reconciler.cancelFlinkJob(jobID, true /* takeSavepoint */)
 			if err != nil {
 				log.Error(err, "Failed to cancel job", "jobID", jobID)
+				statusUpdateErr := reconciler.updateCancelStatus(err)
+				if statusUpdateErr != nil {
+					log.Error(
+						statusUpdateErr, "Failed to update control status.", "error", statusUpdateErr)
+				}
 				return requeueResult, nil
 			}
 		}
 		var err = reconciler.deleteJob(observedJob)
+		statusUpdateErr := reconciler.updateCancelStatus(err)
+		if statusUpdateErr != nil {
+			log.Error(
+				statusUpdateErr, "Failed to update control status.", "error", statusUpdateErr)
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -641,8 +609,8 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
 	savepointStatus flinkclient.SavepointStatus) error {
-	var cluster = v1beta1.FlinkCluster{}
 	var isSavepointSucceeded = savepointStatus.Completed && savepointStatus.FailureCause.StackTrace == ""
+	var cluster = v1beta1.FlinkCluster{}
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
 	if isSavepointSucceeded {
 		var jobStatus = cluster.Status.Components.Job
@@ -658,22 +626,46 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 		controlStatus.State == v1beta1.ControlStateProgressing {
 		if controlStatus.Data == nil {
 			controlStatus.Data = make(map[string]string)
-			controlStatus.Data["retries"] = "0"
-		} else {
-			retries, ok := controlStatus.Data["retries"]
-			if ok {
-				retryCount, err := strconv.Atoi(retries)
-				if err == nil {
-					retryCount++
-					controlStatus.Data["retries"] = strconv.Itoa(retryCount)
-				} else {
-					reconciler.log.Error(errors.New("failed to get retries from status.control.data"), "")
-				}
+		}
+		var retries, err = getRetryCount(controlStatus.Data)
+		if err == nil {
+			if !isSavepointSucceeded || retries != "1" {
+				controlStatus.Data["retries"] = retries
 			}
+		} else {
+			reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
 		}
 		controlStatus.Data["savepointTriggerID"] = savepointStatus.TriggerID
 		controlStatus.Data["jobID"] = savepointStatus.JobID
 		setTimestamp(&controlStatus.UpdateTime)
 	}
+	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
+}
+
+func (reconciler *ClusterReconciler) updateCancelStatus(cancelErr error) error {
+	var observedControlStatus = reconciler.observed.cluster.Status.Control
+	if observedControlStatus == nil || observedControlStatus.Name != v1beta1.ControlNameCancel ||
+		observedControlStatus.State != v1beta1.ControlStateProgressing {
+		return nil
+	}
+
+	var cluster = v1beta1.FlinkCluster{}
+	reconciler.observed.cluster.DeepCopyInto(&cluster)
+
+	var controlStatus = cluster.Status.Control
+	if controlStatus.Data == nil {
+		controlStatus.Data = make(map[string]string)
+	}
+	var retries, err = getRetryCount(controlStatus.Data)
+	if err == nil {
+		if cancelErr != nil || retries != "1" {
+			controlStatus.Data["retries"] = retries
+		}
+	} else {
+		reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
+	}
+	controlStatus.Data["jobID"] = cluster.Status.Components.Job.ID
+	setTimestamp(&controlStatus.UpdateTime)
+
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }

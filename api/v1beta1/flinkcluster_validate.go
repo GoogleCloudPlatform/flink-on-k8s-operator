@@ -111,6 +111,8 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 		case ControlNameSavepoint:
 			if old.Spec.Job == nil {
 				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlDesiredAnnotation)
+			} else if old.Spec.Job.SavepointsDir == nil {
+				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlDesiredAnnotation)
 			} else if !IsJobActive(old) {
 				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlDesiredAnnotation)
 			}

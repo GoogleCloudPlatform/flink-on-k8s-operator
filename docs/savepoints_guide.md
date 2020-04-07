@@ -168,7 +168,6 @@ Status:
   Control:
     Data:
       Job ID:                e689263060695231f62fa8b00f97b383
-      Retries:               0
       Savepoint Trigger ID:  240c9340399d84d2bb7bfb63ff516167
     Name:                    savepoint
     State:                   Succeeded

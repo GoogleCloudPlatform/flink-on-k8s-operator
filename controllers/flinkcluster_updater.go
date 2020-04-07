@@ -476,68 +476,59 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var desiredControl = observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
 
 	// update control status in progress
+	var controlStatus *v1beta1.FlinkClusterControlState
 	if recorded.Control != nil && desiredControl == recorded.Control.Name &&
 		recorded.Control.State == v1beta1.ControlStateProgressing {
+		controlStatus = recorded.Control.DeepCopy()
 		switch recorded.Control.Name {
 		case v1beta1.ControlNameCancel:
 			if observed.job == nil && status.Components.Job.State == v1beta1.JobStateCancelled {
-				status.Control = new(v1beta1.FlinkClusterControlState)
-				status.Control = recorded.Control.DeepCopy()
-				status.Control.State = v1beta1.ControlStateSucceeded
-				setTimestamp(&status.Control.UpdateTime)
+				controlStatus.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&controlStatus.UpdateTime)
+			} else {
+				updater.updateJobControlStatus(controlStatus)
 			}
 		case v1beta1.ControlNameSavepoint:
-			if recorded.Components.Job != nil {
-				var controlSavepointTriggerID = recorded.Control.Data["savepointTriggerID"]
-				var jobLastSavepointTriggerID = recorded.Components.Job.LastSavepointTriggerID
-				var retries = recorded.Control.Data["retries"]
-				// TODO: configurable max retry count
-				var maxRetries = "3"
-				if controlSavepointTriggerID != "" && controlSavepointTriggerID == jobLastSavepointTriggerID {
-					// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
-					status.Control = new(v1beta1.FlinkClusterControlState)
-					status.Control = recorded.Control.DeepCopy()
-					status.Control.State = v1beta1.ControlStateSucceeded
-					setTimestamp(&status.Control.UpdateTime)
-				} else if retries == maxRetries || !v1beta1.IsJobActive(observed.cluster) {
-					status.Control = new(v1beta1.FlinkClusterControlState)
-					status.Control = recorded.Control.DeepCopy()
-					status.Control.State = v1beta1.ControlStateFailed
-					setTimestamp(&status.Control.UpdateTime)
-					if retries == maxRetries {
-						status.Control.Message = "Savepoint is aborted. The maximum number of retries has been reached."
-					} else if !v1beta1.IsJobActive(observed.cluster) {
-						status.Control.Message = "Savepoint is aborted. Job is not in active state."
-					}
-				}
+			var controlSavepointTriggerID = recorded.Control.Data["savepointTriggerID"]
+			var jobLastSavepointTriggerID = recorded.Components.Job.LastSavepointTriggerID
+			if controlSavepointTriggerID != "" && controlSavepointTriggerID == jobLastSavepointTriggerID {
+				// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
+				controlStatus.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&controlStatus.UpdateTime)
 			} else {
-				updater.log.Info("there is no recorded job status.")
+				updater.updateJobControlStatus(controlStatus)
 			}
 		}
 	} else {
 		// handle new desired control
+
+
 		if desiredControl != v1beta1.ControlNameCancel && desiredControl != v1beta1.ControlNameSavepoint {
 			if desiredControl != "" {
 				updater.log.Info("control name is not valid", "desired control", desiredControl)
 			}
+		} else if desiredControl == v1beta1.ControlNameSavepoint &&
+			(observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "") {
+			updater.log.Info("savepoint control is not allowed without spec.job.savepointsDir,")
 		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
 			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", desiredControl)
 		} else {
 			if v1beta1.IsJobActive(observed.cluster) {
-				status.Control = new(v1beta1.FlinkClusterControlState)
-				status.Control.Name = desiredControl
-				status.Control.State = v1beta1.ControlStateProgressing
-				setTimestamp(&status.Control.UpdateTime)
+				controlStatus = new(v1beta1.FlinkClusterControlState)
+				controlStatus.Name = desiredControl
+				controlStatus.State = v1beta1.ControlStateProgressing
+				setTimestamp(&controlStatus.UpdateTime)
 			} else {
 				updater.log.Info("control request is not allowed because job is in inactive state", "desired control", desiredControl)
 			}
 		}
 	}
+
 	// maintain control status if there is no change
-	if recorded.Control != nil && status.Control == nil {
-		status.Control = new(v1beta1.FlinkClusterControlState)
-		status.Control = recorded.Control.DeepCopy()
+	if recorded.Control != nil && controlStatus == nil {
+		controlStatus = recorded.Control.DeepCopy()
 	}
+	status.Control = controlStatus
 
 	return status
 }
@@ -679,6 +670,15 @@ func (updater *ClusterStatusUpdater) updateClusterStatus(
 	return updater.k8sClient.Status().Update(updater.context, &cluster)
 }
 
+type objectForPatch struct {
+	Metadata objectMetaForPatch `json:"metadata"`
+}
+
+// objectMetaForPatch define object meta struct for patch operation
+type objectMetaForPatch struct {
+	Annotations map[string]interface{} `json:"annotations"`
+}
+
 // Clear finished or improper desired control in annotations
 func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlState) error {
 	var desiredControl = updater.observed.cluster.Annotations[v1beta1.ControlDesiredAnnotation]
@@ -719,4 +719,22 @@ func isDesiredControlFinished(controlStatus *v1beta1.FlinkClusterControlState) b
 
 func isDesiredControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {
 	return controlStatus.State == v1beta1.ControlStateProgressing
+}
+
+func (updater *ClusterStatusUpdater) updateJobControlStatus(controlStatus *v1beta1.FlinkClusterControlState) {
+	// TODO: configurable max retry count
+	var maxRetries = "3"
+	var cluster = updater.observed.cluster
+	var isControlFailed bool
+	if !v1beta1.IsJobActive(cluster) {
+		isControlFailed = true
+		controlStatus.Message = "Job control is aborted. Job is not in active state."
+	} else if controlStatus.Data != nil && controlStatus.Data["retries"] == maxRetries {
+		isControlFailed = true
+		controlStatus.Message = "Job control is aborted. The maximum number of retries has been reached."
+	}
+	if isControlFailed {
+		controlStatus.State = v1beta1.ControlStateFailed
+		setTimestamp(&controlStatus.UpdateTime)
+	}
 }
