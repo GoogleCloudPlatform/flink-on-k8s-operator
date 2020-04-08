@@ -564,7 +564,11 @@ func getDesiredJob(
 		return nil
 	}
 
-	if jobSpec.CancelRequested != nil && *jobSpec.CancelRequested {
+	var controlStatus = flinkCluster.Status.Control
+	// We need to watch whether job is cancelled already if jobSpec.CancelRequested is deprecated
+	if (flinkCluster.Status.Components.Job != nil && flinkCluster.Status.Components.Job.State == v1beta1.JobStateCancelled) ||
+		(jobSpec.CancelRequested != nil && *jobSpec.CancelRequested) ||
+		(controlStatus != nil && controlStatus.Name == v1beta1.ControlNameCancel && controlStatus.State == v1beta1.ControlStateProgressing) {
 		return nil
 	}
 

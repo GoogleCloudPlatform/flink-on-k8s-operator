@@ -66,6 +66,11 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
+	err := v.checkControlAnnotations(old, new)
+	if err != nil {
+		return err
+	}
+
 	cancelRequested, err := v.checkCancelRequested(old, new)
 	if err != nil {
 		return err
@@ -86,6 +91,36 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return fmt.Errorf("the cluster properties are immutable")
 	}
 
+	return nil
+}
+
+func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster) error {
+	oldUserControl, _ := old.Annotations[ControlAnnotation]
+	newUserControl, ok := new.Annotations[ControlAnnotation]
+	if ok {
+		if oldUserControl != newUserControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
+			return fmt.Errorf("change is not allowed for control in progress, annotation: %v", ControlAnnotation)
+		}
+		switch newUserControl {
+		case ControlNameCancel:
+			if old.Spec.Job == nil {
+				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlAnnotation)
+			} else if !IsJobActive(old) {
+				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
+			}
+		case ControlNameSavepoint:
+			if old.Spec.Job == nil {
+				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlAnnotation)
+			} else if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
+				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlAnnotation)
+			} else if !IsJobActive(old) {
+				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
+			}
+		default:
+			return fmt.Errorf("invalid value for annotation key: %v, value: %v, available values: %v, %v",
+				ControlAnnotation, newUserControl, ControlNameCancel, ControlNameSavepoint)
+		}
+	}
 	return nil
 }
 
@@ -380,4 +415,12 @@ func (v *Validator) validateMemoryOffHeapMin(
 		}
 	}
 	return nil
+}
+
+func IsJobActive(cluster *FlinkCluster) bool {
+	var jobStatus = cluster.Status.Components.Job
+	return jobStatus != nil &&
+		jobStatus.State != JobStateSucceeded &&
+		jobStatus.State != JobStateCancelled &&
+		(jobStatus.State != JobStateFailed || *cluster.Spec.Job.RestartPolicy != JobRestartPolicyNever)
 }

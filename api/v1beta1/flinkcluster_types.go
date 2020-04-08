@@ -69,6 +69,21 @@ const (
 	JobRestartPolicyFromSavepointOnFailure = "FromSavepointOnFailure"
 )
 
+// User requested control
+const (
+	// control annotation key
+	ControlAnnotation = "flinkclusters.flinkoperator.k8s.io/user-control"
+
+	// control name
+	ControlNameCancel    = "job-cancel"
+	ControlNameSavepoint = "savepoint"
+
+	// control state
+	ControlStateProgressing = "Progressing"
+	ControlStateSucceeded   = "Succeeded"
+	ControlStateFailed      = "Failed"
+)
+
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
 type ImageSpec struct {
 	// Flink image name.
@@ -393,6 +408,24 @@ type FlinkClusterComponentsStatus struct {
 	Job *JobStatus `json:"job,omitempty"`
 }
 
+// Control state
+type FlinkClusterControlState struct {
+	// Control name
+	Name string `json:"name"`
+
+	// Control data
+	Details map[string]string `json:"details,omitempty"`
+
+	// State
+	State string `json:"state"`
+
+	// Message
+	Message string `json:"message,omitempty"`
+
+	// State update time
+	UpdateTime string `json:"updateTime"`
+}
+
 // JobStatus defines the status of a job.
 type JobStatus struct {
 	// The name of the Kubernetes job resource.
@@ -461,6 +494,9 @@ type FlinkClusterStatus struct {
 
 	// The status of the components.
 	Components FlinkClusterComponentsStatus `json:"components"`
+
+	// The status of control requested by user
+	Control *FlinkClusterControlState `json:"control,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`

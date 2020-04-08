@@ -21,7 +21,9 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"time"
 
@@ -60,6 +62,9 @@ func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
 	// New status derived from the cluster's components.
 	var newStatus = updater.deriveClusterStatus(
 		&updater.observed.cluster.Status, &updater.observed)
+
+	// Adjust control annotation
+	updater.adjustControlAnnotation(newStatus.Control)
 
 	// Compare
 	var changed = updater.isStatusChanged(oldStatus, newStatus)
@@ -149,6 +154,16 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	// Cluster.
 	if oldStatus.State != newStatus.State {
 		updater.createStatusChangeEvent("Cluster", oldStatus.State, newStatus.State)
+	}
+
+	// Control.
+	if (oldStatus.Control == nil && newStatus.Control != nil) ||
+		(oldStatus.Control != nil && newStatus.Control != nil &&
+			isUserControlFinished(oldStatus.Control) && isUserControlRequested(newStatus.Control)) {
+		updater.createStatusChangeEvent(fmt.Sprintf("Control(%v)", newStatus.Control.Name), "", newStatus.Control.State)
+	} else if oldStatus.Control != nil && newStatus.Control != nil &&
+		oldStatus.Control.State != newStatus.Control.State {
+		updater.createStatusChangeEvent(fmt.Sprintf("Control(%v)", newStatus.Control.Name), oldStatus.Control.State, newStatus.Control.State)
 	}
 }
 
@@ -405,7 +420,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		jobStatus = recordedJobStatus.DeepCopy()
 		jobStopped = true
 		var cancelRequested = observed.cluster.Spec.Job.CancelRequested
-		if cancelRequested != nil && *cancelRequested {
+		if (cancelRequested != nil && *cancelRequested) ||
+			(observed.cluster.Status.Control != nil && observed.cluster.Status.Control.Name == v1beta1.ControlNameCancel) {
 			jobStatus.State = v1beta1.JobStateCancelled
 			jobCancelled = true
 		}
@@ -456,6 +472,63 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		panic(fmt.Sprintf("Unknown cluster state: %v", recorded.State))
 	}
 
+	// User requested control
+	var userControl = observed.cluster.Annotations[v1beta1.ControlAnnotation]
+
+	// update control status in progress
+	var controlStatus *v1beta1.FlinkClusterControlState
+	if recorded.Control != nil && userControl == recorded.Control.Name &&
+		recorded.Control.State == v1beta1.ControlStateProgressing {
+		controlStatus = recorded.Control.DeepCopy()
+		switch recorded.Control.Name {
+		case v1beta1.ControlNameCancel:
+			if observed.job == nil && status.Components.Job.State == v1beta1.JobStateCancelled {
+				controlStatus.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&controlStatus.UpdateTime)
+			} else {
+				updater.updateJobControlStatus(controlStatus)
+			}
+		case v1beta1.ControlNameSavepoint:
+			var controlSavepointTriggerID = recorded.Control.Details["savepointTriggerID"]
+			var jobLastSavepointTriggerID = recorded.Components.Job.LastSavepointTriggerID
+			if controlSavepointTriggerID != "" && controlSavepointTriggerID == jobLastSavepointTriggerID {
+				// TODO: When implementing savepoint generation asynchronously, let's check whether it is actually created with savepointTriggerID.
+				controlStatus.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&controlStatus.UpdateTime)
+			} else {
+				updater.updateJobControlStatus(controlStatus)
+			}
+		}
+	} else {
+		// handle new user control
+		if userControl != v1beta1.ControlNameCancel && userControl != v1beta1.ControlNameSavepoint {
+			if userControl != "" {
+				updater.log.Info(fmt.Sprintf("invalid value for annotation key: %v", v1beta1.ControlAnnotation),
+					"value", userControl, "available controls", v1beta1.ControlNameCancel+", "+v1beta1.ControlNameSavepoint)
+			}
+		} else if userControl == v1beta1.ControlNameSavepoint &&
+			(observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "") {
+			updater.log.Info("savepoint control is not allowed without spec.job.savepointsDir,")
+		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
+			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", userControl)
+		} else {
+			if v1beta1.IsJobActive(observed.cluster) {
+				controlStatus = new(v1beta1.FlinkClusterControlState)
+				controlStatus.Name = userControl
+				controlStatus.State = v1beta1.ControlStateProgressing
+				setTimestamp(&controlStatus.UpdateTime)
+			} else {
+				updater.log.Info("control request is not allowed because job is in inactive state", "desired control", userControl)
+			}
+		}
+	}
+
+	// maintain control status if there is no change
+	if recorded.Control != nil && controlStatus == nil {
+		controlStatus = recorded.Control.DeepCopy()
+	}
+	status.Control = controlStatus
+
 	return status
 }
 
@@ -491,6 +564,14 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			currentStatus.State,
 			"new",
 			newStatus.State)
+	}
+	if !reflect.DeepEqual(newStatus.Control, currentStatus.Control) {
+		updater.log.Info(
+			"Control status changed", "current",
+			currentStatus.Control,
+			"new",
+			newStatus.Control)
+		changed = true
 	}
 	if newStatus.Components.ConfigMap !=
 		currentStatus.Components.ConfigMap {
@@ -588,9 +669,71 @@ func (updater *ClusterStatusUpdater) updateClusterStatus(
 	return updater.k8sClient.Status().Update(updater.context, &cluster)
 }
 
+type objectForPatch struct {
+	Metadata objectMetaForPatch `json:"metadata"`
+}
+
+// objectMetaForPatch define object meta struct for patch operation
+type objectMetaForPatch struct {
+	Annotations map[string]interface{} `json:"annotations"`
+}
+
+// Clear finished or improper user control in annotations
+func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlState) error {
+	var userControl = updater.observed.cluster.Annotations[v1beta1.ControlAnnotation]
+	if userControl == "" {
+		return nil
+	}
+	if newControlStatus == nil || userControl != newControlStatus.Name || // refused control in updater
+		(userControl == newControlStatus.Name && isUserControlFinished(newControlStatus)) /* finished control */ {
+		// make annotation patch cleared
+		annotationPatch := objectForPatch{
+			Metadata: objectMetaForPatch{
+				Annotations: map[string]interface{}{
+					v1beta1.ControlAnnotation: nil,
+				},
+			},
+		}
+		patchBytes, err := json.Marshal(&annotationPatch)
+		if err != nil {
+			return err
+		}
+		return updater.k8sClient.Patch(updater.context, updater.observed.cluster, client.ConstantPatch(types.MergePatchType, patchBytes))
+	}
+
+	return nil
+}
+
 func getDeploymentState(deployment *appsv1.Deployment) string {
 	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady
+}
+
+func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlState) bool {
+	return controlStatus.State == v1beta1.ControlStateSucceeded ||
+		controlStatus.State == v1beta1.ControlStateFailed
+}
+
+func isUserControlRequested(controlStatus *v1beta1.FlinkClusterControlState) bool {
+	return controlStatus.State == v1beta1.ControlStateProgressing
+}
+
+func (updater *ClusterStatusUpdater) updateJobControlStatus(controlStatus *v1beta1.FlinkClusterControlState) {
+	// TODO: configurable max retry count
+	var maxRetries = "3"
+	var cluster = updater.observed.cluster
+	var isControlFailed bool
+	if !v1beta1.IsJobActive(cluster) {
+		isControlFailed = true
+		controlStatus.Message = "Job control is aborted. Job is not in active state."
+	} else if controlStatus.Details != nil && controlStatus.Details["retries"] == maxRetries {
+		isControlFailed = true
+		controlStatus.Message = "Job control is aborted. The maximum number of retries has been reached."
+	}
+	if isControlFailed {
+		controlStatus.State = v1beta1.ControlStateFailed
+		setTimestamp(&controlStatus.UpdateTime)
+	}
 }

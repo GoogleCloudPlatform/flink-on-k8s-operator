@@ -305,3 +305,35 @@ make deploy
     RESOURCE_PREFIX=<kuberntes-resource-name-prefix> \
     WATCH_NAMESPACE=<namespace-to-watch>
 ```
+
+### Cancel running Flink job
+
+If you want to cancel a running Flink job, attach control annotation to your FlinkCluster's metadata:
+```
+metadata:
+  annotations:
+    flinkclusters.flinkoperator.k8s.io/user-control: job-cancel
+```
+
+You can attach the annotation:
+```bash
+kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io/user-control=job-cancel
+```
+
+When canceling, all pods that make up the Flink cluster are basically terminated.
+If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled according to [FlinkCluster CRD doc](../docs/crd.md)
+
+When job cancellation is finished, the control annotation disappears and the progress can be checked in FlinkCluster status:
+```bash
+kubectl describe flinkcluster <CLUSTER-NAME>
+
+...
+
+Status:
+  Control:
+    Details:
+      Job ID:        e689263060695231f62fa8b00f97b383
+    Name:            job-cancel
+    State:           Succeeded
+    Update Time:     2020-04-03T10:04:50+09:00
+```

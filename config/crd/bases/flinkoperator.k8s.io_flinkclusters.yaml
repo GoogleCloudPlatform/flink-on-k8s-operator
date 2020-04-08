@@ -7235,6 +7235,31 @@ spec:
               - jobManagerService
               - taskManagerDeployment
               type: object
+            control:
+              description: The status of control requested by user
+              properties:
+                details:
+                  additionalProperties:
+                    type: string
+                  description: Control data
+                  type: object
+                message:
+                  description: Message
+                  type: string
+                name:
+                  description: Control name
+                  type: string
+                state:
+                  description: State
+                  type: string
+                updateTime:
+                  description: State update time
+                  type: string
+              required:
+              - name
+              - state
+              - updateTime
+              type: object
             lastUpdateTime:
               description: Last update timestamp for this status.
               type: string

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
@@ -107,4 +108,19 @@ func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 		}
 	}
 	return ""
+}
+
+func getRetryCount(data map[string]string) (string, error) {
+	var err error
+	var retries, ok = data["retries"]
+	if ok {
+		retryCount, err := strconv.Atoi(retries)
+		if err == nil {
+			retryCount++
+			retries = strconv.Itoa(retryCount)
+		}
+	} else {
+		retries = "1"
+	}
+	return retries, err
 }
