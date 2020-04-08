@@ -26,18 +26,11 @@ import (
 )
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
-	url := fmt.Sprintf(
-		"http://localhost:8001/api/v1/namespaces/%s/services/%s:ui/proxy",
+	return fmt.Sprintf(
+		"http://%s.%s.svc.cluster.local:%d",
+		getJobManagerServiceName(cluster.ObjectMeta.Name),
 		cluster.ObjectMeta.Namespace,
-		getJobManagerServiceName(cluster.ObjectMeta.Name))
-
-	return url
-
-	//return fmt.Sprintf(
-	//	"http://%s.%s.svc.cluster.local:%d",
-	//	getJobManagerServiceName(cluster.ObjectMeta.Name),
-	//	cluster.ObjectMeta.Namespace,
-	//	*cluster.Spec.JobManager.Ports.UI)
+		*cluster.Spec.JobManager.Ports.UI)
 }
 
 // Gets JobManager ingress name
