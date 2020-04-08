@@ -104,7 +104,7 @@ You can also check the operator logs with
 kubectl logs -n flink-operator-system -l app=flink-operator --all-containers
 ```
 
-you should be able see logs like: 
+you should be able see logs like:
 
 ```
 INFO    setup   Starting manager
@@ -157,7 +157,7 @@ kubectl get pods,svc -n default | grep "flinkjobcluster"
 ```
 
 NOTE: Flink Job Cluster's TaskManager will get terminated once the sample job is
-completed (in this case it take around 5 minutes for the pod to terminate) 
+completed (in this case it take around 5 minutes for the pod to terminate)
 
 ## Submit a job
 
@@ -173,9 +173,27 @@ Monitoring section on how to setup a proxy to the Flink Web UI.
 You can submit jobs through a client Pod in the same cluster, for example:
 
 ```bash
-kubectl run my-job-submitter --image=flink:1.8.1 --generator=run-pod/v1 -- \
-    /opt/flink/bin/flink run -m flinksessioncluster-sample-jobmanager:8081 \
-    /opt/flink/examples/batch/WordCount.jar --input /opt/flink/README.txt
+cat <<EOF | kubectl apply --filename -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job-submitter
+spec:
+  template:
+    spec:
+      containers:
+      - name: wordcount
+        image: flink:1.8.1
+        args:
+        - /opt/flink/bin/flink
+        - run
+        - -m
+        - flinksessioncluster-sample-jobmanager:8081
+        - /opt/flink/examples/batch/WordCount.jar
+        - --input
+        - /opt/flink/README.txt
+      restartPolicy: Never
+EOF
 ```
 
 3) **From outside the cluster**
