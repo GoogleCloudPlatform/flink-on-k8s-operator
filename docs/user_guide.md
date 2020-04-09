@@ -3,49 +3,53 @@
 This document will walk you through the steps of deploying the Flink Operator to
 a Kubernetes cluster and running a sample Flink job.
 
-## Prerequisite
+## Prerequisites
 
-First, you need to have a running Kubernetes cluster, you can verify the cluster
-info with
+* Get a running Kubernetes cluster, you can verify the cluster info with
 
-```bash
-kubectl cluster-info
-```
+  ```bash
+  kubectl cluster-info
+  ```
 
-Second, clone the Flink Operator repo to your local machine with
+* Clone the Flink Operator repo to your local machine:
 
-```bash
-git clone git@github.com:GoogleCloudPlatform/flink-on-k8s-operator.git
-```
+  ```bash
+  git clone git@github.com:GoogleCloudPlatform/flink-on-k8s-operator.git
+  ```
 
-then switch to the repo directory, we need to use the scripts in the repo for
-deployment. (This step is not needed if you choose to install through Helm
-Chart.)
+  then switch to the repo directory, we need to use the scripts in the repo for
+  deployment. (This step is not needed if you choose to install through Helm Chart).
 
-To execute the install scripts, you'll also need [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-and [go v1.12+](https://golang.org/doc/install) installed on your local machine.
+  To execute the install scripts, you'll also need [kubectl v1.14+](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+  and [go v1.12+](https://golang.org/doc/install) installed on your local machine.
 
-## (Optional) Get a Flink Operator image
+* (Optional) Choose a Flink Operator image.
 
-By default, the deployment uses the image `gcr.io/flink-operator/flink-operator:latest`,
-but you can find and choose other released images by running the following command:
+  By default, the deployment uses the image `gcr.io/flink-operator/flink-operator:latest`,
+  but you can find and choose other released images by running the following command:
 
-```bash
-gcloud container images list-tags gcr.io/flink-operator/flink-operator
-```
+  ```bash
+  gcloud container images list-tags gcr.io/flink-operator/flink-operator
+  ```
 
-You can also follow the [Deverloper Guide](./developer_guide.md) to build your
-own image from the source code and push the image to a registry where your
-Kubernetes cluster can access.
+  You can also follow the [Deverloper Guide](./developer_guide.md) to build your
+  own image from the source code and push the image to a registry where your
+  Kubernetes cluster can access.
 
 ## Deploy the operator to a Kubernetes cluster
 
 You can deploy the Flink Operator to the Kubernetes cluster through one of the
 following 2 ways:
 
-### Option 1: Make
+### Option 1: Make deploy
 
-Run the following command from the source repo
+Simply run the following command from the source repo to deploy the operator
+
+```bash
+make deploy
+```
+
+There are some flags which allow you to customize the deployment:
 
 ```bash
 make deploy
@@ -61,7 +65,7 @@ make deploy
 * `RESOURCE_PREFIX`: the prefix to avoid conflict of cluster-scoped resources. The default value is `flink-operator-`.
 * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
   watches. The default value is empty string which means all namespaces.
-
+  
 It is highly recommended to just use the default values unless you want to
 deploy multiple instances of the operator in a cluster, see more details in the
 How-to section of this doc.
@@ -73,32 +77,31 @@ Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.m
 ## Verify the deployment
 
 After deploying the operator, you can verify CRD `flinkclusters.flinkoperator.k8s.io`
-has been created with
+has been created:
 
 ```bash
 kubectl get crds | grep flinkclusters.flinkoperator.k8s.io
 ```
 
-You can also view the details of the CRD with
+View the details of the CRD:
 
 ```bash
 kubectl describe crds/flinkclusters.flinkoperator.k8s.io
 ```
 
-The operator runs as a Kubernetes Deployment, and you can find out the
-deployment with
+Find out the deployment:
 
 ```bash
 kubectl get deployments -n flink-operator-system
 ```
 
-or verify the operator Pod is up and running.
+Verify the operator Pod is up and running:
 
 ```bash
 kubectl get pods -n flink-operator-system
 ```
 
-You can also check the operator logs with
+Check the operator logs:
 
 ```bash
 kubectl logs -n flink-operator-system -l app=flink-operator --all-containers
@@ -156,71 +159,72 @@ and verify the pod is up and running with
 kubectl get pods,svc -n default | grep "flinkjobcluster"
 ```
 
-NOTE: Flink Job Cluster's TaskManager will get terminated once the sample job is
-completed (in this case it take around 5 minutes for the pod to terminate)
+NOTE: By default, Flink Job Cluster's TaskManager will get terminated once
+the sample job is completed (in this case it takes around 5 minutes for the
+Pod to terminate)
 
 ## Submit a job
 
 There are several ways to submit jobs to a session cluster.
 
-1) **Flink web UI**
+* **Flink web UI**
 
-You can submit jobs through the Flink web UI. See instructions in the
-Monitoring section on how to setup a proxy to the Flink Web UI.
+  You can submit jobs through the Flink web UI. See instructions in the
+  Monitoring section on how to setup a proxy to the Flink web UI.
 
-2) **From within the cluster**
+* **From within the cluster**
 
-You can submit jobs through a client Pod in the same cluster, for example:
+  You can submit jobs through a client Pod in the same cluster, for example:
 
-```bash
-cat <<EOF | kubectl apply --filename -
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: my-job-submitter
-spec:
-  template:
-    spec:
-      containers:
-      - name: wordcount
-        image: flink:1.8.1
-        args:
-        - /opt/flink/bin/flink
-        - run
-        - -m
-        - flinksessioncluster-sample-jobmanager:8081
-        - /opt/flink/examples/batch/WordCount.jar
-        - --input
-        - /opt/flink/README.txt
-      restartPolicy: Never
-EOF
-```
+  ```bash
+  cat <<EOF | kubectl apply --filename -
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: my-job-submitter
+  spec:
+    template:
+      spec:
+        containers:
+        - name: wordcount
+          image: flink:1.8.1
+          args:
+          - /opt/flink/bin/flink
+          - run
+          - -m
+          - flinksessioncluster-sample-jobmanager:8081
+          - /opt/flink/examples/batch/WordCount.jar
+          - --input
+          - /opt/flink/README.txt
+        restartPolicy: Never
+  EOF
+  ```
 
-3) **From outside the cluster**
+* **From outside the cluster**
 
-If you have configured the access scope of JobManager as `External` or `VPC`,
-you can submit jobs from a machine which is in the scope, for example:
+  If you have configured the access scope of JobManager as `External` or `VPC`,
+  you can submit jobs from a machine which is in the scope, for example:
 
-```bash
-flink run -m <jobmanager-service-ip>:8081 \
-    examples/batch/WordCount.jar --input /opt/flink/README.txt
-```
+  ```bash
+  flink run -m <jobmanager-service-ip>:8081 \
+      examples/batch/WordCount.jar --input /opt/flink/README.txt
+  ```
 
-Or if the access scope is `Cluster` which is the default, you can use port
-forwarding to establish a tunnel from a machine which has access to the
-Kubernetes API service (typically your local machine) to the JobManager service
-first, for example:
+  Or if the access scope is `Cluster` which is the default, you can use port
+  forwarding to establish a tunnel from a machine which has access to the
+  Kubernetes API service (typically your local machine) to the JobManager service
+  first, for example:
 
-```bash
-kubectl port-forward service/flinksessioncluster-sample-jobmanager 8081:8081
-```
+  ```bash
+  kubectl port-forward service/flinksessioncluster-sample-jobmanager 8081:8081
+  ```
 
-then submit jobs through the tunnel, for example:
+  then submit jobs through the tunnel, for example:
 
-```bash
-flink run -m localhost:8081 \
-    examples/batch/WordCount.jar --input ./README.txt
-```
+  ```bash
+  flink run -m localhost:8081 \
+      examples/batch/WordCount.jar --input ./README.txt
+  ```
 
 ## Monitoring
 
@@ -295,6 +299,16 @@ run the Flink CLI, e.g., list jobs:
 flink list -m localhost:8081
 ```
 
+## Delete a Flink cluster
+
+You can delete a Flink job or session cluster with the following command
+regardless of its current status, the operator will try to take savepoint
+if possible then cancel the job.
+
+```
+kubectl delete flinkclusters <name>
+```
+
 ## Undeploy the operator
 
 Undeploy the operator and CRDs from the Kubernetes cluster with
@@ -327,6 +341,7 @@ make deploy
 ### Cancel running Flink job
 
 If you want to cancel a running Flink job, attach control annotation to your FlinkCluster's metadata:
+
 ```
 metadata:
   annotations:
@@ -334,14 +349,18 @@ metadata:
 ```
 
 You can attach the annotation:
+
 ```bash
 kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io/user-control=job-cancel
 ```
 
-When canceling, all pods that make up the Flink cluster are basically terminated.
-If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled according to [FlinkCluster CRD doc](../docs/crd.md)
+When canceling, all Pods that make up the Flink cluster are basically terminated.
+If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled
+according to the [CRD doc](./crd.md).
 
-When job cancellation is finished, the control annotation disappears and the progress can be checked in FlinkCluster status:
+When job cancellation is finished, the control annotation disappears and the progress
+can be checked in FlinkCluster status:
+
 ```bash
 kubectl describe flinkcluster <CLUSTER-NAME>
 
@@ -355,3 +374,7 @@ Status:
     State:           Succeeded
     Update Time:     2020-04-03T10:04:50+09:00
 ```
+
+### Manage savepoints
+
+See this [doc](./savepoints_guide.md) on how to manage savepoints with the operator.
