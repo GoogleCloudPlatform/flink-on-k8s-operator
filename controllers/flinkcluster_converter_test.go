@@ -52,25 +52,47 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
 	var jobBackoffLimit int32 = 0
-	var jmProbe = corev1.Probe{
+	var jmReadinessProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
 				Port: intstr.FromInt(int(jmRPCPort)),
 			},
 		},
 		TimeoutSeconds:      10,
-		InitialDelaySeconds: 30,
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       5,
+		FailureThreshold:    60,
+	}
+	var jmLivenessProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(jmRPCPort)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 5,
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
-	var tmProbe = corev1.Probe{
+	var tmReadinessProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
 				Port: intstr.FromInt(int(tmRPCPort)),
 			},
 		},
 		TimeoutSeconds:      10,
-		InitialDelaySeconds: 30,
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       5,
+		FailureThreshold:    60,
+	}
+	var tmLivenessProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(tmRPCPort)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 5,
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
@@ -245,8 +267,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "query", ContainerPort: jmQueryPort},
 								{Name: "ui", ContainerPort: jmUIPort},
 							},
-							LivenessProbe:  &jmProbe,
-							ReadinessProbe: &jmProbe,
+							LivenessProbe:  &jmLivenessProbe,
+							ReadinessProbe: &jmReadinessProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "JOB_MANAGER_CPU_LIMIT",
@@ -491,8 +513,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{Name: "rpc", ContainerPort: 6122},
 								{Name: "query", ContainerPort: 6125},
 							},
-							LivenessProbe:  &tmProbe,
-							ReadinessProbe: &tmProbe,
+							LivenessProbe:  &tmLivenessProbe,
+							ReadinessProbe: &tmReadinessProbe,
 							Env: []corev1.EnvVar{
 								{
 									Name: "TASK_MANAGER_CPU_LIMIT",
