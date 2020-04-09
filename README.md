@@ -61,7 +61,7 @@ The operator is still under active development, there is no Helm chart available
 
 ## Documentation
 
-### Quickstart guide
+### Quickstart guides
 
 * [User Guide](docs/user_guide.md)
 * [Developer Guide](docs/developer_guide.md)
