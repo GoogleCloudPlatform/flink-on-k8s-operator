@@ -41,38 +41,41 @@ a Kubernetes cluster and running a sample Flink job.
 You can deploy the Flink Operator to the Kubernetes cluster through one of the
 following 2 ways:
 
-### Option 1: Make deploy
+* **Option 1: Make deploy**
 
-Simply run the following command from the source repo to deploy the operator
-
-```bash
-make deploy
-```
-
-There are some flags which allow you to customize the deployment:
-
-```bash
-make deploy
-    [IMG=<operator-image>] \
-    [FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>] \
-    [RESOURCE_PREFIX=<kuberntes-resource-name-prefix>] \
-    [WATCH_NAMESPACE=<namespace-to-watch>]
-```
-
-* `IMG`: The Flink Operator image. The default value is `gcr.io/flink-operator/flink-operator:latest`.
-* `FLINK_OPERATOR_NAMESPACE`: the namespace of the operator. The default value is
-  `flink-operator-system`.
-* `RESOURCE_PREFIX`: the prefix to avoid conflict of cluster-scoped resources. The default value is `flink-operator-`.
-* `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
-  watches. The default value is empty string which means all namespaces.
+  Simply run
   
-It is highly recommended to just use the default values unless you want to
-deploy multiple instances of the operator in a cluster, see more details in the
-How-to section of this doc.
+  ```base
+  make deploy
+  ```
+  
+  from the source repo to deploy the operator. There are some flags which you
+  can use to configure the deployment:
 
-### Option 2: Helm Chart
+  ```bash
+  make deploy
+      [IMG=<operator-image>] \
+      [FLINK_OPERATOR_NAMESPACE=<namespace-to-deploy-operator>] \
+      [RESOURCE_PREFIX=<kuberntes-resource-name-prefix>] \
+      [WATCH_NAMESPACE=<namespace-to-watch>]
+  ```
 
-Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to install the operator through Helm Chart.
+  * `IMG`: The Flink Operator image. The default value is `gcr.io/flink-operator/flink-operator:latest`.
+  * `FLINK_OPERATOR_NAMESPACE`: the namespace of the operator. The default value is
+    `flink-operator-system`.
+  * `RESOURCE_PREFIX`: the prefix to avoid conflict of cluster-scoped resources.
+    The default value is `flink-operator-`.
+  * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
+    watches. The default value is empty string which means all namespaces.
+  
+  **Note:** It is highly recommended to just use the default values unless you want to
+  deploy multiple instances of the operator in a cluster, see more details in the
+  How-to section of this doc.
+
+* **Option 2: Helm Chart**
+
+  Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to
+  install the operator through Helm Chart.
 
 ## Verify the deployment
 
@@ -159,7 +162,7 @@ and verify the pod is up and running with
 kubectl get pods,svc -n default | grep "flinkjobcluster"
 ```
 
-NOTE: By default, Flink Job Cluster's TaskManager will get terminated once
+By default, Flink Job Cluster's TaskManager will get terminated once
 the sample job is completed (in this case it takes around 5 minutes for the
 Pod to terminate)
 
