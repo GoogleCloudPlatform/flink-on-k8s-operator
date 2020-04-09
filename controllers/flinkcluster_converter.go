@@ -136,14 +136,25 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 	}
-	var probe = corev1.Probe{
+	var readinessProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
 				Port: intstr.FromInt(int(*jobManagerSpec.Ports.RPC)),
 			},
 		},
 		TimeoutSeconds:      10,
-		InitialDelaySeconds: 30,
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       5,
+		FailureThreshold:    60,
+	}
+	var livenessProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*jobManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 5,
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
@@ -180,8 +191,8 @@ func getDesiredJobManagerDeployment(
 		Args:            []string{"jobmanager"},
 		Ports: []corev1.ContainerPort{
 			rpcPort, blobPort, queryPort, uiPort},
-		LivenessProbe:  &probe,
-		ReadinessProbe: &probe,
+		LivenessProbe:  &livenessProbe,
+		ReadinessProbe: &readinessProbe,
 		Resources:      jobManagerSpec.Resources,
 		Env:            envVars,
 		VolumeMounts:   volumeMounts,
@@ -412,14 +423,25 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 	}
-	var probe = corev1.Probe{
+	var readinessProbe = corev1.Probe{
 		Handler: corev1.Handler{
 			TCPSocket: &corev1.TCPSocketAction{
 				Port: intstr.FromInt(int(*taskManagerSpec.Ports.RPC)),
 			},
 		},
 		TimeoutSeconds:      10,
-		InitialDelaySeconds: 30,
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       5,
+		FailureThreshold:    60,
+	}
+	var livenessProbe = corev1.Probe{
+		Handler: corev1.Handler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(*taskManagerSpec.Ports.RPC)),
+			},
+		},
+		TimeoutSeconds:      10,
+		InitialDelaySeconds: 5,
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
@@ -456,8 +478,8 @@ func getDesiredTaskManagerDeployment(
 		Args:            []string{"taskmanager"},
 		Ports: []corev1.ContainerPort{
 			dataPort, rpcPort, queryPort},
-		LivenessProbe:  &probe,
-		ReadinessProbe: &probe,
+		LivenessProbe:  &livenessProbe,
+		ReadinessProbe: &readinessProbe,
 		Resources:      taskManagerSpec.Resources,
 		Env:            envVars,
 		VolumeMounts:   volumeMounts,
