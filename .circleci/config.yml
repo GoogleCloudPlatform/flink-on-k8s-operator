@@ -33,4 +33,4 @@ workflows:
             tags:
               ignore: /.*/
             branches:
-              only: remote-helm-chart
+              only: master
