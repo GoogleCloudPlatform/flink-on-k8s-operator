@@ -10,7 +10,7 @@ The instructions to install the Flink operator chart:
 
 2. Run the bash script `update_template.sh` to update the manifest files in templates from the Flink operator source repo (This step is only required if you want to install from the local chart repo).
 
-3. Register CRD (You can skip this step if your helm version is v3). 
+3. Register CRD - Don't manually register CRD unless helm install below fails (You can skip this step if your helm version is v3). 
     
     ```bash
    kubectl create -f https://raw.githubusercontent.com/GoogleCloudPlatform/flink-on-k8s-operator/master/config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml
