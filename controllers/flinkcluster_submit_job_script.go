@@ -66,19 +66,23 @@ function wait_for_job() {
 	while true; do
 		echo -e "\nWaiting for job to finish..."
 		list_jobs
-		if list_jobs | grep "(FINISHED)"; then
-			echo -e "\nJob has completed successfully, exiting 0"
-			return 0
+		if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)"; then
+			echo -e "\nFound an active job."
+			sleep 30
+		else
+			if list_jobs | grep "(FINISHED)"; then
+				echo -e "\nJob has completed successfully, exiting 0"
+				return 0
+			fi
+			if list_jobs | grep "(FAILED)"; then
+				echo -e "\nJob failed, exiting 1"
+				return 1
+			fi
+			if list_jobs | grep "(CANCELED)"; then
+				echo -e "\nJob has been cancelled, exiting 2"
+				return 2
+			fi
 		fi
-		if list_jobs | grep "(FAILED)"; then
-			echo -e "\nJob failed, exiting 1"
-			return 1
-		fi
-		if list_jobs | grep "(CANCELED)"; then
-			echo -e "\nJob has been cancelled, exiting 2"
-			return 2
-		fi
-		sleep 30
 	done
 }
 
