@@ -72,7 +72,6 @@ function wait_for_job() {
 		# TODO: It needs to be improved to determine the job state with the submitted job id.
 		if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)"; then
 			echo -e "\nFound an active job."
-			sleep 30
 		else
 			if list_jobs | grep "(FINISHED)"; then
 				echo -e "\nJob has completed successfully, exiting 0"
@@ -89,6 +88,7 @@ function wait_for_job() {
 			echo -e "\nUnknown job state, exiting 3"
 			return 3
 		fi
+		sleep 30
 	done
 }
 
