@@ -66,17 +66,27 @@ function wait_for_job() {
 	while true; do
 		echo -e "\nWaiting for job to finish..."
 		list_jobs
-		if list_jobs | grep "(FINISHED)"; then
-			echo -e "\nJob has completed successfully, exiting 0"
-			return 0
-		fi
-		if list_jobs | grep "(FAILED)"; then
-			echo -e "\nJob failed, exiting 1"
-			return 1
-		fi
-		if list_jobs | grep "(CANCELED)"; then
-			echo -e "\nJob has been cancelled, exiting 2"
-			return 2
+
+		# Find active job first.
+		# If the current job is restarted by the operator, there will be records of past stopped jobs.
+		# TODO: It needs to be improved to determine the job state with the submitted job id.
+		if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)"; then
+			echo -e "\nFound an active job."
+		else
+			if list_jobs | grep "(FINISHED)"; then
+				echo -e "\nJob has completed successfully, exiting 0"
+				return 0
+			fi
+			if list_jobs | grep "(FAILED)"; then
+				echo -e "\nJob failed, exiting 1"
+				return 1
+			fi
+			if list_jobs | grep "(CANCELED)"; then
+				echo -e "\nJob has been cancelled, exiting 2"
+				return 2
+			fi
+			echo -e "\nUnknown job state, exiting 3"
+			return 3
 		fi
 		sleep 30
 	done
