@@ -19,7 +19,6 @@ package flinkclient
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -30,6 +29,15 @@ import (
 // HTTPClient - HTTP client.
 type HTTPClient struct {
 	Log logr.Logger
+}
+
+type HTTPError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *HTTPError) Error() string {
+	return e.Status
 }
 
 // Get - HTTP GET.
@@ -64,7 +72,10 @@ func (c *HTTPClient) doHTTP(
 	c.Log.Info(
 		"HTTPClient", "status", resp.Status, "body", outStructPtr, "error", err)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err = fmt.Errorf("%v", resp.Status)
+		err = &HTTPError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+		}
 		return err
 	}
 	return c.readResponse(resp, outStructPtr)

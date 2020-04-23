@@ -105,7 +105,7 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 		case ControlNameCancel:
 			if old.Spec.Job == nil {
 				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlAnnotation)
-			} else if !IsJobActive(old) {
+			} else if !isJobActive(old) {
 				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
 			}
 		case ControlNameSavepoint:
@@ -113,7 +113,7 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlAnnotation)
 			} else if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
 				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlAnnotation)
-			} else if !IsJobActive(old) {
+			} else if isJobStopped(old.Status.Components.Job) {
 				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
 			}
 		default:
@@ -417,10 +417,19 @@ func (v *Validator) validateMemoryOffHeapMin(
 	return nil
 }
 
-func IsJobActive(cluster *FlinkCluster) bool {
+func isJobActive(cluster *FlinkCluster) bool {
 	var jobStatus = cluster.Status.Components.Job
-	return jobStatus != nil &&
-		jobStatus.State != JobStateSucceeded &&
-		jobStatus.State != JobStateCancelled &&
-		(jobStatus.State != JobStateFailed || *cluster.Spec.Job.RestartPolicy != JobRestartPolicyNever)
+	return !isJobStopped(jobStatus) ||
+		(jobStatus != nil &&
+			jobStatus.State == JobStateFailed &&
+			cluster.Spec.Job.RestartPolicy != nil &&
+			*cluster.Spec.Job.RestartPolicy == JobRestartPolicyFromSavepointOnFailure &&
+			len(jobStatus.SavepointLocation) > 0)
+}
+
+func isJobStopped(status *JobStatus) bool {
+	return status != nil &&
+		(status.State == JobStateSucceeded ||
+			status.State == JobStateFailed ||
+			status.State == JobStateCancelled)
 }

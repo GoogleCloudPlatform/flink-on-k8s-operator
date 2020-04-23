@@ -637,7 +637,7 @@ func TestUserControlSavepoint(t *testing.T) {
 
 	var oldCluster1 = FlinkCluster{
 		Spec:   FlinkClusterSpec{Job: &JobSpec{}},
-		Status: FlinkClusterStatus{Control: &FlinkClusterControlState{State: ControlStateProgressing}},
+		Status: FlinkClusterStatus{Control: &FlinkClusterControlStatus{State: ControlStateProgressing}},
 	}
 	var err1 = validator.ValidateUpdate(&oldCluster1, &newCluster)
 	var expectedErr1 = "change is not allowed for control in progress, annotation: flinkclusters.flinkoperator.k8s.io/user-control"
@@ -688,7 +688,7 @@ func TestUserControlJobCancel(t *testing.T) {
 
 	var oldCluster1 = FlinkCluster{
 		Spec:   FlinkClusterSpec{Job: &JobSpec{}},
-		Status: FlinkClusterStatus{Control: &FlinkClusterControlState{State: ControlStateProgressing}},
+		Status: FlinkClusterStatus{Control: &FlinkClusterControlStatus{State: ControlStateProgressing}},
 	}
 	var err1 = validator.ValidateUpdate(&oldCluster1, &newCluster)
 	var expectedErr1 = "change is not allowed for control in progress, annotation: flinkclusters.flinkoperator.k8s.io/user-control"

@@ -18,12 +18,37 @@ package controllers
 
 import (
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"strconv"
 	"time"
 
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 )
+
+const (
+	ControlSavepointState       = "savepointState"
+	ControlSavepointTriggerID   = "SavepointTriggerID"
+	ControlSavepointTriggerTime = "SavepointTriggerTime"
+	ControlJobID                = "jobID"
+	ControlRetries              = "retries"
+
+	ControlMaxRetries = "3"
+
+	SavepointStateProgressing   = "Progressing"
+	SavepointStateTriggerFailed = "TriggerFailed"
+	SavepointStateFailed        = "Failed"
+	SavepointStateSucceeded     = "Succeeded"
+
+	SavepointTimeoutSec = 60
+)
+
+var FlinkAPIRetryBackoff = wait.Backoff{
+	Duration: 1 * time.Second,
+	Factor:   2,
+	Steps:    4,
+}
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
 	return fmt.Sprintf(
@@ -123,4 +148,125 @@ func getRetryCount(data map[string]string) (string, error) {
 		retries = "1"
 	}
 	return retries, err
+}
+
+func getNewUserControlStatus(controlName string) *v1beta1.FlinkClusterControlStatus {
+	var controlStatus = new(v1beta1.FlinkClusterControlStatus)
+	controlStatus.Name = controlName
+	controlStatus.State = v1beta1.ControlStateProgressing
+	setTimestamp(&controlStatus.UpdateTime)
+	return controlStatus
+}
+
+func getSavepointStatus(jobID string, triggerID string, triggerSuccess bool) v1beta1.SavepointStatus {
+	var savepointStatus = v1beta1.SavepointStatus{}
+	var now string
+	setTimestamp(&now)
+	savepointStatus.JobID = jobID
+	savepointStatus.TriggerID = triggerID
+	savepointStatus.TriggerTime = now
+	if triggerSuccess {
+		savepointStatus.State = SavepointStateProgressing
+	} else {
+		savepointStatus.State = SavepointStateTriggerFailed
+	}
+	return savepointStatus
+}
+
+// Ported from master branch of k8s.io/client-go/util/retry/util.go
+// We can replace this with future release of k8s.io/client-go
+func retryOnError(backoff wait.Backoff, retriable func(error) bool, fn func() error) error {
+	var lastErr error
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		err := fn()
+		switch {
+		case err == nil:
+			return true, nil
+		case retriable(err):
+			lastErr = err
+			return false, nil
+		default:
+			return false, err
+		}
+	})
+	if err == wait.ErrWaitTimeout {
+		err = lastErr
+	}
+	return err
+}
+
+func savepointTimeout(s *v1beta1.SavepointStatus) bool {
+	if s.TriggerTime == "" {
+		return false
+	}
+	tc := &TimeConverter{}
+	triggerTime := tc.FromString(s.TriggerTime)
+	validTime := triggerTime.Add(time.Duration(int64(SavepointTimeoutSec) * int64(time.Second)))
+	return time.Now().After(validTime)
+}
+
+func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
+	switch status.State {
+	case v1beta1.ControlStateProgressing:
+		eventType = corev1.EventTypeNormal
+		eventReason = "ControlRequested"
+		eventMessage = fmt.Sprintf("Requested new user control %v", status.Name)
+	case v1beta1.ControlStateSucceeded:
+		eventType = corev1.EventTypeNormal
+		eventReason = "ControlSucceeded"
+		eventMessage = fmt.Sprintf("Succesfully completed user control %v", status.Name)
+	case v1beta1.ControlStateFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "ControlFailed"
+		eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+	}
+	return
+}
+
+func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventReason string, eventMessage string) {
+	switch status.State {
+	case SavepointStateTriggerFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "SavepointFailed"
+		eventMessage = fmt.Sprintf("Savepoint trigger failed: jobID %v.", status.JobID)
+	case SavepointStateProgressing:
+		if status.TriggerID == "" {
+			break
+		}
+		eventType = corev1.EventTypeNormal
+		eventReason = "SavepointTriggered"
+		eventMessage = fmt.Sprintf("Triggered savepoint: jobID %v, triggerID %v.", status.JobID, status.TriggerID)
+	case SavepointStateSucceeded:
+		eventType = corev1.EventTypeNormal
+		eventReason = "SavepointCreated"
+		eventMessage = fmt.Sprintf("Successfully savepoint created: jobID %v, triggerID %v.", status.JobID, status.TriggerID)
+	case SavepointStateFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "SavepointFailed"
+		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", status.Message)
+		if status.JobID != "" {
+			eventMessage += fmt.Sprintf(", jobID %v",  status.JobID)
+		}
+		if status.TriggerID != "" {
+			eventMessage += fmt.Sprintf(", triggerID %v",  status.TriggerID)
+		}
+	}
+	return
+}
+
+func isJobActive(cluster *v1beta1.FlinkCluster) bool {
+	var jobStatus = cluster.Status.Components.Job
+	return !isJobStopped(cluster.Status.Components.Job) ||
+		(jobStatus != nil &&
+			jobStatus.State == v1beta1.JobStateFailed &&
+			cluster.Spec.Job.RestartPolicy != nil &&
+			*cluster.Spec.Job.RestartPolicy == v1beta1.JobRestartPolicyFromSavepointOnFailure &&
+			len(jobStatus.SavepointLocation) > 0)
+}
+
+func isJobStopped(status *v1beta1.JobStatus) bool {
+	return status != nil &&
+		(status.State == v1beta1.JobStateSucceeded ||
+			status.State == v1beta1.JobStateFailed ||
+			status.State == v1beta1.JobStateCancelled)
 }
