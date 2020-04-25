@@ -49,6 +49,10 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 	if err != nil {
 		return err
 	}
+	if cluster.Spec.NativeSessionClusterJob != nil {
+		// It's a native session cluster, will not to valide the jobManager, taskManager, etc.
+		return v.validateNativeSessionClusterJob()
+	}
 	err = v.validateJobManager(&cluster.Spec.JobManager)
 	if err != nil {
 		return err
@@ -232,6 +236,11 @@ func (v *Validator) validateImage(imageSpec *ImageSpec) error {
 	default:
 		return fmt.Errorf("invalid image pullPolicy: %v", imageSpec.PullPolicy)
 	}
+	return nil
+}
+
+func (v *Validator) validateNativeSessionClusterJob() error {
+	//TODO: Check if it's a need to validate the properties
 	return nil
 }
 

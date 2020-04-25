@@ -33,9 +33,9 @@ import (
 
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
-	Client         client.Client
-	Log            logr.Logger
-	Mgr            ctrl.Manager
+	Client client.Client
+	Log    logr.Logger
+	Mgr    ctrl.Manager
 }
 
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +60,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 	var log = reconciler.Log.WithValues(
 		"cluster", request.NamespacedName)
 	var handler = FlinkClusterHandler{
-		k8sClient:      reconciler.Client,
+		k8sClient: reconciler.Client,
 		flinkClient: flinkclient.FlinkClient{
 			Log:        log,
 			HTTPClient: flinkclient.HTTPClient{Log: log},
@@ -90,14 +90,14 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 // FlinkClusterHandler holds the context and state for a
 // reconcile request.
 type FlinkClusterHandler struct {
-	k8sClient      client.Client
-	flinkClient    flinkclient.FlinkClient
-	request        ctrl.Request
-	context        context.Context
-	log            logr.Logger
-	recorder       record.EventRecorder
-	observed       ObservedClusterState
-	desired        DesiredClusterState
+	k8sClient   client.Client
+	flinkClient flinkclient.FlinkClient
+	request     ctrl.Request
+	context     context.Context
+	log         logr.Logger
+	recorder    record.EventRecorder
+	observed    ObservedClusterState
+	desired     DesiredClusterState
 }
 
 func (handler *FlinkClusterHandler) reconcile(
@@ -184,7 +184,11 @@ func (handler *FlinkClusterHandler) reconcile(
 	} else {
 		log.Info("Desired state", "Job", "nil")
 	}
-
+	if desired.NativeClusterSessionJob != nil {
+		log.Info("Desired state", "NativeClusterSessionJob", *desired.NativeClusterSessionJob)
+	} else {
+		log.Info("Desired state", "NativeClusterSessionJob", "nil")
+	}
 	log.Info("---------- 4. Take actions ----------")
 
 	var reconciler = ClusterReconciler{

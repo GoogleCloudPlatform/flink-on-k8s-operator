@@ -43,16 +43,17 @@ type ClusterStateObserver struct {
 
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
-	cluster            *v1beta1.FlinkCluster
-	configMap          *corev1.ConfigMap
-	jmDeployment       *appsv1.Deployment
-	jmService          *corev1.Service
-	jmIngress          *extensionsv1beta1.Ingress
-	tmDeployment       *appsv1.Deployment
-	job                *batchv1.Job
-	flinkJobList       *flinkclient.JobStatusList
-	flinkRunningJobIDs []string
-	flinkJobID         *string
+	cluster                 *v1beta1.FlinkCluster
+	configMap               *corev1.ConfigMap
+	jmDeployment            *appsv1.Deployment
+	jmService               *corev1.Service
+	jmIngress               *extensionsv1beta1.Ingress
+	tmDeployment            *appsv1.Deployment
+	job                     *batchv1.Job
+	flinkJobList            *flinkclient.JobStatusList
+	flinkRunningJobIDs      []string
+	flinkJobID              *string
+	nativeClusterSessionJob *batchv1.Job
 }
 
 // Observes the state of the cluster and its components.
@@ -76,6 +77,9 @@ func (observer *ClusterStateObserver) observe(
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observed.cluster = observedCluster
 	}
+
+	// Native session cluster job.
+	err = observer.observeNativeSessionClusterJob(observed)
 
 	// ConfigMap.
 	var observedConfigMap = new(corev1.ConfigMap)
@@ -185,6 +189,34 @@ func (observer *ClusterStateObserver) observeJob(
 	} else {
 		log.Info("Observed job", "state", *observedJob)
 		observed.job = observedJob
+	}
+
+	return nil
+}
+
+func (observer *ClusterStateObserver) observeNativeSessionClusterJob(
+	observed *ObservedClusterState) error {
+	var err error
+	var log = observer.log
+
+	// Either the cluster has been deleted or it is not a native session cluster.
+	//if observed.cluster == nil || observed.cluster.Spec.NativeSessionClusterJob == nil {
+	//	return nil
+	//}
+
+	// Job resource.
+	var observedJob = new(batchv1.Job)
+	err = observer.observeNativeSessionClusterJobResource(observedJob)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get NativeSessionCluster job")
+			return err
+		}
+		log.Info("Observed NativeSessionCluster job", "state", "nil")
+		observedJob = nil
+	} else {
+		log.Info("Observed NativeSessionCluster job", "state", *observedJob)
+		observed.nativeClusterSessionJob = observedJob
 	}
 
 	return nil
@@ -353,6 +385,20 @@ func (observer *ClusterStateObserver) observeJobManagerIngress(
 }
 
 func (observer *ClusterStateObserver) observeJobResource(
+	observedJob *batchv1.Job) error {
+	var clusterNamespace = observer.request.Namespace
+	var clusterName = observer.request.Name
+
+	return observer.k8sClient.Get(
+		observer.context,
+		types.NamespacedName{
+			Namespace: clusterNamespace,
+			Name:      getJobName(clusterName),
+		},
+		observedJob)
+}
+
+func (observer *ClusterStateObserver) observeNativeSessionClusterJobResource(
 	observedJob *batchv1.Job) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name

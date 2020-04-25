@@ -19,6 +19,7 @@ package controllers
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
@@ -61,6 +62,11 @@ func getTaskManagerDeploymentName(clusterName string) string {
 // Gets Job name
 func getJobName(clusterName string) string {
 	return clusterName + "-job"
+}
+
+// Gets native flink cluster name
+func getNativeFlinkClusterName(jobName string) string {
+	return strings.TrimRight(jobName, "-job")
 }
 
 // TimeConverter converts between time.Time and string.

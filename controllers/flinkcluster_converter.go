@@ -57,12 +57,13 @@ var flinkSysProps = map[string]struct{}{
 
 // DesiredClusterState holds desired state of a cluster.
 type DesiredClusterState struct {
-	JmDeployment *appsv1.Deployment
-	JmService    *corev1.Service
-	JmIngress    *extensionsv1beta1.Ingress
-	TmDeployment *appsv1.Deployment
-	ConfigMap    *corev1.ConfigMap
-	Job          *batchv1.Job
+	JmDeployment            *appsv1.Deployment
+	JmService               *corev1.Service
+	JmIngress               *extensionsv1beta1.Ingress
+	TmDeployment            *appsv1.Deployment
+	ConfigMap               *corev1.ConfigMap
+	Job                     *batchv1.Job
+	NativeClusterSessionJob *batchv1.Job
 }
 
 // Gets the desired state of a cluster.
@@ -74,12 +75,13 @@ func getDesiredClusterState(
 		return DesiredClusterState{}
 	}
 	return DesiredClusterState{
-		ConfigMap:    getDesiredConfigMap(cluster),
-		JmDeployment: getDesiredJobManagerDeployment(cluster),
-		JmService:    getDesiredJobManagerService(cluster),
-		JmIngress:    getDesiredJobManagerIngress(cluster),
-		TmDeployment: getDesiredTaskManagerDeployment(cluster),
-		Job:          getDesiredJob(cluster),
+		ConfigMap:               getDesiredConfigMap(cluster),
+		JmDeployment:            getDesiredJobManagerDeployment(cluster),
+		JmService:               getDesiredJobManagerService(cluster),
+		JmIngress:               getDesiredJobManagerIngress(cluster),
+		TmDeployment:            getDesiredTaskManagerDeployment(cluster),
+		Job:                     getDesiredJob(cluster),
+		NativeClusterSessionJob: getDesiredNativeClusterSessionJob(cluster),
 	}
 }
 
@@ -88,6 +90,11 @@ func getDesiredJobManagerDeployment(
 	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
 
 	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
+		return nil
+	}
+
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
 		return nil
 	}
 
@@ -236,6 +243,11 @@ func getDesiredJobManagerService(
 		return nil
 	}
 
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobManagerSpec = flinkCluster.Spec.JobManager
@@ -307,6 +319,11 @@ func getDesiredJobManagerIngress(
 		return nil
 	}
 
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
@@ -375,6 +392,11 @@ func getDesiredTaskManagerDeployment(
 	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
 
 	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
+		return nil
+	}
+
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
 		return nil
 	}
 
@@ -521,6 +543,11 @@ func getDesiredConfigMap(
 		return nil
 	}
 
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
+		return nil
+	}
+
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var flinkProperties = flinkCluster.Spec.FlinkProperties
@@ -583,6 +610,11 @@ func getDesiredJob(
 	var jobSpec = flinkCluster.Spec.Job
 
 	if jobSpec == nil {
+		return nil
+	}
+
+	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+		//It's a native flink session cluster
 		return nil
 	}
 
@@ -690,6 +722,113 @@ func getDesiredJob(
 
 	var podSpec = corev1.PodSpec{
 		InitContainers: convertJobInitContainers(jobSpec),
+		Containers: []corev1.Container{
+			corev1.Container{
+				Name:            "main",
+				Image:           imageSpec.Name,
+				ImagePullPolicy: imageSpec.PullPolicy,
+				Args:            jobArgs,
+				Env:             envVars,
+				VolumeMounts:    volumeMounts,
+			},
+		},
+		RestartPolicy:    corev1.RestartPolicyNever,
+		Volumes:          volumes,
+		ImagePullSecrets: imageSpec.PullSecrets,
+	}
+
+	// Disable the retry mechanism of k8s Job, all retires should be initiated
+	// by the operator based on the job restart policy. This is because Flink
+	// jobs are stateful, if a job fails after running for 10 hours, we probably
+	// don't want to start over from the beginning, instead we want to resume
+	// the job from the latest savepoint which means strictly speaking it is no
+	// longer the same job as the previous one because the `--fromSavepoint`
+	// parameter has changed.
+	var backoffLimit int32 = 0
+	var job = &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      jobName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkCluster)},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec:       podSpec,
+			},
+			BackoffLimit: &backoffLimit,
+		},
+	}
+	return job
+}
+
+func getDesiredNativeClusterSessionJob(
+	flinkCluster *v1beta1.FlinkCluster) *batchv1.Job {
+	var jobSpec = flinkCluster.Spec.NativeSessionClusterJob
+
+	if jobSpec == nil {
+		return nil
+	}
+	var clusterSpec = flinkCluster.Spec
+	var imageSpec = clusterSpec.Image
+	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
+	var clusterName = flinkCluster.ObjectMeta.Name
+	var jobName = getJobName(clusterName)
+	var labels = map[string]string{
+		"cluster": clusterName,
+		"app":     "flinkNativeSessionCluster",
+	}
+
+	var jobArgs = []string{"/opt/flink/bin/kubernetes-session.sh"}
+
+	jobArgs = append(jobArgs, "-Dkubernetes.cluster-id="+clusterName)
+
+	if jobSpec.EntryPath != nil {
+		jobArgs = append(jobArgs, *jobSpec.EntryPath)
+	}
+
+	if jobSpec.CongfigDir != nil {
+		jobArgs = append(jobArgs, *jobSpec.CongfigDir)
+	}
+
+	if jobSpec.FlinkClusterSA != nil {
+		jobArgs = append(jobArgs, *jobSpec.FlinkClusterSA)
+	}
+	//TODO: check all properties and append to jobArgs.
+
+	var envVars = []corev1.EnvVar{}
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+
+	// Hadoop config.
+	var hcVolume, hcMount, hcEnv = convertHadoopConfig(clusterSpec.HadoopConfig)
+	if hcVolume != nil {
+		volumes = append(volumes, *hcVolume)
+	}
+	if hcMount != nil {
+		volumeMounts = append(volumeMounts, *hcMount)
+	}
+	if hcEnv != nil {
+		envVars = append(envVars, *hcEnv)
+	}
+
+	// GCP service account config.
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
+		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
+		volumeMounts = append(volumeMounts, *saMount)
+	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+
+	var podSpec = corev1.PodSpec{
 		Containers: []corev1.Container{
 			corev1.Container{
 				Name:            "main",
