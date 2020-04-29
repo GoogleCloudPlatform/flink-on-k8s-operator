@@ -64,9 +64,14 @@ func getJobName(clusterName string) string {
 	return clusterName + "-job"
 }
 
+// Gets Job name
+func getNativeSessionClusterJobName(clusterName string) string {
+	return clusterName + "-native-session-cluster-job"
+}
+
 // Gets native flink cluster name
 func getNativeFlinkClusterName(jobName string) string {
-	return strings.TrimRight(jobName, "-job")
+	return strings.TrimSuffix(jobName, "-native-session-cluster-job")
 }
 
 // TimeConverter converts between time.Time and string.

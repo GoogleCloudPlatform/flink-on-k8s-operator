@@ -775,7 +775,7 @@ func getDesiredNativeClusterSessionJob(
 	var imageSpec = clusterSpec.Image
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var jobName = getJobName(clusterName)
+	var jobName = getNativeSessionClusterJobName(clusterName)
 	var labels = map[string]string{
 		"cluster": clusterName,
 		"app":     "flinkNativeSessionCluster",
@@ -784,6 +784,10 @@ func getDesiredNativeClusterSessionJob(
 	var jobArgs = []string{"/opt/flink/bin/kubernetes-session.sh"}
 
 	jobArgs = append(jobArgs, "-Dkubernetes.cluster-id="+clusterName)
+
+	if imageSpec.Name != "" {
+		jobArgs = append(jobArgs, "-Dkubernetes.container.image="+imageSpec.Name)
+	}
 
 	if jobSpec.EntryPath != nil {
 		jobArgs = append(jobArgs, *jobSpec.EntryPath)

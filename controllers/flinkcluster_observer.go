@@ -199,7 +199,7 @@ func (observer *ClusterStateObserver) observeNativeSessionClusterJob(
 	var err error
 	var log = observer.log
 
-	// Either the cluster has been deleted or it is not a native session cluster.
+	//Either the cluster has been deleted or it is not a native session cluster.
 	//if observed.cluster == nil || observed.cluster.Spec.NativeSessionClusterJob == nil {
 	//	return nil
 	//}
@@ -407,7 +407,7 @@ func (observer *ClusterStateObserver) observeNativeSessionClusterJobResource(
 		observer.context,
 		types.NamespacedName{
 			Namespace: clusterNamespace,
-			Name:      getJobName(clusterName),
+			Name:      getNativeSessionClusterJobName(clusterName),
 		},
 		observedJob)
 }
