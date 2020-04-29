@@ -54,6 +54,7 @@ type ObservedClusterState struct {
 	flinkRunningJobIDs      []string
 	flinkJobID              *string
 	nativeClusterSessionJob *batchv1.Job
+	nativePerJobSession     *batchv1.Job
 }
 
 // Observes the state of the cluster and its components.
@@ -79,7 +80,10 @@ func (observer *ClusterStateObserver) observe(
 	}
 
 	// Native session cluster job.
-	err = observer.observeNativeSessionClusterJob(observed)
+	observer.observeNativeSessionClusterJob(observed)
+
+	// Native job cluster.
+	observer.observeNativeJobCluster(observed)
 
 	// ConfigMap.
 	var observedConfigMap = new(corev1.ConfigMap)
@@ -217,6 +221,28 @@ func (observer *ClusterStateObserver) observeNativeSessionClusterJob(
 	} else {
 		log.Info("Observed NativeSessionCluster job", "state", *observedJob)
 		observed.nativeClusterSessionJob = observedJob
+	}
+
+	return nil
+}
+
+func (observer *ClusterStateObserver) observeNativeJobCluster(
+	observed *ObservedClusterState) error {
+	var err error
+	var log = observer.log
+	// Job resource.
+	var observedJob = new(batchv1.Job)
+	err = observer.observeNativeJobClusterJobResource(observedJob)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get NativeJobCluster job")
+			return err
+		}
+		log.Info("Observed NativeJobCluster job", "state", "nil")
+		observedJob = nil
+	} else {
+		log.Info("Observed NativeJobCluster job", "state", *observedJob)
+		observed.nativePerJobSession = observedJob
 	}
 
 	return nil
@@ -408,6 +434,20 @@ func (observer *ClusterStateObserver) observeNativeSessionClusterJobResource(
 		types.NamespacedName{
 			Namespace: clusterNamespace,
 			Name:      getNativeSessionClusterJobName(clusterName),
+		},
+		observedJob)
+}
+
+func (observer *ClusterStateObserver) observeNativeJobClusterJobResource(
+	observedJob *batchv1.Job) error {
+	var clusterNamespace = observer.request.Namespace
+	var clusterName = observer.request.Name
+
+	return observer.k8sClient.Get(
+		observer.context,
+		types.NamespacedName{
+			Namespace: clusterNamespace,
+			Name:      getNativeJobClusterJobName(clusterName),
 		},
 		observedJob)
 }

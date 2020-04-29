@@ -55,8 +55,8 @@ var _ webhook.Defaulter = &FlinkCluster{}
 // type.
 func (cluster *FlinkCluster) Default() {
 	log.Info("default", "name", cluster.Name, "original", *cluster)
-	if cluster.Spec.NativeSessionClusterJob != nil {
-		log.Info("It's a NativeSessionCluster, will not set defaults.")
+	if cluster.Spec.NativeSessionClusterJob != nil || cluster.Spec.NativeJobClusterJob != nil {
+		log.Info("It's a Native luster, will not set defaults.")
 	} else {
 		_SetDefault(cluster)
 	}

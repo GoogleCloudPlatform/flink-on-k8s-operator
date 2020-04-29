@@ -53,6 +53,10 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 		// It's a native session cluster, will not to valide the jobManager, taskManager, etc.
 		return v.validateNativeSessionClusterJob()
 	}
+	if cluster.Spec.NativeJobClusterJob != nil {
+		// It's a native session cluster, will not to valide the jobManager, taskManager, etc.
+		return v.validateNativeJobClusterJob()
+	}
 	err = v.validateJobManager(&cluster.Spec.JobManager)
 	if err != nil {
 		return err
@@ -240,6 +244,11 @@ func (v *Validator) validateImage(imageSpec *ImageSpec) error {
 }
 
 func (v *Validator) validateNativeSessionClusterJob() error {
+	//TODO: Check if it's a need to validate the properties
+	return nil
+}
+
+func (v *Validator) validateNativeJobClusterJob() error {
 	//TODO: Check if it's a need to validate the properties
 	return nil
 }

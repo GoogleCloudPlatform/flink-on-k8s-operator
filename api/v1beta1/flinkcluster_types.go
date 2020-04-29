@@ -372,6 +372,24 @@ type NativeSessionClusterJobSpec struct {
 	TaskManagerCPU *int32 `json:"taskManagerCPU,omitempty"`
 }
 
+// NativeJobClusterJobSpec defines properties of a Native Flink job cluster.
+type NativeJobClusterJobSpec struct {
+	// We use the Name of flinkCluster.ObjectMeta.Name
+	FlinkClusterID string `json:"flinkClusterID,omitempty"`
+	// JAR file of the job.
+	JarFile string `json:"jarFile"`
+	// Heap size
+	HeapSize *int32 `json:"heapSize,omitempty"`
+	// MemoryProcess size
+	MemoryProcessSize *int32 `json:"memoryProcessSize,omitempty"`
+	// MemoryProcess size
+	NumberOfTaskSlots *int32 `json:"numberOfTaskSlots,omitempty"`
+	// JobManager service account
+	JobManagerServiceAccount *string `json:"jobManagerServiceAccount,omitempty"`
+	// Rest service annotations
+	RestServiceAnnotations *string `json:"restServiceAnnotations,omitempty"`
+}
+
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
@@ -391,6 +409,10 @@ type FlinkClusterSpec struct {
 	// (Optional) Native Flink session spec. If specified,
 	// this cluster is a Native Flink session(only jobmanager created in advanced.)
 	NativeSessionClusterJob *NativeSessionClusterJobSpec `json:"nativeSessionClusterJob,omitempty"`
+
+	// (Optional) Native Flink job cluster spec. If specified,
+	// this cluster is a Native Flink job cluster
+	NativeJobClusterJob *NativeJobClusterJobSpec `json:"nativeJobClusterJob,omitempty"`
 
 	// Environment variables shared by all JobManager, TaskManager and job
 	// containers.

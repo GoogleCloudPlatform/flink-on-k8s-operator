@@ -64,6 +64,7 @@ type DesiredClusterState struct {
 	ConfigMap               *corev1.ConfigMap
 	Job                     *batchv1.Job
 	NativeClusterSessionJob *batchv1.Job
+	NativeJobClusterJob     *batchv1.Job
 }
 
 // Gets the desired state of a cluster.
@@ -82,6 +83,7 @@ func getDesiredClusterState(
 		TmDeployment:            getDesiredTaskManagerDeployment(cluster),
 		Job:                     getDesiredJob(cluster),
 		NativeClusterSessionJob: getDesiredNativeClusterSessionJob(cluster),
+		NativeJobClusterJob:     getDesiredNativeJobClusterJob(cluster),
 	}
 }
 
@@ -93,7 +95,7 @@ func getDesiredJobManagerDeployment(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -243,7 +245,7 @@ func getDesiredJobManagerService(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -319,7 +321,7 @@ func getDesiredJobManagerIngress(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -395,7 +397,7 @@ func getDesiredTaskManagerDeployment(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -543,7 +545,7 @@ func getDesiredConfigMap(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -613,7 +615,7 @@ func getDesiredJob(
 		return nil
 	}
 
-	if flinkCluster.Spec.NativeSessionClusterJob != nil {
+	if flinkCluster.Spec.NativeSessionClusterJob != nil || flinkCluster.Spec.NativeJobClusterJob != nil {
 		//It's a native flink session cluster
 		return nil
 	}
@@ -771,6 +773,11 @@ func getDesiredNativeClusterSessionJob(
 	if jobSpec == nil {
 		return nil
 	}
+	if flinkCluster.Spec.NativeJobClusterJob != nil {
+		//It's a native flink job cluster
+		return nil
+	}
+
 	var clusterSpec = flinkCluster.Spec
 	var imageSpec = clusterSpec.Image
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
@@ -800,6 +807,118 @@ func getDesiredNativeClusterSessionJob(
 	if jobSpec.FlinkClusterSA != nil {
 		jobArgs = append(jobArgs, *jobSpec.FlinkClusterSA)
 	}
+	//TODO: check all properties and append to jobArgs.
+
+	var envVars = []corev1.EnvVar{}
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+
+	// Hadoop config.
+	var hcVolume, hcMount, hcEnv = convertHadoopConfig(clusterSpec.HadoopConfig)
+	if hcVolume != nil {
+		volumes = append(volumes, *hcVolume)
+	}
+	if hcMount != nil {
+		volumeMounts = append(volumeMounts, *hcMount)
+	}
+	if hcEnv != nil {
+		envVars = append(envVars, *hcEnv)
+	}
+
+	// GCP service account config.
+	var saVolume, saMount, saEnv = convertGCPConfig(clusterSpec.GCPConfig)
+	if saVolume != nil {
+		volumes = append(volumes, *saVolume)
+	}
+	if saMount != nil {
+		volumeMounts = append(volumeMounts, *saMount)
+	}
+	if saEnv != nil {
+		envVars = append(envVars, *saEnv)
+	}
+
+	envVars = append(envVars, flinkCluster.Spec.EnvVars...)
+
+	var podSpec = corev1.PodSpec{
+		Containers: []corev1.Container{
+			corev1.Container{
+				Name:            "main",
+				Image:           imageSpec.Name,
+				ImagePullPolicy: imageSpec.PullPolicy,
+				Args:            jobArgs,
+				Env:             envVars,
+				VolumeMounts:    volumeMounts,
+			},
+		},
+		RestartPolicy:    corev1.RestartPolicyNever,
+		Volumes:          volumes,
+		ImagePullSecrets: imageSpec.PullSecrets,
+	}
+
+	// Disable the retry mechanism of k8s Job, all retires should be initiated
+	// by the operator based on the job restart policy. This is because Flink
+	// jobs are stateful, if a job fails after running for 10 hours, we probably
+	// don't want to start over from the beginning, instead we want to resume
+	// the job from the latest savepoint which means strictly speaking it is no
+	// longer the same job as the previous one because the `--fromSavepoint`
+	// parameter has changed.
+	var backoffLimit int32 = 0
+	var job = &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      jobName,
+			OwnerReferences: []metav1.OwnerReference{
+				toOwnerReference(flinkCluster)},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec:       podSpec,
+			},
+			BackoffLimit: &backoffLimit,
+		},
+	}
+	return job
+}
+
+func getDesiredNativeJobClusterJob(
+	flinkCluster *v1beta1.FlinkCluster) *batchv1.Job {
+	var jobSpec = flinkCluster.Spec.NativeJobClusterJob
+
+	if jobSpec == nil {
+		return nil
+	}
+	var clusterSpec = flinkCluster.Spec
+	var imageSpec = clusterSpec.Image
+	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
+	var clusterName = flinkCluster.ObjectMeta.Name
+	var jobName = getNativeJobClusterJobName(clusterName)
+	var labels = map[string]string{
+		"cluster": clusterName,
+		"app":     "flinkNativeSessionCluster",
+	}
+
+	var jobArgs = []string{"/opt/flink/bin/flink", "run", "-d", "-e", "kubernetes-per-job"}
+
+	jobArgs = append(jobArgs, "-Dkubernetes.cluster-id="+clusterName)
+
+	if imageSpec.Name != "" {
+		jobArgs = append(jobArgs, "-Dkubernetes.container.image="+imageSpec.Name)
+	}
+
+	if jobSpec.HeapSize != nil {
+		jobArgs = append(jobArgs, "-Djobmanager.heap.size="+strconv.Itoa(int(*jobSpec.HeapSize))+"m")
+	}
+
+	if jobSpec.MemoryProcessSize != nil {
+		jobArgs = append(jobArgs, "-Djobmanager.heap.size="+strconv.Itoa(int(*jobSpec.MemoryProcessSize))+"m")
+	}
+
+	if jobSpec.NumberOfTaskSlots != nil {
+		jobArgs = append(jobArgs, "-Djobmanager.heap.size="+strconv.Itoa(int(*jobSpec.NumberOfTaskSlots)))
+	}
+	jobArgs = append(jobArgs, jobSpec.JarFile)
 	//TODO: check all properties and append to jobArgs.
 
 	var envVars = []corev1.EnvVar{}

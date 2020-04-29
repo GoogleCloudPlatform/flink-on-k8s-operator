@@ -69,6 +69,11 @@ func getNativeSessionClusterJobName(clusterName string) string {
 	return clusterName + "-native-session-cluster-job"
 }
 
+// Gets Job name
+func getNativeJobClusterJobName(clusterName string) string {
+	return clusterName + "-native-per-job-cluster-job"
+}
+
 // Gets native flink cluster name
 func getNativeFlinkClusterName(jobName string) string {
 	return strings.TrimSuffix(jobName, "-native-session-cluster-job")

@@ -189,6 +189,11 @@ func (handler *FlinkClusterHandler) reconcile(
 	} else {
 		log.Info("Desired state", "NativeClusterSessionJob", "nil")
 	}
+	if desired.NativeJobClusterJob != nil {
+		log.Info("Desired state", "NativeJobClusterJob", *desired.NativeJobClusterJob)
+	} else {
+		log.Info("Desired state", "NativeJobClusterJob", "nil")
+	}
 	log.Info("---------- 4. Take actions ----------")
 
 	var reconciler = ClusterReconciler{

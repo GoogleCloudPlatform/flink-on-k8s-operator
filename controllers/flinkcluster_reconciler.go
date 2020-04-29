@@ -93,6 +93,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	err = reconciler.reconcileNativeJobClusterJob()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	result, err := reconciler.reconcileJob()
 
 	return result, nil
@@ -129,6 +134,27 @@ func (reconciler *ClusterReconciler) reconcileNativeSessionClusterJob() error {
 	if desiredNativeSessionClusterJob == nil && observedNativeSessionClusterJob != nil {
 		reconciler.reconcileNativeClusterService()
 		return reconciler.deleteJob(observedNativeSessionClusterJob)
+	}
+
+	return nil
+}
+
+func (reconciler *ClusterReconciler) reconcileNativeJobClusterJob() error {
+	var desiredNativeJobClusterJob = reconciler.desired.NativeJobClusterJob
+	var observedNativeJobClusterJob = reconciler.observed.nativePerJobSession
+
+	if desiredNativeJobClusterJob != nil && observedNativeJobClusterJob == nil {
+		return reconciler.createJob(desiredNativeJobClusterJob)
+	}
+
+	if desiredNativeJobClusterJob != nil && observedNativeJobClusterJob != nil {
+		reconciler.log.Info("NativeSessionClusterJob already exists, no action")
+		return nil
+		// TODO: compare and update if needed.
+	}
+
+	if desiredNativeJobClusterJob == nil && observedNativeJobClusterJob != nil {
+		return reconciler.deleteJob(observedNativeJobClusterJob)
 	}
 
 	return nil
