@@ -317,6 +317,61 @@ type JobSpec struct {
 	CancelRequested *bool `json:"cancelRequested,omitempty"`
 }
 
+// NativeSessionClusterJobSpec defines properties of a Native Flink session cluster.
+// The properties in NativeSessionClusterJobSpec comes from
+// https://ci.apache.org/projects/flink/flink-docs-release-1.10/ops/config.html#kubernetes
+type NativeSessionClusterJobSpec struct {
+	// kubernetes.cluster-id. The cluster id used for identifying the unique flink cluster.
+	// We use the Name of flinkCluster.ObjectMeta.Name
+	FlinkClusterID string `json:"flinkClusterID,omitempty"`
+
+	// kubernetes.config.file. The kubernetes config file will be used to create the client.
+	// The default is located at ~/.kube/config. The sericeaccount in the pod also works.
+	KubeConfig *string `json:"kubeConfig,omitempty"`
+
+	// kubernetes.container-start-command-template. Template for the kubernetes jobmanager
+	// and taskmanager container start invocation.
+	// Default: "%java% %classpath% %jvmmem% %jvmopts% %logging% %class% %args% %redirects%"
+	ContainerStartCommandTemplate *string `json:"containerStartCommandTemplate,omitempty"`
+
+	// kubernetes.entry.path. The entrypoint script of kubernetes in the image. It will be used as command for jobmanager and taskmanager container.
+	// Default: "/opt/flink/bin/kubernetes-entry.sh"
+	EntryPath *string `json:"entryPath,omitempty"`
+
+	// kubernetes.flink.conf.dir. The flink conf directory that will be mounted in pod.
+	// The flink-conf.yaml, log4j.properties, logback.xml in this path will be overwritten from config map.
+	// Default: "/opt/flink/conf"
+	CongfigDir *string `json:"congfigDir,omitempty"`
+
+	// kubernetes.flink.log.dir. The directory that logs of jobmanager and taskmanager be saved in the pod.
+	// Default: "/opt/flink/log".
+	LogDir *string `json:"logDir,omitempty"`
+
+	// kubernetes.jobmanager.cpu. The number of cpu used by job manager.
+	// Default: 1.0
+	CPUJobManager *int32 `json:"CPUJobManager,omitempty"`
+
+	// kubernetes.jobmanager.service-account. Service account that is used by jobmanager within kubernetes cluster.
+	// The job manager uses this service account when requesting taskmanager pods from the API server.
+	// Default: "default"
+	FlinkClusterSA *string `json:"flinkClusterSA,omitempty"`
+
+	// kubernetes.rest-service.exposed.type. It could be ClusterIP/NodePort/LoadBalancer(default).
+	// When set to ClusterIP, the rest service will not be created.
+	// Default: "LoadBalancer"
+	FlinkRestServiceType *string `json:"flinkRestServiceType,omitempty"`
+
+	// kubernetes.service.create-timeout. Timeout used for creating the service.
+	// The timeout value requires a time-unit specifier (ms/s/min/h/d).
+	// Default: "1 min"
+	FlinkServiceCreateTimeout *string `json:"flinkServiceCreateTimeout,omitempty"`
+
+	// kubernetes.taskmanager.cpu. The number of cpu used by task manager.
+	// By default, the cpu is set to the number of slots per TaskManager.
+	// Default: -1.0
+	TaskManagerCPU *int32 `json:"taskManagerCPU,omitempty"`
+}
+
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
@@ -332,6 +387,10 @@ type FlinkClusterSpec struct {
 	// Cluster, which will be automatically terminated after the job finishes;
 	// otherwise, it is a long-running Session Cluster.
 	Job *JobSpec `json:"job,omitempty"`
+
+	// (Optional) Native Flink session spec. If specified,
+	// this cluster is a Native Flink session(only jobmanager created in advanced.)
+	NativeSessionClusterJob *NativeSessionClusterJobSpec `json:"nativeSessionClusterJob,omitempty"`
 
 	// Environment variables shared by all JobManager, TaskManager and job
 	// containers.

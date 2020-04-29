@@ -28,6 +28,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -53,6 +54,12 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	// Child resources of the cluster CR will be automatically reclaimed by K8S.
 	if reconciler.observed.cluster == nil {
 		reconciler.log.Info("The cluster has been deleted, no action to take")
+		//Flink uses Kubernetes ownerReference’s to cleanup all cluster components.
+		//All the Flink created resources, including ConfigMap, Service, Deployment,
+		//Pod, have been set the ownerReference to service/<ClusterId>. When the service
+		//is deleted, all other resource will be deleted automatically.
+		//More info : https://ci.apache.org/projects/flink/flink-docs-release-1.10/ops/deployment/native_kubernetes.html
+		reconciler.reconcileNativeClusterService()
 		return ctrl.Result{}, nil
 	}
 
@@ -81,6 +88,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	err = reconciler.reconcileNativeSessionClusterJob()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	result, err := reconciler.reconcileJob()
 
 	return result, nil
@@ -98,6 +110,61 @@ func (reconciler *ClusterReconciler) reconcileTaskManagerDeployment() error {
 		"TaskManager",
 		reconciler.desired.TmDeployment,
 		reconciler.observed.tmDeployment)
+}
+
+func (reconciler *ClusterReconciler) reconcileNativeSessionClusterJob() error {
+	var desiredNativeSessionClusterJob = reconciler.desired.NativeClusterSessionJob
+	var observedNativeSessionClusterJob = reconciler.observed.nativeClusterSessionJob
+
+	if desiredNativeSessionClusterJob != nil && observedNativeSessionClusterJob == nil {
+		return reconciler.createJob(desiredNativeSessionClusterJob)
+	}
+
+	if desiredNativeSessionClusterJob != nil && observedNativeSessionClusterJob != nil {
+		reconciler.log.Info("NativeSessionClusterJob already exists, no action")
+		return nil
+		// TODO: compare and update if needed.
+	}
+
+	if desiredNativeSessionClusterJob == nil && observedNativeSessionClusterJob != nil {
+		reconciler.reconcileNativeClusterService()
+		return reconciler.deleteJob(observedNativeSessionClusterJob)
+	}
+
+	return nil
+}
+
+func (reconciler *ClusterReconciler) reconcileNativeClusterService() {
+	// Delete the service which created by the flink.
+	var nativeFlinkSessionService = new(corev1.Service)
+	var k8sClient = reconciler.k8sClient
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", "nativeSessionJob")
+
+	if reconciler.observed.nativeClusterSessionJob == nil {
+		log.Info("The job for the native session cluster has been deleted.")
+		return
+	}
+	var jobObjectMeta = reconciler.observed.nativeClusterSessionJob.ObjectMeta
+	log.Info("Deleting nativeFlinkSessionService")
+	err := k8sClient.Get(
+		context,
+		types.NamespacedName{
+			Namespace: jobObjectMeta.Namespace,
+			Name:      getNativeFlinkClusterName(jobObjectMeta.Name),
+		},
+		nativeFlinkSessionService)
+	if err != nil {
+		log.Error(err, "Failed to get nativeFlinkSessionService.")
+	} else {
+		log.Info("Get nativeFlinkSessionService", "state", *nativeFlinkSessionService)
+		err = reconciler.deleteService(nativeFlinkSessionService, "nativeSessionJob")
+		if err != nil {
+			log.Info("Failed to delete nativeFlinkSessionService", "error", err)
+		} else {
+			log.Info("Delete nativeFlinkSessionService successfully.")
+		}
+	}
 }
 
 func (reconciler *ClusterReconciler) reconcileDeployment(

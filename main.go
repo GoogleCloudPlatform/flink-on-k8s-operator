@@ -75,8 +75,8 @@ func main() {
 	}
 
 	err = (&controllers.FlinkClusterReconciler{
-		Client:         mgr.GetClient(),
-		Log:            ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")
