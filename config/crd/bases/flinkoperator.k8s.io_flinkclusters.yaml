@@ -7275,6 +7275,9 @@ spec:
                 state:
                   description: Savepoint state.
                   type: string
+                triggerFor:
+                  description: Savepoint triggered reason.
+                  type: string
                 triggerID:
                   description: Savepoint trigger ID.
                   type: string

@@ -381,9 +381,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	if recorded.Savepoint != nil && recorded.Savepoint.State == SavepointStateProgressing {
 		if observed.savepoint != nil {
 			switch {
-			case observed.savepoint.Success():
+			case observed.savepoint.IsSuccessful():
 				newSavepointStatus.State = SavepointStateSucceeded
-			case observed.savepoint.Fail():
+			case observed.savepoint.IsFailed():
 				newSavepointStatus.State = SavepointStateFailed
 				newSavepointStatus.Message = "Flink error"
 				updater.log.Info("Savepoint failed.", "StackTrace", observed.savepoint.FailureCause.StackTrace)
@@ -457,7 +457,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			jobCancelled = true
 		}
 	}
-	if jobStatus != nil && observed.savepoint != nil && observed.savepoint.Success() {
+	if jobStatus != nil && observed.savepoint != nil && observed.savepoint.IsSuccessful() {
 		jobStatus.SavepointGeneration++
 		jobStatus.LastSavepointTriggerID = observed.savepoint.TriggerID
 		jobStatus.SavepointLocation = observed.savepoint.Location
@@ -523,8 +523,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			if observed.job == nil && status.Components.Job.State == v1beta1.JobStateCancelled {
 				controlStatus.State = v1beta1.ControlStateSucceeded
 				setTimestamp(&controlStatus.UpdateTime)
-			} else if !isJobActive(updater.observed.cluster) {
-				// TODO
+			} else if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
 				controlStatus.Message = "Job control is aborted. Job is not in active state."
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
@@ -560,7 +559,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		} else {
 			switch userControl {
 			case v1beta1.ControlNameCancel:
-				if !isJobActive(observed.cluster) {
+				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
 					updater.log.Info("job-cancel control request is not allowed because job is not in active state", "desired control", userControl)
 					break
 				}

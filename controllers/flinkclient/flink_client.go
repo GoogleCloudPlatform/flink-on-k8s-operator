@@ -76,11 +76,11 @@ type SavepointStatus struct {
 	FailureCause SavepointFailureCause
 }
 
-func (s *SavepointStatus) Success() bool {
+func (s *SavepointStatus) IsSuccessful() bool {
 	return s.Completed && s.FailureCause.StackTrace == ""
 }
 
-func (s *SavepointStatus) Fail() bool {
+func (s *SavepointStatus) IsFailed() bool {
 	return s.Completed && s.FailureCause.StackTrace != ""
 }
 

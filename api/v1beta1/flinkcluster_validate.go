@@ -103,9 +103,10 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 		}
 		switch newUserControl {
 		case ControlNameCancel:
+			var jobStatus = old.Status.Components.Job
 			if old.Spec.Job == nil {
 				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlAnnotation)
-			} else if !isJobActive(old) {
+			} else if isJobTerminated(old.Spec.Job.RestartPolicy, jobStatus) {
 				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
 			}
 		case ControlNameSavepoint:
@@ -417,14 +418,16 @@ func (v *Validator) validateMemoryOffHeapMin(
 	return nil
 }
 
-func isJobActive(cluster *FlinkCluster) bool {
-	var jobStatus = cluster.Status.Components.Job
-	return !isJobStopped(jobStatus) ||
-		(jobStatus != nil &&
-			jobStatus.State == JobStateFailed &&
-			cluster.Spec.Job.RestartPolicy != nil &&
-			*cluster.Spec.Job.RestartPolicy == JobRestartPolicyFromSavepointOnFailure &&
-			len(jobStatus.SavepointLocation) > 0)
+// shouldRestartJob returns true if the controller should restart the failed
+// job.
+func shouldRestartJob(
+	restartPolicy *JobRestartPolicy,
+	jobStatus *JobStatus) bool {
+	return restartPolicy != nil &&
+		*restartPolicy == JobRestartPolicyFromSavepointOnFailure &&
+		jobStatus != nil &&
+		jobStatus.State == JobStateFailed &&
+		len(jobStatus.SavepointLocation) > 0
 }
 
 func isJobStopped(status *JobStatus) bool {
@@ -432,4 +435,8 @@ func isJobStopped(status *JobStatus) bool {
 		(status.State == JobStateSucceeded ||
 			status.State == JobStateFailed ||
 			status.State == JobStateCancelled)
+}
+
+func isJobTerminated(restartPolicy *JobRestartPolicy, jobStatus *JobStatus) bool {
+	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
 }
