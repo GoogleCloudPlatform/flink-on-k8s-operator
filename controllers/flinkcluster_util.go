@@ -40,7 +40,7 @@ const (
 	SavepointStateSucceeded     = "Succeeded"
 
 	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonJobCancel     = "job cancel"
+	SavepointTriggerReasonJobCancel     = "for job-cancel"
 	SavepointTriggerReasonScheduled     = "scheduled"
 
 	SavepointTimeoutSec = 60
@@ -232,14 +232,14 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	case SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Failed to trigger savepoint for %v: %v", status.TriggerReason, status.Message)
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, status.Message)
 	case SavepointStateProgressing:
 		if status.TriggerID == "" {
 			break
 		}
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
-		eventMessage = fmt.Sprintf("Triggered savepoint for %v: triggerID %v.", status.TriggerReason, status.TriggerID)
+		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)
 	case SavepointStateSucceeded:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointCreated"
