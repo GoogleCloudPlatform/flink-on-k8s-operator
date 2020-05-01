@@ -585,7 +585,7 @@ func (reconciler *ClusterReconciler) canTakeSavepoint() bool {
 			(savepointStatus.State == SavepointStateProgressing && savepointStatus.TriggerID == ""))
 }
 
-// Takes savepoint for a job then update job status with the info.
+// Trigger savepoint for a job then return savepoint status to update.
 func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerReason string) (*v1beta1.SavepointStatus, error) {
 	var log = reconciler.log
 	var cluster = reconciler.observed.cluster

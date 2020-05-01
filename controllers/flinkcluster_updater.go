@@ -376,7 +376,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	}
 
 	// (Optional) Savepoint status
-	// update savepoint status if it is not finished state
+	// update savepoint status if it is in progress
 	var newSavepointStatus = recorded.Savepoint.DeepCopy()
 	if recorded.Savepoint != nil && recorded.Savepoint.State == SavepointStateProgressing {
 		if observed.savepoint != nil {
@@ -392,9 +392,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		if newSavepointStatus.State == SavepointStateProgressing {
 			if savepointTimeout(newSavepointStatus) {
 				newSavepointStatus.State = SavepointStateFailed
-				newSavepointStatus.Message = "failed by savepoint timeout"
+				newSavepointStatus.Message = "timed out taking savepoint"
 			} else if isJobStopped(recorded.Components.Job) {
-				newSavepointStatus.Message = "Flink job is finished"
+				newSavepointStatus.Message = "Flink job is stopped"
 				newSavepointStatus.State = SavepointStateFailed
 			} else if flinkJobID := updater.getFlinkJobID(); flinkJobID == nil ||
 				(recorded.Savepoint.TriggerID != "" && *flinkJobID != recorded.Savepoint.JobID) {
@@ -571,7 +571,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForSavepointMsg, v1beta1.ControlAnnotation))
 					break
 				}
-				// Clear savepoint status for new record
+				// Clear status for new savepoint
 				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing}
 				controlStatus = getNewUserControlStatus(userControl)
 			default:
