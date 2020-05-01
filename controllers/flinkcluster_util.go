@@ -39,9 +39,9 @@ const (
 	SavepointStateFailed        = "Failed"
 	SavepointStateSucceeded     = "Succeeded"
 
-	SavepointTriggerForUserRequested = "user requested"
-	SavepointTriggerForJobCancel     = "job-cancel"
-	SavepointTriggerForScheduled     = "scheduled"
+	SavepointTriggerReasonUserRequested = "user requested"
+	SavepointTriggerReasonJobCancel     = "job cancel"
+	SavepointTriggerReasonScheduled     = "scheduled"
 
 	SavepointTimeoutSec = 60
 )
@@ -160,14 +160,15 @@ func getNewUserControlStatus(controlName string) *v1beta1.FlinkClusterControlSta
 	return controlStatus
 }
 
-func getSavepointStatus(jobID string, triggerID string, triggerSuccess bool, savepointTriggerFor string) v1beta1.SavepointStatus {
+func getNewSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) v1beta1.SavepointStatus {
 	var savepointStatus = v1beta1.SavepointStatus{}
 	var now string
 	setTimestamp(&now)
 	savepointStatus.JobID = jobID
 	savepointStatus.TriggerID = triggerID
 	savepointStatus.TriggerTime = now
-	savepointStatus.TriggerFor = savepointTriggerFor
+	savepointStatus.TriggerReason = triggerReason
+	savepointStatus.Message = message
 	if triggerSuccess {
 		savepointStatus.State = SavepointStateProgressing
 	} else {
@@ -231,22 +232,22 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	case SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Savepoint trigger failed: for %v", status.TriggerFor)
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint for %v: %v", status.TriggerReason, status.Message)
 	case SavepointStateProgressing:
 		if status.TriggerID == "" {
 			break
 		}
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
-		eventMessage = fmt.Sprintf("Triggered savepoint: for %v, triggerID %v.", status.TriggerFor, status.TriggerID)
+		eventMessage = fmt.Sprintf("Triggered savepoint for %v: triggerID %v.", status.TriggerReason, status.TriggerID)
 	case SavepointStateSucceeded:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointCreated"
-		eventMessage = fmt.Sprintf("Successfully savepoint created: for %v", status.TriggerFor)
+		eventMessage = fmt.Sprintf("Successfully savepoint created")
 	case SavepointStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Savepoint creation failed: for %v, %v", status.TriggerFor, status.Message)
+		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", status.Message)
 	}
 	return
 }

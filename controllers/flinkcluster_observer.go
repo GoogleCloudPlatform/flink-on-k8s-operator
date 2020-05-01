@@ -280,26 +280,13 @@ func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedCluster
 	if savepointStatus != nil &&
 		savepointStatus.State == SavepointStateProgressing &&
 		savepointStatus.TriggerID != "" {
+		var flinkAPIBaseURL = getFlinkAPIBaseURL(observed.cluster)
 		var jobID = savepointStatus.JobID
 		var triggerID = savepointStatus.TriggerID
 		var savepoint flinkclient.SavepointStatus
-		var flinkAPIBaseURL = getFlinkAPIBaseURL(observed.cluster)
+		var err error
 
-		var retryCount = 0
-		var retriable = func(err error) bool {
-			if httpErr, ok := err.(*flinkclient.HTTPError); ok && httpErr.StatusCode >= 500 {
-				log.Info("Savepoint status request is failed", "http error", httpErr, "jobID", jobID, "triggerID", triggerID, "retry", retryCount)
-				retryCount++
-				return true
-			}
-			return false
-		}
-		var retryFunc = func() error {
-			var getErr error
-			savepoint, getErr = observer.flinkClient.GetSavepointStatus(flinkAPIBaseURL, jobID, triggerID)
-			return getErr
-		}
-		var err = retryOnError(FlinkAPIRetryBackoff, retriable, retryFunc)
+		savepoint, err = observer.flinkClient.GetSavepointStatus(flinkAPIBaseURL, jobID, triggerID)
 		if err == nil && len(savepoint.FailureCause.StackTrace) > 0 {
 			err = fmt.Errorf("%s", savepoint.FailureCause.StackTrace)
 		}

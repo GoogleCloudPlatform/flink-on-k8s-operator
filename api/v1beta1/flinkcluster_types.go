@@ -472,7 +472,7 @@ type SavepointStatus struct {
 	TriggerTime string `json:"triggerTime,omitempty"`
 
 	// Savepoint triggered reason.
-	TriggerFor string `json:"triggerFor,omitempty"`
+	TriggerReason string `json:"triggerReason,omitempty"`
 
 	// Savepoint state.
 	State string `json:"state"`

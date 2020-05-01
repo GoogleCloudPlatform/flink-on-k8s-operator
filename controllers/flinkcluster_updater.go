@@ -551,25 +551,24 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		// handle new user control
 		if userControl != v1beta1.ControlNameCancel && userControl != v1beta1.ControlNameSavepoint {
 			if userControl != "" {
-				updater.log.Info(fmt.Sprintf("invalid value for annotation key: %v", v1beta1.ControlAnnotation),
-					"value", userControl, "available controls", v1beta1.ControlNameCancel+", "+v1beta1.ControlNameSavepoint)
+				updater.log.Info(fmt.Sprintf(v1beta1.InvalidControlAnnMsg, v1beta1.ControlAnnotation, userControl))
 			}
 		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
-			updater.log.Info("control change is not allowed while it is in progress", "current control", recorded.Control.Name, "desired control", userControl)
+			updater.log.Info(fmt.Sprintf(v1beta1.ControlChangeWarnMsg, v1beta1.ControlAnnotation), "current control", recorded.Control.Name, "new control", userControl)
 		} else {
 			switch userControl {
 			case v1beta1.ControlNameCancel:
 				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
-					updater.log.Info("job-cancel control request is not allowed because job is not in active state", "desired control", userControl)
+					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForJobCancelMsg, v1beta1.ControlAnnotation))
 					break
 				}
 				controlStatus = getNewUserControlStatus(userControl)
 			case v1beta1.ControlNameSavepoint:
 				if observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "" {
-					updater.log.Info("savepoint control is not allowed without spec.job.savepointsDir,")
+					updater.log.Info(fmt.Sprintf(v1beta1.InvalidSavepointDirMsg, v1beta1.ControlAnnotation))
 					break
 				} else if isJobStopped(observed.cluster.Status.Components.Job) {
-					updater.log.Info("savepoint control request is not allowed because there is no running job.", "desired control", userControl)
+					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForSavepointMsg, v1beta1.ControlAnnotation))
 					break
 				}
 				// Clear savepoint status for new record

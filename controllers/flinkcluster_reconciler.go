@@ -386,8 +386,8 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		}
 
 		if len(jobID) > 0 {
-			if ok, savepointTriggerFor := reconciler.shouldTakeSavepoint(); ok {
-				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerFor)
+			if ok, savepointTriggerReason := reconciler.shouldTakeSavepoint(); ok {
+				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
 			}
 		}
 
@@ -398,7 +398,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		}
 
 		log.Info("Job has finished, no action")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	// Delete
@@ -546,14 +546,14 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 			"Savepoint is requested",
 			"control name", controlStatus.Name,
 			"control state", controlStatus.State)
-		return true, SavepointTriggerForUserRequested
+		return true, SavepointTriggerReasonUserRequested
 	} else if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration && // TODO: spec.job.savepointGeneration will be deprecated
 		(savepointStatus.State != SavepointStateFailed && savepointStatus.State != SavepointStateTriggerFailed) {
 		log.Info(
 			"Savepoint is requested",
 			"statusGen", jobStatus.SavepointGeneration,
 			"specGen", jobSpec.SavepointGeneration)
-		return true, SavepointTriggerForUserRequested
+		return true, SavepointTriggerReasonUserRequested
 	}
 
 	if jobSpec.AutoSavepointSeconds == nil {
@@ -562,7 +562,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 
 	// First savepoint.
 	if len(jobStatus.LastSavepointTime) == 0 {
-		return true, SavepointTriggerForScheduled
+		return true, SavepointTriggerReasonScheduled
 	}
 
 	// Interval expired.
@@ -570,7 +570,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var lastTime = tc.FromString(jobStatus.LastSavepointTime)
 	var nextTime = lastTime.Add(
 		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
-	return time.Now().After(nextTime), SavepointTriggerForScheduled
+	return time.Now().After(nextTime), SavepointTriggerReasonScheduled
 }
 
 // Checks whether it is possible to take savepoint.
@@ -586,38 +586,28 @@ func (reconciler *ClusterReconciler) canTakeSavepoint() bool {
 }
 
 // Takes savepoint for a job then update job status with the info.
-func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, savepointTriggerFor string) (*v1beta1.SavepointStatus, error) {
+func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerReason string) (*v1beta1.SavepointStatus, error) {
 	var log = reconciler.log
 	var cluster = reconciler.observed.cluster
 	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
 	var triggerSuccess bool
 	var triggerID string
+	var message string
+	var err error
 
 	log.Info("Trigger savepoint.", "jobID", jobID)
-	var retryCount = 0
-	var retriable = func(err error) bool {
-		if httpErr, ok := err.(*flinkclient.HTTPError); ok && httpErr.StatusCode >= 500 {
-			log.Info("Savepoint request is failed", "http error", httpErr, "jobID", jobID, "retry", retryCount)
-			retryCount++
-			return true
-		}
-		return false
-	}
-	var retryFunc = func() error {
-		var getErr error
-		triggerID, getErr = reconciler.flinkClient.TakeSavepointAsync(apiBaseURL, jobID, *cluster.Spec.Job.SavepointsDir)
-		return getErr
-	}
-	var err = retryOnError(FlinkAPIRetryBackoff, retriable, retryFunc)
-
+	triggerID, err = reconciler.flinkClient.TakeSavepointAsync(apiBaseURL, jobID, *cluster.Spec.Job.SavepointsDir)
 	if err != nil {
+		if message = err.Error(); len(message) > 100 {
+			message = message[:100]
+		}
 		triggerSuccess = false
 		log.Info("Savepoint trigger is failed.", "jobID", jobID, "triggerID", triggerID, "error", err)
 	} else {
 		triggerSuccess = true
 		log.Info("Savepoint is triggered successfully.", "jobID", jobID, "triggerID", triggerID)
 	}
-	newSavepointStatus := getSavepointStatus(jobID, triggerID, triggerSuccess, savepointTriggerFor)
+	newSavepointStatus := getNewSavepointStatus(jobID, triggerID, triggerReason, message, triggerSuccess)
 	return &newSavepointStatus, err
 }
 
