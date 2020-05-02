@@ -19,7 +19,6 @@ package controllers
 import (
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"strconv"
 	"time"
 
@@ -45,12 +44,6 @@ const (
 
 	SavepointTimeoutSec = 60
 )
-
-var FlinkAPIRetryBackoff = wait.Backoff{
-	Duration: 1 * time.Second,
-	Factor:   2,
-	Steps:    4,
-}
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
 	return fmt.Sprintf(
@@ -175,28 +168,6 @@ func getNewSavepointStatus(jobID string, triggerID string, triggerReason string,
 		savepointStatus.State = SavepointStateTriggerFailed
 	}
 	return savepointStatus
-}
-
-// Ported from master branch of k8s.io/client-go/util/retry/util.go
-// We can replace this with future release of k8s.io/client-go
-func retryOnError(backoff wait.Backoff, retriable func(error) bool, fn func() error) error {
-	var lastErr error
-	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		err := fn()
-		switch {
-		case err == nil:
-			return true, nil
-		case retriable(err):
-			lastErr = err
-			return false, nil
-		default:
-			return false, err
-		}
-	})
-	if err == wait.ErrWaitTimeout {
-		err = lastErr
-	}
-	return err
 }
 
 func savepointTimeout(s *v1beta1.SavepointStatus) bool {
