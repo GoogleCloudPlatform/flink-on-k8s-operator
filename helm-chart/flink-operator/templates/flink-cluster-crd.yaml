@@ -7264,6 +7264,30 @@ spec:
             lastUpdateTime:
               description: Last update timestamp for this status.
               type: string
+            savepoint:
+              description: The status of savepoint progress
+              properties:
+                jobID:
+                  description: The ID of the Flink job.
+                  type: string
+                message:
+                  description: Savepoint message.
+                  type: string
+                state:
+                  description: Savepoint state.
+                  type: string
+                triggerID:
+                  description: Savepoint trigger ID.
+                  type: string
+                triggerReason:
+                  description: Savepoint triggered reason.
+                  type: string
+                triggerTime:
+                  description: Savepoint triggered time.
+                  type: string
+              required:
+              - state
+              type: object
             state:
               description: The overall state of the Flink cluster.
               type: string
