@@ -76,6 +76,14 @@ type SavepointStatus struct {
 	FailureCause SavepointFailureCause
 }
 
+func (s *SavepointStatus) IsSuccessful() bool {
+	return s.Completed && s.FailureCause.StackTrace == ""
+}
+
+func (s *SavepointStatus) IsFailed() bool {
+	return s.Completed && s.FailureCause.StackTrace != ""
+}
+
 // GetJobStatusList gets Flink job status list.
 func (c *FlinkClient) GetJobStatusList(
 	apiBaseURL string, jobStatusList *JobStatusList) error {
@@ -195,4 +203,17 @@ func (c *FlinkClient) TakeSavepoint(
 	}
 
 	return status, err
+}
+
+func (c *FlinkClient) TakeSavepointAsync(
+	apiBaseURL string, jobID string, dir string) (string, error) {
+	var triggerID = SavepointTriggerID{}
+	var err error
+
+	triggerID, err = c.TriggerSavepoint(apiBaseURL, jobID, dir)
+	if err != nil {
+		return "", err
+	}
+
+	return triggerID.RequestID, err
 }

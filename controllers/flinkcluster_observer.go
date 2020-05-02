@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
-
+	"fmt"
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
@@ -53,6 +53,7 @@ type ObservedClusterState struct {
 	flinkJobList       *flinkclient.JobStatusList
 	flinkRunningJobIDs []string
 	flinkJobID         *string
+	savepoint          *flinkclient.SavepointStatus
 }
 
 // Observes the state of the cluster and its components.
@@ -152,6 +153,10 @@ func (observer *ClusterStateObserver) observe(
 		observed.tmDeployment = observedTmDeployment
 	}
 
+	// (Optional) Savepoint.
+	// Savepoint observe error do not affect deploy reconciliation loop.
+	observer.observeSavepoint(observed)
+
 	// (Optional) job.
 	err = observer.observeJob(observed)
 
@@ -211,9 +216,9 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 	}
 
 	// Get Flink job status list.
+	var flinkAPIBaseURL = getFlinkAPIBaseURL(observed.cluster)
 	var jobList = &flinkclient.JobStatusList{}
-	var err = observer.flinkClient.GetJobStatusList(
-		getFlinkAPIBaseURL(observed.cluster), jobList)
+	var err = observer.flinkClient.GetJobStatusList(flinkAPIBaseURL, jobList)
 	if err != nil {
 		// It is normal in many cases, not an error.
 		log.Info("Failed to get Flink job status list.", "error", err)
@@ -261,6 +266,38 @@ func (observer *ClusterStateObserver) observeFlinkJobs(
 	if flinkJobID != nil {
 		log.Info("Observed Flink job ID", "ID", *flinkJobID)
 	}
+}
+
+func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedClusterState) error {
+	var log = observer.log
+
+	if observed.cluster == nil {
+		return nil
+	}
+
+	// Get savepoint status in progress.
+	var savepointStatus = observed.cluster.Status.Savepoint
+	if savepointStatus != nil &&
+		savepointStatus.State == SavepointStateProgressing &&
+		savepointStatus.TriggerID != "" {
+		var flinkAPIBaseURL = getFlinkAPIBaseURL(observed.cluster)
+		var jobID = savepointStatus.JobID
+		var triggerID = savepointStatus.TriggerID
+		var savepoint flinkclient.SavepointStatus
+		var err error
+
+		savepoint, err = observer.flinkClient.GetSavepointStatus(flinkAPIBaseURL, jobID, triggerID)
+		if err == nil && len(savepoint.FailureCause.StackTrace) > 0 {
+			err = fmt.Errorf("%s", savepoint.FailureCause.StackTrace)
+		}
+		if err == nil {
+			observed.savepoint = &savepoint
+		} else {
+			log.Info("Failed to get savepoint.", "error", err, "jobID", jobID, "triggerID", triggerID)
+		}
+		return err
+	}
+	return nil
 }
 
 func (observer *ClusterStateObserver) observeCluster(

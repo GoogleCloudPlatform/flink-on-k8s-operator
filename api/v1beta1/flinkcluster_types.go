@@ -409,7 +409,7 @@ type FlinkClusterComponentsStatus struct {
 }
 
 // Control state
-type FlinkClusterControlState struct {
+type FlinkClusterControlStatus struct {
 	// Control name
 	Name string `json:"name"`
 
@@ -460,6 +460,27 @@ type JobStatus struct {
 	RestartCount int32 `json:"restartCount,omitempty"`
 }
 
+// SavepointStatus defines the status of savepoint progress
+type SavepointStatus struct {
+	// The ID of the Flink job.
+	JobID string `json:"jobID,omitempty"`
+
+	// Savepoint trigger ID.
+	TriggerID string `json:"triggerID,omitempty"`
+
+	// Savepoint triggered time.
+	TriggerTime string `json:"triggerTime,omitempty"`
+
+	// Savepoint triggered reason.
+	TriggerReason string `json:"triggerReason,omitempty"`
+
+	// Savepoint state.
+	State string `json:"state"`
+
+	// Savepoint message.
+	Message string `json:"message,omitempty"`
+}
+
 // JobManagerIngressStatus defines the status of a JobManager ingress.
 type JobManagerIngressStatus struct {
 	// The name of the Kubernetes ingress resource.
@@ -496,7 +517,10 @@ type FlinkClusterStatus struct {
 	Components FlinkClusterComponentsStatus `json:"components"`
 
 	// The status of control requested by user
-	Control *FlinkClusterControlState `json:"control,omitempty"`
+	Control *FlinkClusterControlStatus `json:"control,omitempty"`
+
+	// The status of savepoint progress
+	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`

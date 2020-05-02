@@ -19,6 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -41,6 +44,7 @@ type ClusterReconciler struct {
 	log         logr.Logger
 	observed    ObservedClusterState
 	desired     DesiredClusterState
+	recorder    record.EventRecorder
 }
 
 var requeueResult = ctrl.Result{RequeueAfter: 10 * time.Second, Requeue: true}
@@ -342,6 +346,11 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var observedJob = observed.job
 	var err error
 
+	// Update status changed via job reconciliation.
+	var newSavepointStatus *v1beta1.SavepointStatus
+	var newControlStatus *v1beta1.FlinkClusterControlStatus
+	defer reconciler.updateStatus(&newSavepointStatus, &newControlStatus)
+
 	// Create
 	if desiredJob != nil && observedJob == nil {
 		// If the observed Flink job status list is not nil (e.g., emtpy list),
@@ -376,11 +385,14 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
-		if len(jobID) > 0 && reconciler.shouldTakeSavepoint(jobID) {
-			reconciler.takeSavepoint(jobID)
+		if len(jobID) > 0 {
+			if ok, savepointTriggerReason := reconciler.shouldTakeSavepoint(); ok {
+				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
+			}
 		}
 
-		if !reconciler.isJobStopped() {
+		var jobStatus = reconciler.observed.cluster.Status.Components.Job
+		if !isJobStopped(jobStatus) {
 			log.Info("Job is not finished yet, no action", "jobID", jobID)
 			return requeueResult, nil
 		}
@@ -396,20 +408,12 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			var err = reconciler.cancelFlinkJob(jobID, true /* takeSavepoint */)
 			if err != nil {
 				log.Error(err, "Failed to cancel job", "jobID", jobID)
-				statusUpdateErr := reconciler.updateCancelStatus(err)
-				if statusUpdateErr != nil {
-					log.Error(
-						statusUpdateErr, "Failed to update control status.", "error", statusUpdateErr)
-				}
+				newControlStatus = reconciler.getCancelStatus(err)
 				return requeueResult, nil
 			}
 		}
 		var err = reconciler.deleteJob(observedJob)
-		statusUpdateErr := reconciler.updateCancelStatus(err)
-		if statusUpdateErr != nil {
-			log.Error(
-				statusUpdateErr, "Failed to update control status.", "error", statusUpdateErr)
-		}
+		newControlStatus = reconciler.getCancelStatus(err)
 		return ctrl.Result{}, err
 	}
 
@@ -453,14 +457,6 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 		return jobStatus.ID
 	}
 	return ""
-}
-
-func (reconciler *ClusterReconciler) isJobStopped() bool {
-	var jobStatus = reconciler.observed.cluster.Status.Components.Job
-	return jobStatus != nil &&
-		(jobStatus.State == v1beta1.JobStateSucceeded ||
-			jobStatus.State == v1beta1.JobStateFailed ||
-			jobStatus.State == v1beta1.JobStateCancelled)
 }
 
 func (reconciler *ClusterReconciler) restartJob() error {
@@ -524,42 +520,49 @@ func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint 
 	return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 }
 
-func (reconciler *ClusterReconciler) shouldTakeSavepoint(
-	jobID string) bool {
+func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var log = reconciler.log
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	var controlStatus = reconciler.observed.cluster.Status.Control
+	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
 
 	if !reconciler.canTakeSavepoint() {
-		return false
+		return false, ""
 	}
 
 	// User requested.
-	if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration {
-		log.Info(
-			"Savepoint is requested",
-			"statusGen", jobStatus.SavepointGeneration,
-			"specGen", jobSpec.SavepointGeneration)
-		return true
-		// Triggered by control annotation
-	} else if controlStatus != nil &&
+
+	// In the case of which savepoint status is in finished state,
+	// savepoint trigger by spec.job.savepointGeneration is not possible
+	// because the field cannot be increased more when savepoint is failed.
+	//
+	// Savepoint retry by annotation is possible because the annotations would be cleared
+	// when the last savepoint was finished and user can attach the annotation again.
+	if controlStatus != nil &&
 		controlStatus.Name == v1beta1.ControlNameSavepoint &&
 		controlStatus.State == v1beta1.ControlStateProgressing {
 		log.Info(
 			"Savepoint is requested",
 			"control name", controlStatus.Name,
 			"control state", controlStatus.State)
-		return true
+		return true, SavepointTriggerReasonUserRequested
+	} else if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration && // TODO: spec.job.savepointGeneration will be deprecated
+		(savepointStatus.State != SavepointStateFailed && savepointStatus.State != SavepointStateTriggerFailed) {
+		log.Info(
+			"Savepoint is requested",
+			"statusGen", jobStatus.SavepointGeneration,
+			"specGen", jobSpec.SavepointGeneration)
+		return true, SavepointTriggerReasonUserRequested
 	}
 
 	if jobSpec.AutoSavepointSeconds == nil {
-		return false
+		return false, ""
 	}
 
 	// First savepoint.
 	if len(jobStatus.LastSavepointTime) == 0 {
-		return true
+		return true, SavepointTriggerReasonScheduled
 	}
 
 	// Interval expired.
@@ -567,14 +570,45 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint(
 	var lastTime = tc.FromString(jobStatus.LastSavepointTime)
 	var nextTime = lastTime.Add(
 		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
-	return time.Now().After(nextTime)
+	return time.Now().After(nextTime), SavepointTriggerReasonScheduled
 }
 
 // Checks whether it is possible to take savepoint.
 func (reconciler *ClusterReconciler) canTakeSavepoint() bool {
 	var jobSpec = reconciler.observed.cluster.Spec.Job
+	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
+	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		!reconciler.isJobStopped()
+		!isJobStopped(jobStatus) &&
+		(savepointStatus == nil ||
+			(savepointStatus.State != SavepointStateProgressing) ||
+			(savepointStatus.State == SavepointStateProgressing && savepointStatus.TriggerID == ""))
+}
+
+// Trigger savepoint for a job then return savepoint status to update.
+func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerReason string) (*v1beta1.SavepointStatus, error) {
+	var log = reconciler.log
+	var cluster = reconciler.observed.cluster
+	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
+	var triggerSuccess bool
+	var triggerID string
+	var message string
+	var err error
+
+	log.Info("Trigger savepoint.", "jobID", jobID)
+	triggerID, err = reconciler.flinkClient.TakeSavepointAsync(apiBaseURL, jobID, *cluster.Spec.Job.SavepointsDir)
+	if err != nil {
+		if message = err.Error(); len(message) > 100 {
+			message = message[:100]
+		}
+		triggerSuccess = false
+		log.Info("Savepoint trigger is failed.", "jobID", jobID, "triggerID", triggerID, "error", err)
+	} else {
+		triggerSuccess = true
+		log.Info("Savepoint is triggered successfully.", "jobID", jobID, "triggerID", triggerID)
+	}
+	newSavepointStatus := getNewSavepointStatus(jobID, triggerID, triggerReason, message, triggerSuccess)
+	return &newSavepointStatus, err
 }
 
 // Takes savepoint for a job then update job status with the info.
@@ -609,10 +643,9 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
 	savepointStatus flinkclient.SavepointStatus) error {
-	var isSavepointSucceeded = savepointStatus.Completed && savepointStatus.FailureCause.StackTrace == ""
 	var cluster = v1beta1.FlinkCluster{}
 	reconciler.observed.cluster.DeepCopyInto(&cluster)
-	if isSavepointSucceeded {
+	if savepointStatus.IsSuccessful() {
 		var jobStatus = cluster.Status.Components.Job
 		jobStatus.SavepointGeneration++
 		jobStatus.LastSavepointTriggerID = savepointStatus.TriggerID
@@ -629,43 +662,88 @@ func (reconciler *ClusterReconciler) updateSavepointStatus(
 		}
 		var retries, err = getRetryCount(controlStatus.Details)
 		if err == nil {
-			if !isSavepointSucceeded || retries != "1" {
-				controlStatus.Details["retries"] = retries
+			if savepointStatus.IsFailed() || retries != "1" {
+				controlStatus.Details[ControlRetries] = retries
 			}
 		} else {
 			reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
 		}
-		controlStatus.Details["savepointTriggerID"] = savepointStatus.TriggerID
-		controlStatus.Details["jobID"] = savepointStatus.JobID
+		controlStatus.Details[ControlSavepointTriggerID] = savepointStatus.TriggerID
+		controlStatus.Details[ControlJobID] = savepointStatus.JobID
 		setTimestamp(&controlStatus.UpdateTime)
 	}
 	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }
 
-func (reconciler *ClusterReconciler) updateCancelStatus(cancelErr error) error {
+func (reconciler *ClusterReconciler) getCancelStatus(cancelErr error) *v1beta1.FlinkClusterControlStatus {
 	var observedControlStatus = reconciler.observed.cluster.Status.Control
 	if observedControlStatus == nil || observedControlStatus.Name != v1beta1.ControlNameCancel ||
 		observedControlStatus.State != v1beta1.ControlStateProgressing {
 		return nil
 	}
-
-	var cluster = v1beta1.FlinkCluster{}
-	reconciler.observed.cluster.DeepCopyInto(&cluster)
-
-	var controlStatus = cluster.Status.Control
+	var controlStatus = reconciler.observed.cluster.Status.Control.DeepCopy()
 	if controlStatus.Details == nil {
 		controlStatus.Details = make(map[string]string)
 	}
 	var retries, err = getRetryCount(controlStatus.Details)
 	if err == nil {
 		if cancelErr != nil || retries != "1" {
-			controlStatus.Details["retries"] = retries
+			controlStatus.Details[ControlRetries] = retries
 		}
 	} else {
 		reconciler.log.Error(err, "failed to get retries from control status", "control status", controlStatus)
 	}
-	controlStatus.Details["jobID"] = cluster.Status.Components.Job.ID
+	controlStatus.Details[ControlJobID] = reconciler.observed.cluster.Status.Components.Job.ID
 	setTimestamp(&controlStatus.UpdateTime)
+	return controlStatus
+}
 
-	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
+func (reconciler *ClusterReconciler) updateStatus(ss **v1beta1.SavepointStatus, cs **v1beta1.FlinkClusterControlStatus) {
+	var log = reconciler.log
+
+	var savepointStatus = *ss
+	var controlStatus = *cs
+	if savepointStatus == nil && controlStatus == nil {
+		return
+	}
+
+	// Record events
+	if savepointStatus != nil {
+		eventType, eventReason, eventMessage := getSavepointEvent(*savepointStatus)
+		reconciler.recorder.Event(reconciler.observed.cluster, eventType, eventReason, eventMessage)
+	}
+
+	if controlStatus != nil {
+		eventType, eventReason, eventMessage := getControlEvent(*controlStatus)
+		reconciler.recorder.Event(reconciler.observed.cluster, eventType, eventReason, eventMessage)
+	}
+
+	// Update status
+	var clusterClone = reconciler.observed.cluster.DeepCopy()
+	var statusUpdateErr error
+	retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var newStatus = &clusterClone.Status
+		if savepointStatus != nil {
+			newStatus.Savepoint = savepointStatus
+		}
+		if controlStatus != nil {
+			newStatus.Control = controlStatus
+		}
+		setTimestamp(&newStatus.LastUpdateTime)
+		statusUpdateErr = reconciler.k8sClient.Status().Update(reconciler.context, clusterClone)
+		if statusUpdateErr == nil {
+			return nil
+		}
+		var clusterUpdated v1beta1.FlinkCluster
+		if err := reconciler.k8sClient.Get(
+			reconciler.context,
+			types.NamespacedName{Namespace: clusterClone.Namespace, Name: clusterClone.Name}, &clusterUpdated); err == nil {
+			clusterClone = clusterUpdated.DeepCopy()
+		}
+		return statusUpdateErr
+	})
+	if statusUpdateErr != nil {
+		log.Error(
+			statusUpdateErr, "Failed to update status.", "error", statusUpdateErr)
+	}
 }

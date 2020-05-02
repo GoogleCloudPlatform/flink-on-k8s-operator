@@ -18,11 +18,31 @@ package controllers
 
 import (
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"strconv"
 	"time"
 
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
+)
+
+const (
+	ControlSavepointTriggerID = "SavepointTriggerID"
+	ControlJobID              = "jobID"
+	ControlRetries            = "retries"
+
+	ControlMaxRetries = "3"
+
+	SavepointStateProgressing   = "Progressing"
+	SavepointStateTriggerFailed = "TriggerFailed"
+	SavepointStateFailed        = "Failed"
+	SavepointStateSucceeded     = "Succeeded"
+
+	SavepointTriggerReasonUserRequested = "user requested"
+	SavepointTriggerReasonJobCancel     = "for job-cancel"
+	SavepointTriggerReasonScheduled     = "scheduled"
+
+	SavepointTimeoutSec = 60
 )
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
@@ -123,4 +143,93 @@ func getRetryCount(data map[string]string) (string, error) {
 		retries = "1"
 	}
 	return retries, err
+}
+
+func getNewUserControlStatus(controlName string) *v1beta1.FlinkClusterControlStatus {
+	var controlStatus = new(v1beta1.FlinkClusterControlStatus)
+	controlStatus.Name = controlName
+	controlStatus.State = v1beta1.ControlStateProgressing
+	setTimestamp(&controlStatus.UpdateTime)
+	return controlStatus
+}
+
+func getNewSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) v1beta1.SavepointStatus {
+	var savepointStatus = v1beta1.SavepointStatus{}
+	var now string
+	setTimestamp(&now)
+	savepointStatus.JobID = jobID
+	savepointStatus.TriggerID = triggerID
+	savepointStatus.TriggerTime = now
+	savepointStatus.TriggerReason = triggerReason
+	savepointStatus.Message = message
+	if triggerSuccess {
+		savepointStatus.State = SavepointStateProgressing
+	} else {
+		savepointStatus.State = SavepointStateTriggerFailed
+	}
+	return savepointStatus
+}
+
+func savepointTimeout(s *v1beta1.SavepointStatus) bool {
+	if s.TriggerTime == "" {
+		return false
+	}
+	tc := &TimeConverter{}
+	triggerTime := tc.FromString(s.TriggerTime)
+	validTime := triggerTime.Add(time.Duration(int64(SavepointTimeoutSec) * int64(time.Second)))
+	return time.Now().After(validTime)
+}
+
+func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
+	switch status.State {
+	case v1beta1.ControlStateProgressing:
+		eventType = corev1.EventTypeNormal
+		eventReason = "ControlRequested"
+		eventMessage = fmt.Sprintf("Requested new user control %v", status.Name)
+	case v1beta1.ControlStateSucceeded:
+		eventType = corev1.EventTypeNormal
+		eventReason = "ControlSucceeded"
+		eventMessage = fmt.Sprintf("Succesfully completed user control %v", status.Name)
+	case v1beta1.ControlStateFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "ControlFailed"
+		eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+	}
+	return
+}
+
+func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventReason string, eventMessage string) {
+	switch status.State {
+	case SavepointStateTriggerFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "SavepointFailed"
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, status.Message)
+	case SavepointStateProgressing:
+		if status.TriggerID == "" {
+			break
+		}
+		eventType = corev1.EventTypeNormal
+		eventReason = "SavepointTriggered"
+		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)
+	case SavepointStateSucceeded:
+		eventType = corev1.EventTypeNormal
+		eventReason = "SavepointCreated"
+		eventMessage = fmt.Sprintf("Successfully savepoint created")
+	case SavepointStateFailed:
+		eventType = corev1.EventTypeWarning
+		eventReason = "SavepointFailed"
+		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", status.Message)
+	}
+	return
+}
+
+func isJobStopped(status *v1beta1.JobStatus) bool {
+	return status != nil &&
+		(status.State == v1beta1.JobStateSucceeded ||
+			status.State == v1beta1.JobStateFailed ||
+			status.State == v1beta1.JobStateCancelled)
+}
+
+func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
+	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
 }

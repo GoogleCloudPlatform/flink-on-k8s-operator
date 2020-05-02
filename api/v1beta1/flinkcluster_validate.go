@@ -27,6 +27,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	InvalidControlAnnMsg           = "invalid value for annotation key: %v, value: %v, available values: savepoint, job-cancel"
+	InvalidJobStateForJobCancelMsg = "job-cancel is not allowed because job is not started yet or already terminated, annotation: %v"
+	InvalidJobStateForSavepointMsg = "savepoint is not allowed because job is not started yet or already stopped, annotation: %v"
+	InvalidSavepointDirMsg         = "savepoint is not allowed without spec.job.savepointsDir, annotation: %v"
+	SessionClusterWarnMsg          = "%v is not allowed for session cluster, annotation: %v"
+	ControlChangeWarnMsg           = "change is not allowed for control in progress, annotation: %v"
+)
+
 // Validator validates CUD requests for the CR.
 type Validator struct{}
 
@@ -99,26 +108,27 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 	newUserControl, ok := new.Annotations[ControlAnnotation]
 	if ok {
 		if oldUserControl != newUserControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
-			return fmt.Errorf("change is not allowed for control in progress, annotation: %v", ControlAnnotation)
+			return fmt.Errorf(ControlChangeWarnMsg, ControlAnnotation)
 		}
 		switch newUserControl {
 		case ControlNameCancel:
+			var jobStatus = old.Status.Components.Job
 			if old.Spec.Job == nil {
-				return fmt.Errorf("job-cancel is not allowed for session cluster, annotation: %v", ControlAnnotation)
-			} else if !IsJobActive(old) {
-				return fmt.Errorf("job-cancel is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
+				return fmt.Errorf(SessionClusterWarnMsg, ControlNameCancel, ControlAnnotation)
+			} else if jobStatus == nil || isJobTerminated(old.Spec.Job.RestartPolicy, jobStatus) {
+				return fmt.Errorf(InvalidJobStateForJobCancelMsg, ControlAnnotation)
 			}
 		case ControlNameSavepoint:
+			var jobStatus = old.Status.Components.Job
 			if old.Spec.Job == nil {
-				return fmt.Errorf("savepoint is not allowed for session cluster, annotation: %v", ControlAnnotation)
+				return fmt.Errorf(SessionClusterWarnMsg, ControlNameSavepoint, ControlAnnotation)
 			} else if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
-				return fmt.Errorf("savepoint is not allowed without spec.job.savepointsDir, annotation: %v", ControlAnnotation)
-			} else if !IsJobActive(old) {
-				return fmt.Errorf("savepoint is not allowed because job is not existing or already stopped, annotation: %v", ControlAnnotation)
+				return fmt.Errorf(InvalidSavepointDirMsg, ControlAnnotation)
+			} else if jobStatus == nil || isJobStopped(old.Status.Components.Job) {
+				return fmt.Errorf(InvalidJobStateForSavepointMsg, ControlAnnotation)
 			}
 		default:
-			return fmt.Errorf("invalid value for annotation key: %v, value: %v, available values: %v, %v",
-				ControlAnnotation, newUserControl, ControlNameCancel, ControlNameSavepoint)
+			return fmt.Errorf(InvalidControlAnnMsg, ControlAnnotation, newUserControl)
 		}
 	}
 	return nil
@@ -417,10 +427,25 @@ func (v *Validator) validateMemoryOffHeapMin(
 	return nil
 }
 
-func IsJobActive(cluster *FlinkCluster) bool {
-	var jobStatus = cluster.Status.Components.Job
-	return jobStatus != nil &&
-		jobStatus.State != JobStateSucceeded &&
-		jobStatus.State != JobStateCancelled &&
-		(jobStatus.State != JobStateFailed || *cluster.Spec.Job.RestartPolicy != JobRestartPolicyNever)
+// shouldRestartJob returns true if the controller should restart the failed
+// job.
+func shouldRestartJob(
+	restartPolicy *JobRestartPolicy,
+	jobStatus *JobStatus) bool {
+	return restartPolicy != nil &&
+		*restartPolicy == JobRestartPolicyFromSavepointOnFailure &&
+		jobStatus != nil &&
+		jobStatus.State == JobStateFailed &&
+		len(jobStatus.SavepointLocation) > 0
+}
+
+func isJobStopped(status *JobStatus) bool {
+	return status != nil &&
+		(status.State == JobStateSucceeded ||
+			status.State == JobStateFailed ||
+			status.State == JobStateCancelled)
+}
+
+func isJobTerminated(restartPolicy *JobRestartPolicy, jobStatus *JobStatus) bool {
+	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
 }
