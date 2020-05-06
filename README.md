@@ -1,16 +1,42 @@
 
 ## Introduction
-In this branch，we support the feature `flink native setup on kubernetes`.
+This branch is built based on the flink-operator-0.1.1 of the [flink-operator](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator).
+
+In this branch, we support the feature [flink native setup on kubernetes](https://ci.apache.org/projects/flink/flink-docs-release-1.10/ops/deployment/native_kubernetes.html), which including two kinds of flink clusters.
 * Support flink native session cluster (Version >= 1.10 of Apache Flink)
 * Support flink native per-job cluster (Version >= 1.11 of Apache Flink)
 
-## **Installation**
+>Note about the feature `flink native per-job cluster`
+
+This feature has not been released in Apache Flink 1.10 yet. Feel free to contact us if you want to test or use this feature in advance. 
+
+### The simple comparation between the different flink cluster as below.
+
+
+> Flink session cluster
+
+JobManager and TaskManager are created in advance，the number of taskmanager is specified by user
+
+> Flink per-job cluster
+
+JobManager and TaskManager are created after job submitted，the number of taskmanager is specified by user
+
+> Flink native session cluster
+
+JobManager is created in advance，taskmanger is created on-demand
+
+>Flink native per-job cluster
+
+JobManager and TaskManager are created after job submitted，taskmanger is created on-demand
+
+
+## **Installation** && Testing
 
 In this section, we introduce how to install the flink-operator by using the helm charts and then we use some examples to simply demonstrate the process of creating the flink cluster. 
 
-## 1.Install the helm client tool
+## 1. Helm3 installed on your local machine
 
-The helm is a package manager for `kuberenetes`. We can download the helm[](https://helm.sh/) before the next step. The helm v3 is recommended.
+You can install the helm3 from the [Helm 3+](https://helm.sh/docs/intro/install/) or follow the setups as below.
 
 ```
 export HELM_VERSION=v3.2.0
@@ -22,11 +48,12 @@ chmod u+x ${OS}-amd64/helm
 sudo mv ${OS}-amd64/helm /usr/local/bin
 ```
 
->For MacOS amd64, the os name is `darwin`，
+>For MacOS amd64, the os name is `darwin`
+
 >For windows amd64, the os name is `windows`
 
 
-## 2.Flink-operator deploy
+## 2. Flink-operator deploy
 
 ```
 # add repo
@@ -50,9 +77,9 @@ flink-operator-controller-manager   1/1     1            1           49s
 
 ```
 
-## 3.Examples 
+## 3. Examples 
 
-### create native session cluster
+### 3.1 native session cluster
 
 ```
 cat <<EOF | kubectl apply --filename -
@@ -129,7 +156,7 @@ also can check it from the jobmanager web-ui -> taskmanager
 (d,4)
 ```
 
-### create native job cluster
+### 3.2 native job cluster
 Version >= 1.11 of Apache Flink
 hadoop clusted needed.
 ```
@@ -165,7 +192,7 @@ native-flinkjobcluster-sample        ClusterIP      None            <none>      
 native-flinkjobcluster-sample-rest   LoadBalancer   172.16.253.27   ******   8081:31390/TCP      26s
 ```
 
-### create session cluster
+### 3.3 session cluster
 
 ```
 cat <<EOF | kubectl apply --filename -
@@ -276,7 +303,7 @@ flinkcluster.flinkoperator.k8s.io "flinksessioncluster-sample" deleted
 ```
 
 
-### create job session cluster
+### 3.4 job session cluster
 
 ```
 cat <<EOF | kubectl apply --filename -
@@ -341,7 +368,7 @@ delete the job session
 kubectl delete flinkcluster flinkjobcluster-sample
 ```
 
-### submit job to handle kafka source streaming
+### 3.5 Testing the Flink Operator with Apache Kafka in flink's native cluster
 
 command in the container
 ```
