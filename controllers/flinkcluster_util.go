@@ -45,6 +45,15 @@ const (
 	SavepointTimeoutSec = 60
 )
 
+type objectForPatch struct {
+	Metadata objectMetaForPatch `json:"metadata"`
+}
+
+// objectMetaForPatch define object meta struct for patch operation
+type objectMetaForPatch struct {
+	Annotations map[string]interface{} `json:"annotations"`
+}
+
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
 	return fmt.Sprintf(
 		"http://%s.%s.svc.cluster.local:%d",
@@ -193,7 +202,11 @@ func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string
 	case v1beta1.ControlStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "ControlFailed"
-		eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+		if status.Message != "" {
+			eventMessage = fmt.Sprintf("User control %v failed: %v", status.Name, status.Message)
+		} else {
+			eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+		}
 	}
 	return
 }
@@ -232,4 +245,13 @@ func isJobStopped(status *v1beta1.JobStatus) bool {
 
 func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
 	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
+}
+
+func isSavepointTriggered(status *v1beta1.SavepointStatus) bool {
+	return status != nil && status.State == SavepointStateProgressing && status.TriggerID != ""
+}
+
+func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
+	return controlStatus.State == v1beta1.ControlStateSucceeded ||
+		controlStatus.State == v1beta1.ControlStateFailed
 }

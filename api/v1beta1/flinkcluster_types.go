@@ -75,8 +75,8 @@ const (
 	ControlAnnotation = "flinkclusters.flinkoperator.k8s.io/user-control"
 
 	// control name
-	ControlNameCancel    = "job-cancel"
 	ControlNameSavepoint = "savepoint"
+	ControlNameJobCancel = "job-cancel"
 
 	// control state
 	ControlStateProgressing = "Progressing"

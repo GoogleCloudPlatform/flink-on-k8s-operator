@@ -63,8 +63,8 @@ func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
 	var newStatus = updater.deriveClusterStatus(
 		&updater.observed.cluster.Status, &updater.observed)
 
-	// Adjust control annotation
-	updater.adjustControlAnnotation(newStatus.Control)
+	// Clear control annotation
+	updater.clearControlAnnotation(newStatus.Control)
 
 	// Compare
 	var changed = updater.isStatusChanged(oldStatus, newStatus)
@@ -452,7 +452,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		jobStopped = true
 		var cancelRequested = observed.cluster.Spec.Job.CancelRequested
 		if (cancelRequested != nil && *cancelRequested) ||
-			(observed.cluster.Status.Control != nil && observed.cluster.Status.Control.Name == v1beta1.ControlNameCancel) {
+			(observed.cluster.Status.Control != nil && observed.cluster.Status.Control.Name == v1beta1.ControlNameJobCancel) {
 			jobStatus.State = v1beta1.JobStateCancelled
 			jobCancelled = true
 		}
@@ -517,19 +517,25 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	if recorded.Control != nil && userControl == recorded.Control.Name &&
 		recorded.Control.State == v1beta1.ControlStateProgressing {
 		controlStatus = recorded.Control.DeepCopy()
-		// abort if job is not active
+		var savepointStatus = status.Savepoint
 		switch recorded.Control.Name {
-		case v1beta1.ControlNameCancel:
+		case v1beta1.ControlNameJobCancel:
 			if observed.job == nil && status.Components.Job.State == v1beta1.JobStateCancelled {
 				controlStatus.State = v1beta1.ControlStateSucceeded
 				setTimestamp(&controlStatus.UpdateTime)
 			} else if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
-				controlStatus.Message = "Job control is aborted. Job is not in active state."
+				controlStatus.Message = "Aborted job cancellation: Job is terminated."
+				controlStatus.State = v1beta1.ControlStateFailed
+				setTimestamp(&controlStatus.UpdateTime)
+			} else if savepointStatus != nil && savepointStatus.State == SavepointStateFailed && savepointStatus.TriggerReason == SavepointTriggerReasonJobCancel {
+				controlStatus.Message = "Aborted job cancellation: failed to create savepoint."
+				controlStatus.State = v1beta1.ControlStateFailed
+				setTimestamp(&controlStatus.UpdateTime)
+			} else if recorded.Control.Message != "" {
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
 			}
 		case v1beta1.ControlNameSavepoint:
-			var savepointStatus = status.Savepoint
 			if savepointStatus != nil {
 				if savepointStatus.State == SavepointStateSucceeded {
 					controlStatus.State = v1beta1.ControlStateSucceeded
@@ -543,13 +549,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		// aborted by max retry reach
 		var retries = controlStatus.Details[ControlRetries]
 		if retries == ControlMaxRetries {
-			controlStatus.Message = "Job control is aborted. The maximum number of retries has been reached."
+			controlStatus.Message = fmt.Sprintf("Aborted control %v. The maximum number of retries has been reached.", controlStatus.Name)
 			controlStatus.State = v1beta1.ControlStateFailed
 			setTimestamp(&controlStatus.UpdateTime)
 		}
 	} else {
 		// handle new user control
-		if userControl != v1beta1.ControlNameCancel && userControl != v1beta1.ControlNameSavepoint {
+		if userControl != v1beta1.ControlNameJobCancel && userControl != v1beta1.ControlNameSavepoint {
 			if userControl != "" {
 				updater.log.Info(fmt.Sprintf(v1beta1.InvalidControlAnnMsg, v1beta1.ControlAnnotation, userControl))
 			}
@@ -557,12 +563,6 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			updater.log.Info(fmt.Sprintf(v1beta1.ControlChangeWarnMsg, v1beta1.ControlAnnotation), "current control", recorded.Control.Name, "new control", userControl)
 		} else {
 			switch userControl {
-			case v1beta1.ControlNameCancel:
-				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
-					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForJobCancelMsg, v1beta1.ControlAnnotation))
-					break
-				}
-				controlStatus = getNewUserControlStatus(userControl)
 			case v1beta1.ControlNameSavepoint:
 				if observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "" {
 					updater.log.Info(fmt.Sprintf(v1beta1.InvalidSavepointDirMsg, v1beta1.ControlAnnotation))
@@ -572,9 +572,15 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					break
 				}
 				// Clear status for new savepoint
-				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing}
+				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing, TriggerReason: SavepointTriggerReasonUserRequested}
 				controlStatus = getNewUserControlStatus(userControl)
-			default:
+			case v1beta1.ControlNameJobCancel:
+				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
+					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForJobCancelMsg, v1beta1.ControlAnnotation))
+					break
+				}
+				// New savepoint status for job-cancel
+				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing, TriggerReason: SavepointTriggerReasonJobCancel}
 				controlStatus = getNewUserControlStatus(userControl)
 			}
 		}
@@ -733,17 +739,8 @@ func (updater *ClusterStatusUpdater) updateClusterStatus(
 	return updater.k8sClient.Status().Update(updater.context, &cluster)
 }
 
-type objectForPatch struct {
-	Metadata objectMetaForPatch `json:"metadata"`
-}
-
-// objectMetaForPatch define object meta struct for patch operation
-type objectMetaForPatch struct {
-	Annotations map[string]interface{} `json:"annotations"`
-}
-
 // Clear finished or improper user control in annotations
-func (updater *ClusterStatusUpdater) adjustControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlStatus) error {
+func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1beta1.FlinkClusterControlStatus) error {
 	var userControl = updater.observed.cluster.Annotations[v1beta1.ControlAnnotation]
 	if userControl == "" {
 		return nil
@@ -773,9 +770,4 @@ func getDeploymentState(deployment *appsv1.Deployment) string {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady
-}
-
-func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
-	return controlStatus.State == v1beta1.ControlStateSucceeded ||
-		controlStatus.State == v1beta1.ControlStateFailed
 }
