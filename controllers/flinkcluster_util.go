@@ -190,6 +190,10 @@ func savepointTimeout(s *v1beta1.SavepointStatus) bool {
 }
 
 func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
+	var msg = status.Message
+	if len(msg) > 100 {
+		msg = msg[:100] + "..."
+	}
 	switch status.State {
 	case v1beta1.ControlStateProgressing:
 		eventType = corev1.EventTypeNormal
@@ -203,7 +207,7 @@ func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string
 		eventType = corev1.EventTypeWarning
 		eventReason = "ControlFailed"
 		if status.Message != "" {
-			eventMessage = fmt.Sprintf("User control %v failed: %v", status.Name, status.Message)
+			eventMessage = fmt.Sprintf("User control %v failed: %v", status.Name, msg)
 		} else {
 			eventMessage = fmt.Sprintf("User control %v failed", status.Name)
 		}
@@ -212,11 +216,15 @@ func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string
 }
 
 func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventReason string, eventMessage string) {
+	var msg = status.Message
+	if len(msg) > 100 {
+		msg = msg[:100] + "..."
+	}
 	switch status.State {
 	case SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, status.Message)
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, msg)
 	case SavepointStateProgressing:
 		if status.TriggerID == "" {
 			break
@@ -231,7 +239,7 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	case SavepointStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", status.Message)
+		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", msg)
 	}
 	return
 }

@@ -647,7 +647,7 @@ func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerRea
 	if err != nil {
 		// limit message size to 1KiB
 		if message = err.Error(); len(message) > 1024 {
-			message = message[:1024]
+			message = message[:1024] + "..."
 		}
 		triggerSuccess = false
 		log.Info("Savepoint trigger is failed.", "jobID", jobID, "triggerID", triggerID, "error", err)
@@ -733,7 +733,7 @@ func getFailedCancelStatus(cancelErr error) *v1beta1.FlinkClusterControlStatus {
 	state = v1beta1.ControlStateProgressing
 	// limit message size to 1KiB
 	if message = cancelErr.Error(); len(message) > 1024 {
-		message = message[:1024]
+		message = message[:1024] + "..."
 	}
 	return &v1beta1.FlinkClusterControlStatus{
 		Name:       v1beta1.ControlNameJobCancel,

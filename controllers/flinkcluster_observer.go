@@ -54,6 +54,7 @@ type ObservedClusterState struct {
 	flinkRunningJobIDs []string
 	flinkJobID         *string
 	savepoint          *flinkclient.SavepointStatus
+	savepointErr       error
 }
 
 // Observes the state of the cluster and its components.
@@ -285,12 +286,12 @@ func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedCluster
 		var err error
 
 		savepoint, err = observer.flinkClient.GetSavepointStatus(flinkAPIBaseURL, jobID, triggerID)
+		observed.savepoint = &savepoint
 		if err == nil && len(savepoint.FailureCause.StackTrace) > 0 {
 			err = fmt.Errorf("%s", savepoint.FailureCause.StackTrace)
 		}
-		if err == nil {
-			observed.savepoint = &savepoint
-		} else {
+		if err != nil {
+			observed.savepointErr = err
 			log.Info("Failed to get savepoint.", "error", err, "jobID", jobID, "triggerID", triggerID)
 		}
 		return err

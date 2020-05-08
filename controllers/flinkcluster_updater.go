@@ -384,15 +384,25 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			case observed.savepoint.IsSuccessful():
 				newSavepointStatus.State = SavepointStateSucceeded
 			case observed.savepoint.IsFailed():
+				var msg string
 				newSavepointStatus.State = SavepointStateFailed
-				newSavepointStatus.Message = "Flink error"
-				updater.log.Info("Savepoint failed.", "StackTrace", observed.savepoint.FailureCause.StackTrace)
+				if observed.savepoint.FailureCause.StackTrace != "" {
+					msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
+				} else if observed.savepointErr != nil {
+					msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
+				} else {
+					msg = "Failed to get triggered savepoint status"
+				}
+				if len(msg) > 1024 {
+					msg = msg[:1024] + "..."
+				}
+				newSavepointStatus.Message = msg
 			}
 		}
 		if newSavepointStatus.State == SavepointStateProgressing {
 			if savepointTimeout(newSavepointStatus) {
 				newSavepointStatus.State = SavepointStateFailed
-				newSavepointStatus.Message = "timed out taking savepoint"
+				newSavepointStatus.Message = "Timed out taking savepoint"
 			} else if isJobStopped(recorded.Components.Job) {
 				newSavepointStatus.Message = "Flink job is stopped"
 				newSavepointStatus.State = SavepointStateFailed
