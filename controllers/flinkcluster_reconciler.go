@@ -567,6 +567,13 @@ func (reconciler *ClusterReconciler) cancelFlinkJobAsync(jobID string, takeSavep
 			}
 			savepointStatus = nil
 			log.Info("Savepoint was desired but couldn't be taken. Skip taking savepoint before stopping job", "jobID", jobID)
+		// Cannot reach here with these states, because job-cancel control should be finished with failed states by updater.
+		case v1beta1.SavepointStateTriggerFailed:
+			fallthrough
+		case v1beta1.SavepointStateFailed:
+			fallthrough
+		default:
+			return nil, fmt.Errorf("invalid savepoint status: %v", observedSavepoint.State)
 		}
 	} else {
 		savepointStatus = nil
