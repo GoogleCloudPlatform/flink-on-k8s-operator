@@ -377,43 +377,45 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// (Optional) Savepoint status
 	// update savepoint status if it is in progress
-	var newSavepointStatus = recorded.Savepoint.DeepCopy()
-	if recorded.Savepoint != nil && recorded.Savepoint.State == SavepointStateProgressing {
-		if observed.savepoint != nil {
-			switch {
-			case observed.savepoint.IsSuccessful():
-				newSavepointStatus.State = SavepointStateSucceeded
-			case observed.savepoint.IsFailed():
-				var msg string
-				newSavepointStatus.State = SavepointStateFailed
-				if observed.savepoint.FailureCause.StackTrace != "" {
-					msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
-				} else if observed.savepointErr != nil {
-					msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
-				} else {
-					msg = "Failed to get triggered savepoint status"
+	if recorded.Savepoint != nil {
+		var newSavepointStatus = recorded.Savepoint.DeepCopy()
+		if recorded.Savepoint.State == v1beta1.SavepointStateProgressing {
+			if observed.savepoint != nil {
+				switch {
+				case observed.savepoint.IsSuccessful():
+					newSavepointStatus.State = v1beta1.SavepointStateSucceeded
+				case observed.savepoint.IsFailed():
+					var msg string
+					newSavepointStatus.State = v1beta1.SavepointStateFailed
+					if observed.savepoint.FailureCause.StackTrace != "" {
+						msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
+					} else if observed.savepointErr != nil {
+						msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
+					} else {
+						msg = "Failed to get triggered savepoint status"
+					}
+					if len(msg) > 1024 {
+						msg = msg[:1024] + "..."
+					}
+					newSavepointStatus.Message = msg
 				}
-				if len(msg) > 1024 {
-					msg = msg[:1024] + "..."
-				}
-				newSavepointStatus.Message = msg
 			}
 		}
-		if newSavepointStatus.State == SavepointStateProgressing {
+		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateProgressing {
 			if savepointTimeout(newSavepointStatus) {
-				newSavepointStatus.State = SavepointStateFailed
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
 				newSavepointStatus.Message = "Timed out taking savepoint"
 			} else if isJobStopped(recorded.Components.Job) {
 				newSavepointStatus.Message = "Flink job is stopped"
-				newSavepointStatus.State = SavepointStateFailed
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
 			} else if flinkJobID := updater.getFlinkJobID(); flinkJobID == nil ||
 				(recorded.Savepoint.TriggerID != "" && *flinkJobID != recorded.Savepoint.JobID) {
 				newSavepointStatus.Message = "There is no Flink job to create savepoint"
-				newSavepointStatus.State = SavepointStateFailed
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
 			}
 		}
+		status.Savepoint = newSavepointStatus
 	}
-	status.Savepoint = newSavepointStatus
 
 	// (Optional) Job.
 	var jobStopped = false
@@ -537,7 +539,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				controlStatus.Message = "Aborted job cancellation: Job is terminated."
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
-			} else if savepointStatus != nil && savepointStatus.State == SavepointStateFailed && savepointStatus.TriggerReason == SavepointTriggerReasonJobCancel {
+			} else if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateFailed && savepointStatus.TriggerReason == v1beta1.SavepointTriggerReasonJobCancel {
 				controlStatus.Message = "Aborted job cancellation: failed to create savepoint."
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
@@ -547,10 +549,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 		case v1beta1.ControlNameSavepoint:
 			if savepointStatus != nil {
-				if savepointStatus.State == SavepointStateSucceeded {
+				if savepointStatus.State == v1beta1.SavepointStateSucceeded {
 					controlStatus.State = v1beta1.ControlStateSucceeded
 					setTimestamp(&controlStatus.UpdateTime)
-				} else if savepointStatus.State == SavepointStateFailed || savepointStatus.State == SavepointStateTriggerFailed {
+				} else if savepointStatus.State == v1beta1.SavepointStateFailed || savepointStatus.State == v1beta1.SavepointStateTriggerFailed {
 					controlStatus.State = v1beta1.ControlStateFailed
 					setTimestamp(&controlStatus.UpdateTime)
 				}
@@ -582,7 +584,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					break
 				}
 				// Clear status for new savepoint
-				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing, TriggerReason: SavepointTriggerReasonUserRequested}
+				status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonUserRequested}
 				controlStatus = getNewUserControlStatus(userControl)
 			case v1beta1.ControlNameJobCancel:
 				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
@@ -590,7 +592,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					break
 				}
 				// New savepoint status for job-cancel
-				status.Savepoint = &v1beta1.SavepointStatus{State: SavepointStateProgressing, TriggerReason: SavepointTriggerReasonJobCancel}
+				status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonJobCancel}
 				controlStatus = getNewUserControlStatus(userControl)
 			}
 		}

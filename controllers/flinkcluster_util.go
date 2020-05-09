@@ -30,17 +30,7 @@ const (
 	ControlSavepointTriggerID = "SavepointTriggerID"
 	ControlJobID              = "jobID"
 	ControlRetries            = "retries"
-
-	ControlMaxRetries = "3"
-
-	SavepointStateProgressing   = "Progressing"
-	SavepointStateTriggerFailed = "TriggerFailed"
-	SavepointStateFailed        = "Failed"
-	SavepointStateSucceeded     = "Succeeded"
-
-	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonJobCancel     = "for job-cancel"
-	SavepointTriggerReasonScheduled     = "scheduled"
+	ControlMaxRetries         = "3"
 
 	SavepointTimeoutSec = 60
 )
@@ -172,9 +162,9 @@ func getNewSavepointStatus(jobID string, triggerID string, triggerReason string,
 	savepointStatus.TriggerReason = triggerReason
 	savepointStatus.Message = message
 	if triggerSuccess {
-		savepointStatus.State = SavepointStateProgressing
+		savepointStatus.State = v1beta1.SavepointStateProgressing
 	} else {
-		savepointStatus.State = SavepointStateTriggerFailed
+		savepointStatus.State = v1beta1.SavepointStateTriggerFailed
 	}
 	return savepointStatus
 }
@@ -221,22 +211,19 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 		msg = msg[:100] + "..."
 	}
 	switch status.State {
-	case SavepointStateTriggerFailed:
+	case v1beta1.SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
 		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, msg)
-	case SavepointStateProgressing:
-		if status.TriggerID == "" {
-			break
-		}
+	case v1beta1.SavepointStateProgressing:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
 		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)
-	case SavepointStateSucceeded:
+	case v1beta1.SavepointStateSucceeded:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointCreated"
 		eventMessage = fmt.Sprintf("Successfully savepoint created")
-	case SavepointStateFailed:
+	case v1beta1.SavepointStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
 		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", msg)
@@ -253,10 +240,6 @@ func isJobStopped(status *v1beta1.JobStatus) bool {
 
 func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
 	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
-}
-
-func isSavepointTriggered(status *v1beta1.SavepointStatus) bool {
-	return status != nil && status.State == SavepointStateProgressing && status.TriggerID != ""
 }
 
 func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {

@@ -84,6 +84,19 @@ const (
 	ControlStateFailed      = "Failed"
 )
 
+// Savepoint status
+const (
+	SavepointStateNotTriggered  = "NotTriggered"
+	SavepointStateProgressing   = "Progressing"
+	SavepointStateTriggerFailed = "TriggerFailed"
+	SavepointStateFailed        = "Failed"
+	SavepointStateSucceeded     = "Succeeded"
+
+	SavepointTriggerReasonUserRequested = "user requested"
+	SavepointTriggerReasonJobCancel     = "for job-cancel"
+	SavepointTriggerReasonScheduled     = "scheduled"
+)
+
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
 type ImageSpec struct {
 	// Flink image name.
