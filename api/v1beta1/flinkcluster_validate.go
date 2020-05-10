@@ -111,10 +111,10 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 			return fmt.Errorf(ControlChangeWarnMsg, ControlAnnotation)
 		}
 		switch newUserControl {
-		case ControlNameCancel:
+		case ControlNameJobCancel:
 			var jobStatus = old.Status.Components.Job
 			if old.Spec.Job == nil {
-				return fmt.Errorf(SessionClusterWarnMsg, ControlNameCancel, ControlAnnotation)
+				return fmt.Errorf(SessionClusterWarnMsg, ControlNameJobCancel, ControlAnnotation)
 			} else if jobStatus == nil || isJobTerminated(old.Spec.Job.RestartPolicy, jobStatus) {
 				return fmt.Errorf(InvalidJobStateForJobCancelMsg, ControlAnnotation)
 			}

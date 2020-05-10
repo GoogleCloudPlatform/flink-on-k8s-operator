@@ -30,20 +30,19 @@ const (
 	ControlSavepointTriggerID = "SavepointTriggerID"
 	ControlJobID              = "jobID"
 	ControlRetries            = "retries"
-
-	ControlMaxRetries = "3"
-
-	SavepointStateProgressing   = "Progressing"
-	SavepointStateTriggerFailed = "TriggerFailed"
-	SavepointStateFailed        = "Failed"
-	SavepointStateSucceeded     = "Succeeded"
-
-	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonJobCancel     = "for job-cancel"
-	SavepointTriggerReasonScheduled     = "scheduled"
+	ControlMaxRetries         = "3"
 
 	SavepointTimeoutSec = 60
 )
+
+type objectForPatch struct {
+	Metadata objectMetaForPatch `json:"metadata"`
+}
+
+// objectMetaForPatch define object meta struct for patch operation
+type objectMetaForPatch struct {
+	Annotations map[string]interface{} `json:"annotations"`
+}
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
 	return fmt.Sprintf(
@@ -163,9 +162,9 @@ func getNewSavepointStatus(jobID string, triggerID string, triggerReason string,
 	savepointStatus.TriggerReason = triggerReason
 	savepointStatus.Message = message
 	if triggerSuccess {
-		savepointStatus.State = SavepointStateProgressing
+		savepointStatus.State = v1beta1.SavepointStateInProgress
 	} else {
-		savepointStatus.State = SavepointStateTriggerFailed
+		savepointStatus.State = v1beta1.SavepointStateTriggerFailed
 	}
 	return savepointStatus
 }
@@ -181,6 +180,10 @@ func savepointTimeout(s *v1beta1.SavepointStatus) bool {
 }
 
 func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
+	var msg = status.Message
+	if len(msg) > 100 {
+		msg = msg[:100] + "..."
+	}
 	switch status.State {
 	case v1beta1.ControlStateProgressing:
 		eventType = corev1.EventTypeNormal
@@ -193,32 +196,37 @@ func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string
 	case v1beta1.ControlStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "ControlFailed"
-		eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+		if status.Message != "" {
+			eventMessage = fmt.Sprintf("User control %v failed: %v", status.Name, msg)
+		} else {
+			eventMessage = fmt.Sprintf("User control %v failed", status.Name)
+		}
 	}
 	return
 }
 
 func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventReason string, eventMessage string) {
+	var msg = status.Message
+	if len(msg) > 100 {
+		msg = msg[:100] + "..."
+	}
 	switch status.State {
-	case SavepointStateTriggerFailed:
+	case v1beta1.SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, status.Message)
-	case SavepointStateProgressing:
-		if status.TriggerID == "" {
-			break
-		}
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, msg)
+	case v1beta1.SavepointStateInProgress:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
 		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)
-	case SavepointStateSucceeded:
+	case v1beta1.SavepointStateSucceeded:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointCreated"
 		eventMessage = fmt.Sprintf("Successfully savepoint created")
-	case SavepointStateFailed:
+	case v1beta1.SavepointStateFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", status.Message)
+		eventMessage = fmt.Sprintf("Savepoint creation failed: %v", msg)
 	}
 	return
 }
@@ -232,4 +240,9 @@ func isJobStopped(status *v1beta1.JobStatus) bool {
 
 func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
 	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
+}
+
+func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
+	return controlStatus.State == v1beta1.ControlStateSucceeded ||
+		controlStatus.State == v1beta1.ControlStateFailed
 }

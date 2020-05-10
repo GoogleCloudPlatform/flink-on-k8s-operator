@@ -75,13 +75,26 @@ const (
 	ControlAnnotation = "flinkclusters.flinkoperator.k8s.io/user-control"
 
 	// control name
-	ControlNameCancel    = "job-cancel"
 	ControlNameSavepoint = "savepoint"
+	ControlNameJobCancel = "job-cancel"
 
 	// control state
 	ControlStateProgressing = "Progressing"
 	ControlStateSucceeded   = "Succeeded"
 	ControlStateFailed      = "Failed"
+)
+
+// Savepoint status
+const (
+	SavepointStateNotTriggered  = "NotTriggered"
+	SavepointStateInProgress    = "InProgress"
+	SavepointStateTriggerFailed = "TriggerFailed"
+	SavepointStateFailed        = "Failed"
+	SavepointStateSucceeded     = "Succeeded"
+
+	SavepointTriggerReasonUserRequested = "user requested"
+	SavepointTriggerReasonJobCancel     = "for job-cancel"
+	SavepointTriggerReasonScheduled     = "scheduled"
 )
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
