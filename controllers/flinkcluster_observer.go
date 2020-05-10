@@ -278,7 +278,7 @@ func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedCluster
 
 	// Get savepoint status in progress.
 	var savepointStatus = observed.cluster.Status.Savepoint
-	if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateProgressing {
+	if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateInProgress {
 		var flinkAPIBaseURL = getFlinkAPIBaseURL(observed.cluster)
 		var jobID = savepointStatus.JobID
 		var triggerID = savepointStatus.TriggerID

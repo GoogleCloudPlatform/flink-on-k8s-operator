@@ -379,7 +379,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	// update savepoint status if it is in progress
 	if recorded.Savepoint != nil {
 		var newSavepointStatus = recorded.Savepoint.DeepCopy()
-		if recorded.Savepoint.State == v1beta1.SavepointStateProgressing {
+		if recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
 			if observed.savepoint != nil {
 				switch {
 				case observed.savepoint.IsSuccessful():
@@ -401,7 +401,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				}
 			}
 		}
-		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateProgressing {
+		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateInProgress {
 			if savepointTimeout(newSavepointStatus) {
 				newSavepointStatus.State = v1beta1.SavepointStateFailed
 				newSavepointStatus.Message = "Timed out taking savepoint"
@@ -539,7 +539,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				controlStatus.Message = "Aborted job cancellation: Job is terminated."
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
-			} else if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateFailed && savepointStatus.TriggerReason == v1beta1.SavepointTriggerReasonJobCancel {
+			} else if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateFailed {
 				controlStatus.Message = "Aborted job cancellation: failed to create savepoint."
 				controlStatus.State = v1beta1.ControlStateFailed
 				setTimestamp(&controlStatus.UpdateTime)
@@ -567,6 +567,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 	} else {
 		// handle new user control
+		updater.log.Info("New user control requested: " + userControl)
 		if userControl != v1beta1.ControlNameJobCancel && userControl != v1beta1.ControlNameSavepoint {
 			if userControl != "" {
 				updater.log.Info(fmt.Sprintf(v1beta1.InvalidControlAnnMsg, v1beta1.ControlAnnotation, userControl))
@@ -591,8 +592,14 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForJobCancelMsg, v1beta1.ControlAnnotation))
 					break
 				}
-				// New savepoint status for job-cancel
-				status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonJobCancel}
+				// Savepoint for job-cancel
+				var observedSavepoint = observed.cluster.Status.Savepoint
+				if observedSavepoint == nil || observedSavepoint.State != v1beta1.SavepointStateInProgress {
+					updater.log.Info("There is no savepoint in progress. Trigger savepoint in reconciler.")
+					status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonJobCancel}
+				} else {
+					updater.log.Info("There is a savepoint in progress. Skip new savepoint.")
+				}
 				controlStatus = getNewUserControlStatus(userControl)
 			}
 		}

@@ -162,7 +162,7 @@ func getNewSavepointStatus(jobID string, triggerID string, triggerReason string,
 	savepointStatus.TriggerReason = triggerReason
 	savepointStatus.Message = message
 	if triggerSuccess {
-		savepointStatus.State = v1beta1.SavepointStateProgressing
+		savepointStatus.State = v1beta1.SavepointStateInProgress
 	} else {
 		savepointStatus.State = v1beta1.SavepointStateTriggerFailed
 	}
@@ -215,7 +215,7 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
 		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, msg)
-	case v1beta1.SavepointStateProgressing:
+	case v1beta1.SavepointStateInProgress:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
 		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)

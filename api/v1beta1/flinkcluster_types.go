@@ -87,7 +87,7 @@ const (
 // Savepoint status
 const (
 	SavepointStateNotTriggered  = "NotTriggered"
-	SavepointStateProgressing   = "Progressing"
+	SavepointStateInProgress    = "InProgress"
 	SavepointStateTriggerFailed = "TriggerFailed"
 	SavepointStateFailed        = "Failed"
 	SavepointStateSucceeded     = "Succeeded"
