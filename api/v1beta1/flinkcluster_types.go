@@ -58,15 +58,15 @@ const (
 )
 
 // JobRestartPolicy defines the restart policy when a job fails.
-type JobRestartPolicy = string
+type JobRestartPolicy string
 
 const (
 	// JobRestartPolicyNever - never restarts a failed job.
-	JobRestartPolicyNever = "Never"
+	JobRestartPolicyNever JobRestartPolicy = "Never"
 
 	// JobRestartPolicyFromSavepointOnFailure - restart the job from the latest
 	// savepoint if available, otherwise do not restart.
-	JobRestartPolicyFromSavepointOnFailure = "FromSavepointOnFailure"
+	JobRestartPolicyFromSavepointOnFailure JobRestartPolicy = "FromSavepointOnFailure"
 )
 
 // User requested control
@@ -540,9 +540,9 @@ type FlinkClusterStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // FlinkCluster is the Schema for the flinkclusters API
-// +kubebuilder:subresource:status
 type FlinkCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
