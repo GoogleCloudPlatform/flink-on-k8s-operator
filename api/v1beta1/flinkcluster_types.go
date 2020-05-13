@@ -110,6 +110,25 @@ type ImageSpec struct {
 	PullSecrets []corev1.LocalObjectReference `json:"pullSecrets,omitempty"`
 }
 
+// AdditionalPort defines the port properties that the user wants to add.
+type AdditionalPort struct {
+	// If specified, this must be an IANA_SVC_NAME and unique within the pod. Each
+	// named port in a pod must have a unique name. Name for the port that can be
+	// referred to by services.
+	Name string `json:"name,omitempty"`
+
+	// Number of port to expose on the pod's IP address.
+	// This must be a valid port number, 0 < x < 65536.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	ContainerPort int32 `json:"containerPort"`
+
+	// Protocol for port. Must be UDP, TCP, or SCTP.
+	// Defaults to "TCP".
+	// +kubebuilder:validation:Enum=TCP;UDP;SCTP
+	Protocol string `json:"protocol,omitempty"`
+}
+
 // JobManagerPorts defines ports of JobManager.
 type JobManagerPorts struct {
 	// RPC port, default: 6123.
@@ -153,6 +172,12 @@ type JobManagerSpec struct {
 
 	// Ports.
 	Ports JobManagerPorts `json:"ports,omitempty"`
+
+	// +patchMergeKey=containerPort
+	// +patchStrategy=merge
+
+	// Additional ports.
+	AdditionalPorts []AdditionalPort `json:"additionalPorts,omitempty"`
 
 	// Compute resources required by each JobManager container.
 	// If omitted, a default value will be used.
@@ -205,6 +230,12 @@ type TaskManagerSpec struct {
 
 	// Ports.
 	Ports TaskManagerPorts `json:"ports,omitempty"`
+
+	// +patchMergeKey=containerPort
+	// +patchStrategy=merge
+
+	// Additional ports.
+	AdditionalPorts []AdditionalPort `json:"additionalPorts,omitempty"`
 
 	// Compute resources required by each TaskManager container.
 	// If omitted, a default value will be used.
@@ -540,9 +571,9 @@ type FlinkClusterStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // FlinkCluster is the Schema for the flinkclusters API
-// +kubebuilder:subresource:status
 type FlinkCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
