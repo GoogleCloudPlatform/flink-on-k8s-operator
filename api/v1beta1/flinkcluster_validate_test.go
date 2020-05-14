@@ -735,3 +735,46 @@ func TestUserControlInvalid(t *testing.T) {
 	var expectedErr = "invalid value for annotation key: flinkclusters.flinkoperator.k8s.io/user-control, value: cancel, available values: savepoint, job-cancel"
 	assert.Equal(t, err.Error(), expectedErr)
 }
+
+func TestDupPort(t *testing.T) {
+	var jmReplicas int32 = 1
+	var rpcPort int32 = 8001
+	var blobPort int32 = 8002
+	var queryPort int32 = 8003
+	var uiPort int32 = 8004
+	var flinkPorts = JobManagerPorts{
+		RPC:   &rpcPort,
+		Blob:  &blobPort,
+		Query: &queryPort,
+		UI:    &uiPort,
+	}
+	var jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
+		ExtraPorts: []NamedPort{
+			{Name: "rpc", ContainerPort: 9001}}}
+	var err = validator.validateJobManager(&jm)
+	var expectedErr = "duplicate port name rpc in jobmanager, each port name of ports and extraPorts must be unique"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
+		ExtraPorts: []NamedPort{
+			{Name: "monitoring", ContainerPort: 9249},
+			{Name: "monitoring", ContainerPort: 9259}}}
+	err = validator.validateJobManager(&jm)
+	expectedErr = "duplicate port name monitoring in jobmanager, each port name of ports and extraPorts must be unique"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
+		ExtraPorts: []NamedPort{
+			{Name: "rpc2", ContainerPort: 8001}}}
+	err = validator.validateJobManager(&jm)
+	expectedErr = "duplicate containerPort 8001 in jobmanager, each port number of ports and extraPorts must be unique"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
+		ExtraPorts: []NamedPort{
+			{Name: "monitoring", ContainerPort: 9249},
+			{Name: "prometheus", ContainerPort: 9249}}}
+	err = validator.validateJobManager(&jm)
+	expectedErr = "duplicate containerPort 9249 in jobmanager, each port number of ports and extraPorts must be unique"
+	assert.Equal(t, err.Error(), expectedErr)
+}

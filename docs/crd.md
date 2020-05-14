@@ -22,6 +22,7 @@ FlinkCluster
             |__ blob
             |__ query
             |__ ui
+        |__ extraPorts
         |__ ingress
             |__ hostFormat
             |__ annotations
@@ -40,6 +41,7 @@ FlinkCluster
             |__ data
             |__ rpc
             |__ query
+        |__ extraPorts
         |__ resources
         |__ memoryOffHeapRatio
         |__ memoryOffHeapMin
@@ -123,6 +125,9 @@ FlinkCluster
         * **blob** (optional): Blob port, default: 6124.
         * **query** (optional): Query port, default: 6125.
         * **ui** (optional): UI port, default: 8081.
+      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, 
+        JMX and so on. Each port number and name must be unique among ports and extraPorts. ContainerPort is required
+        and name and protocol are optional.
       * **ingress** (optional): Provide external access to JobManager UI/API.
         * **hostFormat** (optional): Host format for generating URLs. ex) {{$clusterName}}.example.com
         * **annotations** (optional): Annotations for ingress configuration.
@@ -154,6 +159,9 @@ FlinkCluster
         * **data** (optional): Data port.
         * **rpc** (optional): RPC port.
         * **query** (optional): Query port.
+      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, 
+        JMX and so on. Each port number and name must be unique among ports and extraPorts. ContainerPort is required
+        and name and protocol are optional.
       * **resources** (optional): Compute resources required by JobManager
         container. If omitted, a default value will be used.
         See [more info](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/) about

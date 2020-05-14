@@ -2738,6 +2738,36 @@ spec:
                 accessScope:
                   description: Access scope, enum("Cluster", "VPC", "External").
                   type: string
+                extraPorts:
+                  description: 'Extra ports to be exposed. For example, Flink metrics
+                    reporter ports: Prometheus, JMX and so on.'
+                  items:
+                    properties:
+                      containerPort:
+                        description: Number of port to expose on the pod's IP address.
+                          This must be a valid port number, 0 < x < 65536.
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
+                      name:
+                        description: If specified, this must be an IANA_SVC_NAME and
+                          unique within the pod. Each named port in a pod must have
+                          a unique name. Name for the port that can be referred to
+                          by services.
+                        type: string
+                      protocol:
+                        description: Protocol for port. Must be UDP, TCP, or SCTP.
+                          Defaults to "TCP".
+                        enum:
+                        - TCP
+                        - UDP
+                        - SCTP
+                        type: string
+                    required:
+                    - containerPort
+                    type: object
+                  type: array
                 ingress:
                   description: (Optional) Ingress.
                   properties:
@@ -4932,6 +4962,36 @@ spec:
             taskManager:
               description: Flink TaskManager spec.
               properties:
+                extraPorts:
+                  description: 'Extra ports to be exposed. For example, Flink metrics
+                    reporter ports: Prometheus, JMX and so on.'
+                  items:
+                    properties:
+                      containerPort:
+                        description: Number of port to expose on the pod's IP address.
+                          This must be a valid port number, 0 < x < 65536.
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
+                      name:
+                        description: If specified, this must be an IANA_SVC_NAME and
+                          unique within the pod. Each named port in a pod must have
+                          a unique name. Name for the port that can be referred to
+                          by services.
+                        type: string
+                      protocol:
+                        description: Protocol for port. Must be UDP, TCP, or SCTP.
+                          Defaults to "TCP".
+                        enum:
+                        - TCP
+                        - UDP
+                        - SCTP
+                        type: string
+                    required:
+                    - containerPort
+                    type: object
+                  type: array
                 memoryOffHeapMin:
                   description: 'Minimum amount of off-heap memory in containers, as
                     a safety margin to avoid OOM kill, default: 600M You can express

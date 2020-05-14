@@ -100,6 +100,10 @@ func getDesiredJobManagerDeployment(
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
+	var ports = []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort}
+	for _, port := range jobManagerSpec.ExtraPorts {
+		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
+	}
 	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
@@ -189,13 +193,12 @@ func getDesiredJobManagerDeployment(
 		Image:           imageSpec.Name,
 		ImagePullPolicy: imageSpec.PullPolicy,
 		Args:            []string{"jobmanager"},
-		Ports: []corev1.ContainerPort{
-			rpcPort, blobPort, queryPort, uiPort},
-		LivenessProbe:  &livenessProbe,
-		ReadinessProbe: &readinessProbe,
-		Resources:      jobManagerSpec.Resources,
-		Env:            envVars,
-		VolumeMounts:   volumeMounts,
+		Ports:           ports,
+		LivenessProbe:   &livenessProbe,
+		ReadinessProbe:  &readinessProbe,
+		Resources:       jobManagerSpec.Resources,
+		Env:             envVars,
+		VolumeMounts:    volumeMounts,
 	}}
 
 	containers = append(containers, jobManagerSpec.Sidecars...)
@@ -386,6 +389,10 @@ func getDesiredTaskManagerDeployment(
 	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
+	var ports = []corev1.ContainerPort{dataPort, rpcPort, queryPort}
+	for _, port := range taskManagerSpec.ExtraPorts {
+		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
+	}
 	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
 	var labels = map[string]string{
 		"cluster":   clusterName,
@@ -476,13 +483,12 @@ func getDesiredTaskManagerDeployment(
 		Image:           imageSpec.Name,
 		ImagePullPolicy: imageSpec.PullPolicy,
 		Args:            []string{"taskmanager"},
-		Ports: []corev1.ContainerPort{
-			dataPort, rpcPort, queryPort},
-		LivenessProbe:  &livenessProbe,
-		ReadinessProbe: &readinessProbe,
-		Resources:      taskManagerSpec.Resources,
-		Env:            envVars,
-		VolumeMounts:   volumeMounts,
+		Ports:           ports,
+		LivenessProbe:   &livenessProbe,
+		ReadinessProbe:  &readinessProbe,
+		Resources:       taskManagerSpec.Resources,
+		Env:             envVars,
+		VolumeMounts:    volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var podSpec = corev1.PodSpec{
