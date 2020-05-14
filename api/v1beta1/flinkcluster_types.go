@@ -110,8 +110,8 @@ type ImageSpec struct {
 	PullSecrets []corev1.LocalObjectReference `json:"pullSecrets,omitempty"`
 }
 
-// AdditionalPort defines the port properties that user wants to add.
-type AdditionalPort struct {
+// NamedPort defines the container port properties.
+type NamedPort struct {
 	// If specified, this must be an IANA_SVC_NAME and unique within the pod. Each
 	// named port in a pod must have a unique name. Name for the port that can be
 	// referred to by services.
@@ -173,11 +173,8 @@ type JobManagerSpec struct {
 	// Ports.
 	Ports JobManagerPorts `json:"ports,omitempty"`
 
-	// +patchMergeKey=containerPort
-	// +patchStrategy=merge
-
-	// Additional ports.
-	AdditionalPorts []AdditionalPort `json:"additionalPorts,omitempty"`
+	// Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, JMX and so on.
+	ExtraPorts []NamedPort `json:"extraPorts,omitempty"`
 
 	// Compute resources required by each JobManager container.
 	// If omitted, a default value will be used.
@@ -231,11 +228,8 @@ type TaskManagerSpec struct {
 	// Ports.
 	Ports TaskManagerPorts `json:"ports,omitempty"`
 
-	// +patchMergeKey=containerPort
-	// +patchStrategy=merge
-
-	// Additional ports.
-	AdditionalPorts []AdditionalPort `json:"additionalPorts,omitempty"`
+	// Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, JMX and so on.
+	ExtraPorts []NamedPort `json:"extraPorts,omitempty"`
 
 	// Compute resources required by each TaskManager container.
 	// If omitted, a default value will be used.

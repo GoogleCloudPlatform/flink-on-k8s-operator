@@ -101,7 +101,7 @@ func getDesiredJobManagerDeployment(
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *jobManagerSpec.Ports.Query}
 	var uiPort = corev1.ContainerPort{Name: "ui", ContainerPort: *jobManagerSpec.Ports.UI}
 	var ports = []corev1.ContainerPort{rpcPort, blobPort, queryPort, uiPort}
-	for _, port := range jobManagerSpec.AdditionalPorts {
+	for _, port := range jobManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
 	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
@@ -390,7 +390,7 @@ func getDesiredTaskManagerDeployment(
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
 	var queryPort = corev1.ContainerPort{Name: "query", ContainerPort: *taskManagerSpec.Ports.Query}
 	var ports = []corev1.ContainerPort{dataPort, rpcPort, queryPort}
-	for _, port := range taskManagerSpec.AdditionalPorts {
+	for _, port := range taskManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
 	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)

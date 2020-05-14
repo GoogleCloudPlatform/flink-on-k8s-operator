@@ -749,32 +749,32 @@ func TestDupPort(t *testing.T) {
 		UI:    &uiPort,
 	}
 	var jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
-		AdditionalPorts: []AdditionalPort{
+		ExtraPorts: []NamedPort{
 			{Name: "rpc", ContainerPort: 9001}}}
 	var err = validator.validateJobManager(&jm)
-	var expectedErr = "duplicate port name rpc in jobmanager, each port name of ports and additionalPorts should be unique"
+	var expectedErr = "duplicate port name rpc in jobmanager, each port name of ports and extraPorts must be unique"
 	assert.Equal(t, err.Error(), expectedErr)
 
 	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
-		AdditionalPorts: []AdditionalPort{
+		ExtraPorts: []NamedPort{
 			{Name: "monitoring", ContainerPort: 9249},
 			{Name: "monitoring", ContainerPort: 9259}}}
 	err = validator.validateJobManager(&jm)
-	expectedErr = "duplicate port name monitoring in jobmanager, each port name of ports and additionalPorts should be unique"
+	expectedErr = "duplicate port name monitoring in jobmanager, each port name of ports and extraPorts must be unique"
 	assert.Equal(t, err.Error(), expectedErr)
 
 	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
-		AdditionalPorts: []AdditionalPort{
+		ExtraPorts: []NamedPort{
 			{Name: "rpc2", ContainerPort: 8001}}}
 	err = validator.validateJobManager(&jm)
-	expectedErr = "duplicate containerPort 8001 in jobmanager, each port number of ports and additionalPorts should be unique"
+	expectedErr = "duplicate containerPort 8001 in jobmanager, each port number of ports and extraPorts must be unique"
 	assert.Equal(t, err.Error(), expectedErr)
 
 	jm = JobManagerSpec{Replicas: &jmReplicas, AccessScope: AccessScopeVPC, Ports: flinkPorts,
-		AdditionalPorts: []AdditionalPort{
+		ExtraPorts: []NamedPort{
 			{Name: "monitoring", ContainerPort: 9249},
 			{Name: "prometheus", ContainerPort: 9249}}}
 	err = validator.validateJobManager(&jm)
-	expectedErr = "duplicate containerPort 9249 in jobmanager, each port number of ports and additionalPorts should be unique"
+	expectedErr = "duplicate containerPort 9249 in jobmanager, each port number of ports and extraPorts must be unique"
 	assert.Equal(t, err.Error(), expectedErr)
 }

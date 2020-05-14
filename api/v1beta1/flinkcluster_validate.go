@@ -280,14 +280,14 @@ func (v *Validator) validateJobManager(jmSpec *JobManagerSpec) error {
 	if err != nil {
 		return err
 	}
-	var ports = []AdditionalPort{
+	var ports = []NamedPort{
 		{Name: "rpc", ContainerPort: *jmSpec.Ports.RPC},
 		{Name: "blob", ContainerPort: *jmSpec.Ports.Blob},
 		{Name: "query", ContainerPort: *jmSpec.Ports.Query},
 		{Name: "ui", ContainerPort: *jmSpec.Ports.UI},
 	}
-	ports = append(ports, jmSpec.AdditionalPorts...)
-	err = v.validateDupPorts(ports, "jobmanager")
+	ports = append(ports, jmSpec.ExtraPorts...)
+	err = v.checkDupPorts(ports, "jobmanager")
 	if err != nil {
 		return err
 	}
@@ -327,13 +327,13 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 	if err != nil {
 		return err
 	}
-	var ports = []AdditionalPort{
+	var ports = []NamedPort{
 		{Name: "rpc", ContainerPort: *tmSpec.Ports.RPC},
 		{Name: "data", ContainerPort: *tmSpec.Ports.Data},
 		{Name: "query", ContainerPort: *tmSpec.Ports.Query},
 	}
-	ports = append(ports, tmSpec.AdditionalPorts...)
-	err = v.validateDupPorts(ports, "taskmanager")
+	ports = append(ports, tmSpec.ExtraPorts...)
+	err = v.checkDupPorts(ports, "taskmanager")
 	if err != nil {
 		return err
 	}
@@ -413,7 +413,8 @@ func (v *Validator) validatePort(
 	return nil
 }
 
-func (v *Validator) validateDupPorts(ports []AdditionalPort, component string) error {
+// Check duplicate name and number in NamedPort array.
+func (v *Validator) checkDupPorts(ports []NamedPort, component string) error {
 	if len(ports) == 0 {
 		return nil
 	}
@@ -421,12 +422,12 @@ func (v *Validator) validateDupPorts(ports []AdditionalPort, component string) e
 	var portNumberSet = make(map[int32]bool)
 	for _, port := range ports {
 		if portNumberSet[port.ContainerPort] {
-			return fmt.Errorf("duplicate containerPort %v in %v, each port number of ports and additionalPorts should be unique", port.ContainerPort, component)
+			return fmt.Errorf("duplicate containerPort %v in %v, each port number of ports and extraPorts must be unique", port.ContainerPort, component)
 		}
 		portNumberSet[port.ContainerPort] = true
 		if port.Name != "" {
 			if portNameSet[port.Name] {
-				return fmt.Errorf("duplicate port name %v in %v, each port name of ports and additionalPorts should be unique", port.Name, component)
+				return fmt.Errorf("duplicate port name %v in %v, each port name of ports and extraPorts must be unique", port.Name, component)
 			}
 			portNameSet[port.Name] = true
 		}

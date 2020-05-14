@@ -2738,8 +2738,9 @@ spec:
                 accessScope:
                   description: Access scope, enum("Cluster", "VPC", "External").
                   type: string
-                additionalPorts:
-                  description: Additional ports.
+                extraPorts:
+                  description: 'Extra ports to be exposed. For example, Flink metrics
+                    reporter ports: Prometheus, JMX and so on.'
                   items:
                     properties:
                       containerPort:
@@ -4961,8 +4962,9 @@ spec:
             taskManager:
               description: Flink TaskManager spec.
               properties:
-                additionalPorts:
-                  description: Additional ports.
+                extraPorts:
+                  description: 'Extra ports to be exposed. For example, Flink metrics
+                    reporter ports: Prometheus, JMX and so on.'
                   items:
                     properties:
                       containerPort:
