@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flink-pod-monitor
+  # Attach labels configured in prometheus.prometheusSpec.podMonitorSelector
+  labels:
+    release: prom
+spec:
+  podTargetLabels:
+    - cluster
+    - component
+  selector:
+    matchLabels:
+      app: flink
+  podMetricsEndpoints:
+    - port: prom
