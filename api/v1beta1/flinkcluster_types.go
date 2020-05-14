@@ -110,7 +110,7 @@ type ImageSpec struct {
 	PullSecrets []corev1.LocalObjectReference `json:"pullSecrets,omitempty"`
 }
 
-// AdditionalPort defines the port properties that the user wants to add.
+// AdditionalPort defines the port properties that user wants to add.
 type AdditionalPort struct {
 	// If specified, this must be an IANA_SVC_NAME and unique within the pod. Each
 	// named port in a pod must have a unique name. Name for the port that can be
