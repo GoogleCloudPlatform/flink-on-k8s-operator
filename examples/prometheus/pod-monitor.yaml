@@ -12,5 +12,6 @@ spec:
   selector:
     matchLabels:
       app: flink
+  # Specify the port name of the exposed metric port
   podMetricsEndpoints:
     - port: prom
