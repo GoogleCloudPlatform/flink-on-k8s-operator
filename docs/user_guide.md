@@ -397,7 +397,7 @@ kubectl apply -f examples/prometheus/pod-monitor.yaml
 
 If the service discovery configuration is generated and registered successfully by the Promethues operator,
 you can see the item named "flink-pod-monitor" in the "Service Discovery" section of your Prometheus Web UI.
-(http://<Your-Prometheus-Web-UI-base-URL>/service-discovery)
+(`http://<Your-Prometheus-Web-UI-base-URL>/service-discovery`)
 
 ### Manage savepoints
 
