@@ -378,6 +378,27 @@ Status:
     Update Time:     2020-04-03T10:04:50+09:00
 ```
 
+### Monitoring with Prometheus
+
+Flink cluster can be monitored with Prometheus in various ways. Here, we introduce the method using PodMonitor
+custom resource of [Prometheus operator](https://github.com/coreos/prometheus-operator).
+First, create a FlinkCluster with the metric exporter activated and its port exposed.
+Next, create a PodMonitor which will be used to generate service discovery configurations and register it to Prometheus.
+Exposed Flink metric port must be set as the endpoint of the PodMonitor. See the
+[Prometheus API docs](https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md) for details.
+
+You can create Prometheus metric exporter activated [FlinkCluster](../examples/prometheus/flink_metric_cluster.yaml)
+and [PodMonitor](../examples/prometheus/pod-monitor.yaml) like this.
+
+```bash
+kubectl apply -f examples/prometheus/flink_metric_cluster.yaml
+kubectl apply -f examples/prometheus/pod-monitor.yaml
+```
+
+If the service discovery configuration is generated and registered successfully by the Promethues operator,
+you can see the item named "flink-pod-monitor" in the "Service Discovery" section of your Prometheus Web UI.
+(http://<Your-Prometheus-Web-UI-base-URL>/service-discovery)
+
 ### Manage savepoints
 
 See this [doc](./savepoints_guide.md) on how to manage savepoints with the operator.

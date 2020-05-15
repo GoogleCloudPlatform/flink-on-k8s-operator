@@ -1,0 +1,34 @@
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata:
+  name: flink-metric
+spec:
+  image:
+    name: flink:1.9.3
+  # Activate metric exporter
+  envVars:
+    - name: HADOOP_CLASSPATH
+      value: /opt/flink/opt/flink-metrics-prometheus-1.9.3.jar
+  jobManager:
+    # Expose the metric port
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+    resources:
+      limits:
+        memory: "1024Mi"
+        cpu: "200m"
+  taskManager:
+    replicas: 2
+    # Expose the metric port
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+    resources:
+      limits:
+        memory: "1024Mi"
+        cpu: "200m"
+  flinkProperties:
+    taskmanager.numberOfTaskSlots: "1"
+    # Activate metric exporter
+    metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
