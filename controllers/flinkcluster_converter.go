@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"math"
 	"regexp"
 	"sort"
@@ -605,13 +606,15 @@ func getDesiredJob(
 	var jobManagerSpec = clusterSpec.JobManager
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
+	var revision = flinkCluster.Status.UpdateRevision
 	var jobName = getJobName(clusterName)
 	var jobManagerServiceName = clusterName + "-jobmanager"
 	var jobManagerAddress = fmt.Sprintf(
 		"%s:%d", jobManagerServiceName, *jobManagerSpec.Ports.UI)
 	var labels = map[string]string{
-		"cluster": clusterName,
-		"app":     "flink",
+		"cluster":                           clusterName,
+		"app":                               "flink",
+		history.ControllerRevisionHashLabel: revision,
 	}
 	var jobArgs = []string{"bash", "/opt/flink-operator/submit-job.sh"}
 	jobArgs = append(jobArgs, "--jobmanager", jobManagerAddress)
@@ -619,8 +622,7 @@ func getDesiredJob(
 		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
 	}
 
-	var jobStatus = flinkCluster.Status.Components.Job
-	var fromSavepoint = convertFromSavepoint(jobSpec, jobStatus)
+	var fromSavepoint = convertFromSavepoint(jobSpec, &flinkCluster.Status)
 	if fromSavepoint != nil {
 		jobArgs = append(jobArgs, "--fromSavepoint", *fromSavepoint)
 	}
@@ -739,8 +741,9 @@ func getDesiredJob(
 }
 
 func convertFromSavepoint(
-	jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) *string {
-	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
+	jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
+	var jobStatus = clusterStatus.Components.Job
+	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) || shouldUpdateJob(clusterStatus) {
 		return &jobStatus.SavepointLocation
 	}
 	return jobSpec.FromSavepoint

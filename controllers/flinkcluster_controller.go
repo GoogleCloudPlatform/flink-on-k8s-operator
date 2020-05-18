@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,6 +31,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// controllerKind contains the schema.GroupVersionKind for this controller type.
+var controllerKind = v1beta1.GroupVersion.WithKind("FlinkCluster")
 
 // FlinkClusterReconciler reconciles a FlinkCluster object
 type FlinkClusterReconciler struct {
@@ -90,14 +94,15 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 // FlinkClusterHandler holds the context and state for a
 // reconcile request.
 type FlinkClusterHandler struct {
-	k8sClient   client.Client
-	flinkClient flinkclient.FlinkClient
-	request     ctrl.Request
-	context     context.Context
-	log         logr.Logger
-	recorder    record.EventRecorder
-	observed    ObservedClusterState
-	desired     DesiredClusterState
+	k8sClient         client.Client
+	flinkClient       flinkclient.FlinkClient
+	request           ctrl.Request
+	context           context.Context
+	log               logr.Logger
+	recorder          record.EventRecorder
+	observed          ObservedClusterState
+	desired           DesiredClusterState
+	controllerHistory history.Interface
 }
 
 func (handler *FlinkClusterHandler) reconcile(
@@ -111,6 +116,9 @@ func (handler *FlinkClusterHandler) reconcile(
 	var statusChanged bool
 	var err error
 
+	// History interface
+	var history = history.NewHistory(k8sClient, context)
+
 	log.Info("============================================================")
 	log.Info("---------- 1. Observe the current state ----------")
 
@@ -120,6 +128,7 @@ func (handler *FlinkClusterHandler) reconcile(
 		request:     request,
 		context:     context,
 		log:         log,
+		history:     history,
 	}
 	err = observer.observe(observed)
 	if err != nil {
@@ -135,6 +144,7 @@ func (handler *FlinkClusterHandler) reconcile(
 		log:       handler.log,
 		recorder:  handler.recorder,
 		observed:  handler.observed,
+		history:   history,
 	}
 	statusChanged, err = updater.updateStatusIfChanged()
 	if err != nil {

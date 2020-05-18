@@ -23,10 +23,12 @@ import (
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,11 +41,13 @@ type ClusterStateObserver struct {
 	request     ctrl.Request
 	context     context.Context
 	log         logr.Logger
+	history     history.Interface
 }
 
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
 	cluster            *v1beta1.FlinkCluster
+	revisions          []*appsv1.ControllerRevision
 	configMap          *corev1.ConfigMap
 	jmDeployment       *appsv1.Deployment
 	jmService          *corev1.Service
@@ -77,6 +81,21 @@ func (observer *ClusterStateObserver) observe(
 	} else {
 		log.Info("Observed cluster", "cluster", *observedCluster)
 		observed.cluster = observedCluster
+	}
+
+	// Revisions.
+	var observedRevisions []*appsv1.ControllerRevision
+	err = observer.observeRevisions(&observedRevisions, observedCluster)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get the controllerRevision resource list")
+			return err
+		}
+		log.Info("Observed controllerRevision", "controllerRevision", "nil")
+		observedCluster = nil
+	} else {
+		log.Info("Observed controllerRevision", "controllerRevision", observedRevisions)
+		observed.revisions = observedRevisions
 	}
 
 	// ConfigMap.
@@ -303,6 +322,19 @@ func (observer *ClusterStateObserver) observeCluster(
 	cluster *v1beta1.FlinkCluster) error {
 	return observer.k8sClient.Get(
 		observer.context, observer.request.NamespacedName, cluster)
+}
+
+func (observer *ClusterStateObserver) observeRevisions(
+	revisions *[]*appsv1.ControllerRevision,
+	cluster *v1beta1.FlinkCluster) error {
+	if cluster == nil {
+		return nil
+	}
+	selector := labels.SelectorFromSet(labels.Set(map[string]string{history.ControllerRevisionManagedByLabel: cluster.GetName()}))
+	controllerRevisions, err := observer.history.ListControllerRevisions(cluster, selector)
+	*revisions = append(*revisions, controllerRevisions...)
+
+	return err
 }
 
 func (observer *ClusterStateObserver) observeConfigMap(

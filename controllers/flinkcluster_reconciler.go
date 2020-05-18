@@ -373,12 +373,12 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	}
 
 	// Update or restart
-	var jobID = reconciler.getFlinkJobID()
 	if desiredJob != nil && observedJob != nil {
+		var jobID = reconciler.getFlinkJobID()
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var observedJobStatus = observed.cluster.Status.Components.Job
 
-		if shouldRestartJob(restartPolicy, observedJobStatus) {
+		if shouldRestartJob(restartPolicy, observedJobStatus) || shouldUpdateJob(&observed.cluster.Status) {
 			var err = reconciler.restartJob()
 			if err != nil {
 				return requeueResult, err
@@ -409,6 +409,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		// case 2) When savepoint was skipped, continue to delete step immediately.
 		//
 		// If savepoint or cancellation was failed, the control state is fallen to the failed in the updater.
+		var jobID = reconciler.getFlinkJobID()
 		log.Info("Cancelling job", "jobID", jobID)
 		if len(jobID) > 0 && len(observed.flinkRunningJobIDs) == 1 {
 			var savepointStatus, err = reconciler.cancelFlinkJobAsync(jobID, true /* takeSavepoint */)
@@ -594,7 +595,6 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var log = reconciler.log
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
-	var controlStatus = reconciler.observed.cluster.Status.Control
 	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
 
 	if !reconciler.canTakeSavepoint() {
@@ -609,15 +609,14 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	//
 	// Savepoint retry by annotation is possible because the annotations would be cleared
 	// when the last savepoint was finished and user can attach the annotation again.
-	if controlStatus != nil &&
-		controlStatus.Name == v1beta1.ControlNameSavepoint &&
-		controlStatus.State == v1beta1.ControlStateProgressing {
-		log.Info(
-			"Savepoint is requested",
-			"control name", controlStatus.Name,
-			"control state", controlStatus.State)
-		return true, v1beta1.SavepointTriggerReasonUserRequested
-	} else if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration && // TODO: spec.job.savepointGeneration will be deprecated
+
+	// Savepoint can be triggered in updater for user request, job-cancel and job update
+	if savepointStatus != nil && savepointStatus.State == v1beta1.SavepointStateNotTriggered {
+		return true, savepointStatus.TriggerReason
+	}
+
+	// TODO: spec.job.savepointGeneration will be deprecated
+	if jobSpec.SavepointGeneration > jobStatus.SavepointGeneration &&
 		(savepointStatus != nil && savepointStatus.State != v1beta1.SavepointStateFailed && savepointStatus.State != v1beta1.SavepointStateTriggerFailed) {
 		log.Info(
 			"Savepoint is requested",

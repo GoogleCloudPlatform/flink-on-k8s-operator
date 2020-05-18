@@ -4959,6 +4959,10 @@ spec:
               required:
               - accessScope
               type: object
+            revisionHistoryLimit:
+              description: Revision history limit to keep.
+              format: int32
+              type: integer
             taskManager:
               description: Flink TaskManager spec.
               properties:
@@ -7169,6 +7173,12 @@ spec:
           type: object
         status:
           properties:
+            collisionCount:
+              description: collisionCount is the count of hash collisions for the
+                FlinkCluster. The controller uses this field as a collision avoidance
+                mechanism when it needs to create the name for the newest ControllerRevision.
+              format: int32
+              type: integer
             components:
               description: The status of the components.
               properties:
@@ -7320,9 +7330,18 @@ spec:
               - state
               - updateTime
               type: object
+            currentRevision:
+              description: CurrentRevision indicates the version of FlinkCluster.
+              type: string
             lastUpdateTime:
               description: Last update timestamp for this status.
               type: string
+            observedGeneration:
+              description: observedGeneration is the most recent generation observed
+                for this FlinkCluster. It corresponds to the FlinkCluster's generation,
+                which is updated on mutation by the API Server.
+              format: int64
+              type: integer
             savepoint:
               description: The status of savepoint progress
               properties:
@@ -7349,6 +7368,9 @@ spec:
               type: object
             state:
               description: The overall state of the Flink cluster.
+              type: string
+            updateRevision:
+              description: UpdateRevision indicates the version of FlinkCluster updating.
               type: string
           required:
           - state

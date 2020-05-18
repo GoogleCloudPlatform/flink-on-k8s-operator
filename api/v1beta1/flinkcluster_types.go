@@ -93,8 +93,9 @@ const (
 	SavepointStateSucceeded     = "Succeeded"
 
 	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonJobCancel     = "for job-cancel"
 	SavepointTriggerReasonScheduled     = "scheduled"
+	SavepointTriggerReasonJobCancel     = "for job-cancel"
+	SavepointTriggerReasonJobUpdate     = "for job update"
 )
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
@@ -383,6 +384,9 @@ type FlinkClusterSpec struct {
 
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
+
+	// Revision history limit to keep.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // HadoopConfig defines configs for Hadoop.
@@ -559,6 +563,21 @@ type FlinkClusterStatus struct {
 
 	// The status of savepoint progress
 	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
+
+	// CurrentRevision indicates the version of FlinkCluster.
+	CurrentRevision string `json:"currentRevision,omitempty"`
+
+	// UpdateRevision indicates the version of FlinkCluster updating.
+	UpdateRevision string `json:"updateRevision,omitempty"`
+
+	// observedGeneration is the most recent generation observed for this FlinkCluster. It corresponds to the
+	// FlinkCluster's generation, which is updated on mutation by the API Server.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// collisionCount is the count of hash collisions for the FlinkCluster. The controller
+	// uses this field as a collision avoidance mechanism when it needs to create the name for the
+	// newest ControllerRevision.
+	CollisionCount *int32 `json:"collisionCount,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`

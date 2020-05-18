@@ -17,8 +17,14 @@ limitations under the License.
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
 	"time"
 
@@ -119,6 +125,11 @@ func shouldRestartJob(
 		len(jobStatus.SavepointLocation) > 0
 }
 
+func shouldUpdateJob(clusterStatus *v1beta1.FlinkClusterStatus) bool {
+	return isJobUpdating(clusterStatus) &&
+		clusterStatus.Savepoint.State == v1beta1.SavepointStateSucceeded
+}
+
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 	var jobArgs = jobSpec.Template.Spec.Containers[0].Args
 	for i, arg := range jobArgs {
@@ -127,6 +138,56 @@ func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 		}
 	}
 	return ""
+}
+
+func newRevision(cluster *v1beta1.FlinkCluster, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
+	patch, err := getPatch(cluster)
+	if err != nil {
+		return nil, err
+	}
+	cr, err := history.NewControllerRevision(cluster,
+		controllerKind,
+		cluster.ObjectMeta.Labels,
+		runtime.RawExtension{Raw: patch},
+		revision,
+		collisionCount)
+	if err != nil {
+		return nil, err
+	}
+	if cr.ObjectMeta.Annotations == nil {
+		cr.ObjectMeta.Annotations = make(map[string]string)
+	}
+	for key, value := range cluster.Annotations {
+		cr.ObjectMeta.Annotations[key] = value
+	}
+	cr.SetNamespace(cluster.GetNamespace())
+	cr.GetLabels()[history.ControllerRevisionManagedByLabel] = cluster.GetName()
+	return cr, nil
+}
+
+func getPatch(cluster *v1beta1.FlinkCluster) ([]byte, error) {
+	str := &bytes.Buffer{}
+	err := unstructured.UnstructuredJSONScheme.Encode(cluster, str)
+
+	if err != nil {
+		return nil, err
+	}
+	var raw map[string]interface{}
+	json.Unmarshal([]byte(str.Bytes()), &raw)
+	objCopy := make(map[string]interface{})
+	spec := raw["spec"].(map[string]interface{})
+	objCopy["spec"] = spec
+	spec["$patch"] = "replace"
+	patch, err := json.Marshal(objCopy)
+	return patch, err
+}
+
+func nextRevision(revisions []*appsv1.ControllerRevision) int64 {
+	count := len(revisions)
+	if count <= 0 {
+		return 1
+	}
+	return revisions[count-1].Revision + 1
 }
 
 func getRetryCount(data map[string]string) (string, error) {
@@ -245,4 +306,8 @@ func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1
 func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
 	return controlStatus.State == v1beta1.ControlStateSucceeded ||
 		controlStatus.State == v1beta1.ControlStateFailed
+}
+
+func isJobUpdating(status *v1beta1.FlinkClusterStatus) bool {
+	return status.CurrentRevision != status.UpdateRevision
 }

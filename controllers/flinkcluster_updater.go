@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"time"
@@ -42,6 +43,7 @@ type ClusterStatusUpdater struct {
 	log       logr.Logger
 	recorder  record.EventRecorder
 	observed  ObservedClusterState
+	history   history.Interface
 }
 
 // Compares the current status recorded in the cluster's status field and the
@@ -62,6 +64,12 @@ func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
 	// New status derived from the cluster's components.
 	var newStatus = updater.deriveClusterStatus(
 		&updater.observed.cluster.Status, &updater.observed)
+
+	// Sync history and revision status
+	err := updater.syncRevisionStatus(&newStatus)
+	if err != nil {
+		updater.log.Error(err, "Failed to sync flinkCluster history")
+	}
 
 	// Clear control annotation
 	updater.clearControlAnnotation(newStatus.Control)
@@ -379,26 +387,24 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	// update savepoint status if it is in progress
 	if recorded.Savepoint != nil {
 		var newSavepointStatus = recorded.Savepoint.DeepCopy()
-		if recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
-			if observed.savepoint != nil {
-				switch {
-				case observed.savepoint.IsSuccessful():
-					newSavepointStatus.State = v1beta1.SavepointStateSucceeded
-				case observed.savepoint.IsFailed():
-					var msg string
-					newSavepointStatus.State = v1beta1.SavepointStateFailed
-					if observed.savepoint.FailureCause.StackTrace != "" {
-						msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
-					} else if observed.savepointErr != nil {
-						msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
-					} else {
-						msg = "Failed to get triggered savepoint status"
-					}
-					if len(msg) > 1024 {
-						msg = msg[:1024] + "..."
-					}
-					newSavepointStatus.Message = msg
+		if recorded.Savepoint.State == v1beta1.SavepointStateInProgress && observed.savepoint != nil {
+			switch {
+			case observed.savepoint.IsSuccessful():
+				newSavepointStatus.State = v1beta1.SavepointStateSucceeded
+			case observed.savepoint.IsFailed():
+				var msg string
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
+				if observed.savepoint.FailureCause.StackTrace != "" {
+					msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
+				} else if observed.savepointErr != nil {
+					msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
+				} else {
+					msg = "Failed to get triggered savepoint status"
 				}
+				if len(msg) > 1024 {
+					msg = msg[:1024] + "..."
+				}
+				newSavepointStatus.Message = msg
 			}
 		}
 		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateInProgress {
@@ -565,7 +571,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			controlStatus.State = v1beta1.ControlStateFailed
 			setTimestamp(&controlStatus.UpdateTime)
 		}
-	} else {
+	} else if userControl != "" {
 		// handle new user control
 		updater.log.Info("New user control requested: " + userControl)
 		if userControl != v1beta1.ControlNameJobCancel && userControl != v1beta1.ControlNameSavepoint {
@@ -609,6 +615,20 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		controlStatus = recorded.Control.DeepCopy()
 	}
 	status.Control = controlStatus
+
+	// handle job update
+	if isJobUpdating(recorded) {
+		updater.log.Info("Job update is in progress. ")
+
+		// finish job update
+		if observed.job != nil && observed.job.Labels[history.ControllerRevisionHashLabel] == observed.cluster.Status.UpdateRevision {
+			status.CurrentRevision = observed.cluster.Status.UpdateRevision
+			// prepare job update - take a savepoint
+		} else if recorded.Savepoint == nil || (recorded.Savepoint.State != v1beta1.SavepointStateInProgress && recorded.Savepoint.TriggerReason != v1beta1.SavepointTriggerReasonJobUpdate) {
+			status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonJobUpdate}
+			updater.log.Info("There is no savepoint in progress. Trigger savepoint in reconciler.")
+		}
+	}
 
 	return status
 }
@@ -747,6 +767,12 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			newStatus.Savepoint)
 		changed = true
 	}
+	if newStatus.CurrentRevision != currentStatus.CurrentRevision ||
+		newStatus.UpdateRevision != currentStatus.UpdateRevision ||
+		newStatus.ObservedGeneration != currentStatus.ObservedGeneration ||
+		!reflect.DeepEqual(newStatus.CollisionCount, currentStatus.CollisionCount) {
+		changed = true
+	}
 	return changed
 }
 
@@ -789,4 +815,105 @@ func getDeploymentState(deployment *appsv1.Deployment) string {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady
+}
+
+func (updater *ClusterStatusUpdater) syncRevisionStatus(status *v1beta1.FlinkClusterStatus) error {
+	var revisions = updater.observed.revisions
+	var cluster = updater.observed.cluster
+	var currentRevision, updateRevision *appsv1.ControllerRevision
+	var controllerHistory = updater.history
+
+	revisionCount := len(revisions)
+	history.SortControllerRevisions(revisions)
+
+	// Use a local copy of cluster.Status.CollisionCount to avoid modifying cluster.Status directly.
+	// This copy is returned so the value gets carried over to cluster.Status in updateStatefulcluster.
+	var collisionCount int32
+	if cluster.Status.CollisionCount != nil {
+		collisionCount = *cluster.Status.CollisionCount
+	}
+
+	// create a new revision from the current cluster
+	updateRevision, err := newRevision(cluster, nextRevision(revisions), &collisionCount)
+	if err != nil {
+		return err
+	}
+
+	// find any equivalent revisions
+	equalRevisions := history.FindEqualRevisions(revisions, updateRevision)
+	equalCount := len(equalRevisions)
+	if equalCount > 0 && history.EqualRevision(revisions[revisionCount-1], equalRevisions[equalCount-1]) {
+		// if the equivalent revision is immediately prior the update revision has not changed
+		updateRevision = revisions[revisionCount-1]
+	} else if equalCount > 0 {
+		// if the equivalent revision is not immediately prior we will roll back by incrementing the
+		// Revision of the equivalent revision
+		updateRevision, err = controllerHistory.UpdateControllerRevision(
+			equalRevisions[equalCount-1],
+			updateRevision.Revision)
+		if err != nil {
+			return err
+		}
+	} else {
+		//if there is no equivalent revision we create a new one
+		updateRevision, err = controllerHistory.CreateControllerRevision(cluster, updateRevision, &collisionCount)
+		if err != nil {
+			return err
+		}
+	}
+
+	// if the current revision is nil we initialize the history by setting it to the update revision
+	if len(cluster.Status.CurrentRevision) == 0 {
+		currentRevision = updateRevision
+		// attempt to find the revision that corresponds to the current revision
+	} else {
+		for i := range revisions {
+			if revisions[i].Name == cluster.Status.CurrentRevision {
+				currentRevision = revisions[i]
+				break
+			}
+		}
+	}
+
+	// Revision status
+	if status.CurrentRevision == "" {
+		status.CurrentRevision = currentRevision.Name
+	}
+	status.UpdateRevision = updateRevision.Name
+	status.CollisionCount = &collisionCount
+	status.ObservedGeneration = cluster.Generation
+
+	// maintain the revision history limit
+	err = updater.truncateHistory()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (updater *ClusterStatusUpdater) truncateHistory() error {
+	var cluster = updater.observed.cluster
+	var revisions = updater.observed.revisions
+	// TODO: default limit
+	var historyLimit int
+	if cluster.Spec.RevisionHistoryLimit != nil {
+		historyLimit = int(*cluster.Spec.RevisionHistoryLimit)
+	} else {
+		historyLimit = 10
+	}
+
+	history := make([]*appsv1.ControllerRevision, 0, len(revisions))
+	historyLen := len(history)
+	if historyLen <= historyLimit {
+		return nil
+	}
+	// delete any non-live history to maintain the revision limit.
+	history = history[:(historyLen - historyLimit)]
+	for i := 0; i < len(history); i++ {
+		if err := updater.history.DeleteControllerRevision(history[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

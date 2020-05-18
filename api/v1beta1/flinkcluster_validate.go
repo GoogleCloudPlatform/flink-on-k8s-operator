@@ -96,6 +96,10 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
+	if !reflect.DeepEqual(new.Spec.Job, old.Spec.Job) {
+		return nil
+	}
+
 	if !reflect.DeepEqual(new.Spec, old.Spec) {
 		return fmt.Errorf("the cluster properties are immutable")
 	}
@@ -152,7 +156,13 @@ func (v *Validator) checkCancelRequested(
 		// Check if only `cancelRequested` changed, no other changes.
 		var oldCopy = old.DeepCopy()
 		oldCopy.Spec.Job.CancelRequested = new.Spec.Job.CancelRequested
-		return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
+
+		var accept = reflect.DeepEqual(new.Spec, oldCopy.Spec)
+		if accept {
+			return true, nil
+		}
+		return false, fmt.Errorf(
+			"you cannot change cancelRequested with others at the same time")
 	}
 
 	return false, nil
@@ -183,7 +193,12 @@ func (v *Validator) checkSavepointGeneration(
 	// Check if only `savepointGeneration` changed, no other changes.
 	var oldCopy = old.DeepCopy()
 	oldCopy.Spec.Job.SavepointGeneration = newSpecGen
-	return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
+	var accept = reflect.DeepEqual(new.Spec, oldCopy.Spec)
+	if accept {
+		return true, nil
+	}
+	return false, fmt.Errorf(
+		"you cannot update savepointGeneration with others at the same time")
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {

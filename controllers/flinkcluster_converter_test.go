@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"testing"
 	"time"
 
@@ -627,7 +628,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-job",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app": "flink", "cluster": "flinkjobcluster-sample"},
+				"app": "flink", "cluster": "flinkjobcluster-sample", history.ControllerRevisionHashLabel: ""},
 			OwnerReferences: []metav1.OwnerReference{
 				{APIVersion: "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
@@ -640,7 +641,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 		Spec: batchv1.JobSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": "flink", "cluster": "flinkjobcluster-sample"},
+					Labels: map[string]string{"app": "flink", "cluster": "flinkjobcluster-sample", history.ControllerRevisionHashLabel: ""},
 				},
 				Spec: v1.PodSpec{
 					InitContainers: []v1.Container{
