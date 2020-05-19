@@ -34,6 +34,7 @@ FlinkCluster
         |__ volumes
         |__ volumeMounts
         |__ nodeSelector
+        |__ tolerations
         |__ sidecars
     |__ taskManager
         |__ replicas
@@ -151,6 +152,9 @@ FlinkCluster
       * **nodeSelector** (optional): Selector which must match a node's labels for the JobManager pod 
         to be scheduled on that node.
         See [More info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
+      * **tolerations** (optional): Allows the JobManager pod to run on a tainted node
+        in the cluster.
+        See [More info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
       * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.  
     * **taskManager** (required): TaskManager spec.
@@ -180,6 +184,9 @@ FlinkCluster
       * **nodeSelector** (optional): Selector which must match a node's labels for the TaskManager pod to 
         be scheduled on that node.
         See [More info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)  
+      * **tolerations** (optional): Allows the TaskManager pod to run on a tainted node
+        in the cluster.
+        See [More info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
