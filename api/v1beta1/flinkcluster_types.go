@@ -94,8 +94,8 @@ const (
 
 	SavepointTriggerReasonUserRequested = "user requested"
 	SavepointTriggerReasonScheduled     = "scheduled"
-	SavepointTriggerReasonJobCancel     = "for job-cancel"
-	SavepointTriggerReasonJobUpdate     = "for job update"
+	SavepointTriggerReasonJobCancel     = "job cancel"
+	SavepointTriggerReasonJobUpdate     = "job update"
 )
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.

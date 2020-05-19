@@ -271,15 +271,19 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	if len(msg) > 100 {
 		msg = msg[:100] + "..."
 	}
+	var triggerReason = status.TriggerReason
+	if triggerReason == v1beta1.SavepointTriggerReasonJobCancel || triggerReason == v1beta1.SavepointTriggerReasonJobUpdate {
+		triggerReason = "for " + triggerReason
+	}
 	switch status.State {
 	case v1beta1.SavepointStateTriggerFailed:
 		eventType = corev1.EventTypeWarning
 		eventReason = "SavepointFailed"
-		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", status.TriggerReason, msg)
+		eventMessage = fmt.Sprintf("Failed to trigger savepoint %v: %v", triggerReason, msg)
 	case v1beta1.SavepointStateInProgress:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointTriggered"
-		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", status.TriggerReason, status.TriggerID)
+		eventMessage = fmt.Sprintf("Triggered savepoint %v: triggerID %v.", triggerReason, status.TriggerID)
 	case v1beta1.SavepointStateSucceeded:
 		eventType = corev1.EventTypeNormal
 		eventReason = "SavepointCreated"
