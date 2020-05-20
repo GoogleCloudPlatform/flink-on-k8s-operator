@@ -46,6 +46,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var tmRPCPort int32 = 6122
 	var tmQueryPort int32 = 6125
 	var replicas int32 = 42
+	var tolerationSeconds int64 = 30
 	var restartPolicy = v1beta1.JobRestartPolicyFromSavepointOnFailure
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
 	var hostFormat = "{{$clusterName}}.example.com"
@@ -96,6 +97,23 @@ func TestGetDesiredClusterState(t *testing.T) {
 		PeriodSeconds:       60,
 		FailureThreshold:    5,
 	}
+	var tolerations = []corev1.Toleration{
+		{
+			Key:               "toleration-key",
+			Effect:            "toleration-effect",
+			Operator:          "toleration-operator",
+			TolerationSeconds: &tolerationSeconds,
+			Value:             "toleration-value",
+		},
+		{
+			Key:               "toleration-key2",
+			Effect:            "toleration-effect2",
+			Operator:          "toleration-operator2",
+			TolerationSeconds: &tolerationSeconds,
+			Value:             "toleration-value2",
+		},
+	}
+
 	// Setup.
 	var cluster = &v1beta1.FlinkCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -163,6 +181,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
+				Tolerations:        tolerations,
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
@@ -197,6 +216,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "cache-volume", MountPath: "/cache"},
 				},
+				Tolerations: tolerations,
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
@@ -328,6 +348,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
+					Tolerations: tolerations,
 					Volumes: []corev1.Volume{
 						{
 							Name: "flink-config-volume",
@@ -609,6 +630,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
+					Tolerations: tolerations,
 				},
 			},
 		},
