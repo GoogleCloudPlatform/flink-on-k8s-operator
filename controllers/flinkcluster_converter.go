@@ -207,6 +207,7 @@ func getDesiredJobManagerDeployment(
 		Containers:       containers,
 		Volumes:          volumes,
 		NodeSelector:     jobManagerSpec.NodeSelector,
+		Tolerations:      jobManagerSpec.Tolerations,
 		ImagePullSecrets: imageSpec.PullSecrets,
 	}
 
@@ -495,6 +496,7 @@ func getDesiredTaskManagerDeployment(
 		Containers:       containers,
 		Volumes:          volumes,
 		NodeSelector:     taskManagerSpec.NodeSelector,
+		Tolerations:      taskManagerSpec.Tolerations,
 		ImagePullSecrets: imageSpec.PullSecrets,
 	}
 	var taskManagerDeployment = &appsv1.Deployment{

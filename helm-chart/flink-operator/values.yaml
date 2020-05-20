@@ -49,3 +49,4 @@ resources: {}
 podAnnotations: {}
 
 nodeSelector: {}
+tolerations: {}
