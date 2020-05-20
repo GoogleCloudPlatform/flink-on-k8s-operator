@@ -203,13 +203,13 @@ type JobManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Sidecar containers running alongside with the JobManager container in the
-	// pod.
-	Sidecars []corev1.Container `json:"sidecars,omitempty"`
-
 	// Defines the node affinity of the pod
 	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Sidecar containers running alongside with the JobManager container in the
+	// pod.
+	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -264,13 +264,13 @@ type TaskManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Sidecar containers running alongside with the TaskManager container in the
-	// pod.
-	Sidecars []corev1.Container `json:"sidecars,omitempty"`
-
 	// Defines the node affinity of the pod
 	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Sidecar containers running alongside with the TaskManager container in the
+	// pod.
+	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
 // CleanupAction defines the action to take after job finishes.
