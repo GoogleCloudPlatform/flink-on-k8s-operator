@@ -462,16 +462,16 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.Sidecars != nil {
-		in, out := &in.Sidecars, &out.Sidecars
-		*out = make([]v1.Container, len(*in))
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]v1.Toleration, len(*in))
+	if in.Sidecars != nil {
+		in, out := &in.Sidecars, &out.Sidecars
+		*out = make([]v1.Container, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -691,16 +691,16 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.Sidecars != nil {
-		in, out := &in.Sidecars, &out.Sidecars
-		*out = make([]v1.Container, len(*in))
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]v1.Toleration, len(*in))
+	if in.Sidecars != nil {
+		in, out := &in.Sidecars, &out.Sidecars
+		*out = make([]v1.Container, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
