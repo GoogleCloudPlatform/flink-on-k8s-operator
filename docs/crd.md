@@ -48,8 +48,8 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
-        |__ volumeMounts
         |__ nodeSelector
+        |__ tolerations
         |__ sidecars
     |__ job
         |__ jarFile
