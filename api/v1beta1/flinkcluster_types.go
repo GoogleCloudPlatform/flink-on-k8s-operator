@@ -385,7 +385,7 @@ type FlinkClusterSpec struct {
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
 
-	// Revision history limit to keep.
+	// The maximum number of revision history to keep.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
@@ -564,11 +564,16 @@ type FlinkClusterStatus struct {
 	// The status of savepoint progress
 	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
 
+	// When the controller creates new ControllerRevision, it generates hash string from the FlinkCluster spec
+	// which is to be stored in ControllerRevision and uses it to compose the ControllerRevision name.
+	// Then the controller updates nextRevision to the ControllerRevision name.
+	// When update process is completed, the controller updates currentRevision as nextRevision.
+
 	// CurrentRevision indicates the version of FlinkCluster.
 	CurrentRevision string `json:"currentRevision,omitempty"`
 
-	// UpdateRevision indicates the version of FlinkCluster updating.
-	UpdateRevision string `json:"updateRevision,omitempty"`
+	// NextRevision indicates the version of FlinkCluster updating.
+	NextRevision string `json:"nextRevision,omitempty"`
 
 	// observedGeneration is the most recent generation observed for this FlinkCluster. It corresponds to the
 	// FlinkCluster's generation, which is updated on mutation by the API Server.

@@ -140,6 +140,7 @@ func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 	return ""
 }
 
+// newRevision generates FlinkClusterSpec patch and makes new child ControllerRevision resource with it.
 func newRevision(cluster *v1beta1.FlinkCluster, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
 	patch, err := getPatch(cluster)
 	if err != nil {
@@ -182,7 +183,7 @@ func getPatch(cluster *v1beta1.FlinkCluster) ([]byte, error) {
 	return patch, err
 }
 
-func nextRevision(revisions []*appsv1.ControllerRevision) int64 {
+func getNextRevisionNumber(revisions []*appsv1.ControllerRevision) int64 {
 	count := len(revisions)
 	if count <= 0 {
 		return 1
@@ -313,5 +314,5 @@ func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) boo
 }
 
 func isJobUpdating(status *v1beta1.FlinkClusterStatus) bool {
-	return status.CurrentRevision != status.UpdateRevision
+	return status.CurrentRevision != status.NextRevision
 }

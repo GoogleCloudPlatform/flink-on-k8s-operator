@@ -92,7 +92,6 @@ func (observer *ClusterStateObserver) observe(
 			return err
 		}
 		log.Info("Observed controllerRevision", "controllerRevision", "nil")
-		observedCluster = nil
 	} else {
 		log.Info("Observed controllerRevision", "controllerRevision", observedRevisions)
 		observed.revisions = observedRevisions

@@ -606,7 +606,7 @@ func getDesiredJob(
 	var jobManagerSpec = clusterSpec.JobManager
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
-	var revision = flinkCluster.Status.UpdateRevision
+	var revision = flinkCluster.Status.NextRevision
 	var jobName = getJobName(clusterName)
 	var jobManagerServiceName = clusterName + "-jobmanager"
 	var jobManagerAddress = fmt.Sprintf(
