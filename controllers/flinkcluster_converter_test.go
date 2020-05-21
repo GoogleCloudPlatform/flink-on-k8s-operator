@@ -702,7 +702,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
-					RestartPolicy: "Never",
+					RestartPolicy: corev1.RestartPolicyNever,
 					Volumes: []corev1.Volume{
 						{
 							Name: "cache-volume",
