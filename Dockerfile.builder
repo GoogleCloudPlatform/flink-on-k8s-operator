@@ -14,7 +14,7 @@ FROM ubuntu:18.04
 RUN apt update && apt install -yqq curl git make gcc
 
 # Install Go
-RUN curl -s https://dl.google.com/go/go1.12.10.linux-amd64.tar.gz | tar -xz -C /usr/local/
+RUN curl -s https://dl.google.com/go/go1.14.3.linux-amd64.tar.gz | tar -xz -C /usr/local/
 ENV GOROOT=/usr/local/go
 ENV PATH=${PATH}:${GOROOT}/bin
 

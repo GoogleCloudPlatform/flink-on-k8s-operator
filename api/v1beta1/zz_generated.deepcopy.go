@@ -137,7 +137,7 @@ func (in *FlinkClusterControlStatus) DeepCopy() *FlinkClusterControlStatus {
 func (in *FlinkClusterList) DeepCopyInto(out *FlinkClusterList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]FlinkCluster, len(*in))
@@ -554,7 +554,7 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 	}
 	if in.RestartPolicy != nil {
 		in, out := &in.RestartPolicy, &out.RestartPolicy
-		*out = new(string)
+		*out = new(JobRestartPolicy)
 		**out = **in
 	}
 	if in.CleanupPolicy != nil {
