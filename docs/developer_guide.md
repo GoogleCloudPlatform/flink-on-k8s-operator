@@ -28,7 +28,7 @@ You might want to watch this tech talk ([video](https://www.youtube.com/watch?v=
 The following dependencies are required to build the Flink Operator binary and
 run unit tests:
 
-* [Go v1.12+](https://golang.org/)
+* [Go v1.14+](https://golang.org/)
 * [Kubebuilder v2+](https://github.com/kubernetes-sigs/kubebuilder)
 
 But you don't have to install them on your local machine, because this project
