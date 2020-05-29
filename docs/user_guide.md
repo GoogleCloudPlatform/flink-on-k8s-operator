@@ -402,3 +402,25 @@ you can see the item named "flink-pod-monitor" in the "Service Discovery" sectio
 ### Manage savepoints
 
 See this [doc](./savepoints_guide.md) on how to manage savepoints with the operator.
+
+### Flink Job update
+
+To update a running Flink job's program or execution settings, you can create new savepoint, terminate the job,
+and create a new FlinkCluster with the new program, settings, and savepoint. 
+However, in some cases, you may want to update the Flink job while maintaining the logical continuity
+of the Flink job with the FlinkCluster custom resource. In this case, you can continuously update the spec.job
+of the FlinkCluster custom resource, and the Flink operator takes care of the process required to update the Flink job.
+
+There are several points to note when using the job update feature.
+* To use the job update feature, savepointsDir must be set and the value of this field cannot be deleted when updating.
+This is because the Flink operator requires the value to create a savepoint for job updates.
+* Since fromSavepoint is used only when creating FlinkCluster, it cannot be updated.
+* cancelRequested and savepointGeneration are not allowed to update at the same time with different fields
+due to functional characteristics.
+
+There are some behavioral characteristics in job update.
+* Whenever the spec.job is modified, the Flink operator creates a ControllerRevision resource
+that stores the changed spec. ControllerRevision can be used to check the editing history.
+* Even if the job is in the terminated state, it can be updated. Depending on the cleanUpPolicy,
+the cluster may also be in the terminated state. In this case, when the job is updated, the Flink operator redeploys
+the Flink cluster and then submits the Flink job.
