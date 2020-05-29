@@ -378,7 +378,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var observedJobStatus = observed.cluster.Status.Components.Job
 
-		if shouldRestartJob(restartPolicy, observedJobStatus) || shouldUpdateJob(&observed.cluster.Status) {
+		if shouldRestartJob(restartPolicy, observedJobStatus) || shouldUpdateJob(observed) {
 			var err = reconciler.restartJob()
 			if err != nil {
 				return requeueResult, err
@@ -525,7 +525,7 @@ func (reconciler *ClusterReconciler) cancelRunningJobs(
 // Takes a savepoint if possible then stops the job.
 func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint bool) error {
 	var log = reconciler.log
-	if takeSavepoint && reconciler.canTakeSavepoint() {
+	if takeSavepoint && canTakeSavepoint(*reconciler.observed.cluster) {
 		var err = reconciler.takeSavepoint(jobID)
 		if err != nil {
 			return err
@@ -551,7 +551,7 @@ func (reconciler *ClusterReconciler) cancelFlinkJobAsync(jobID string, takeSavep
 
 	switch observedSavepoint.State {
 	case v1beta1.SavepointStateNotTriggered:
-		if takeSavepoint && reconciler.canTakeSavepoint() {
+		if takeSavepoint && canTakeSavepoint(*reconciler.observed.cluster) {
 			savepointStatus, err = reconciler.takeSavepointAsync(jobID, v1beta1.SavepointTriggerReasonJobCancel)
 			if err != nil {
 				log.Info("Failed to trigger savepoint.")
@@ -597,7 +597,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
 
-	if !reconciler.canTakeSavepoint() {
+	if !canTakeSavepoint(*reconciler.observed.cluster) {
 		return false, ""
 	}
 
@@ -640,16 +640,6 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var nextTime = lastTime.Add(
 		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
 	return time.Now().After(nextTime), v1beta1.SavepointTriggerReasonScheduled
-}
-
-// Checks whether it is possible to take savepoint.
-func (reconciler *ClusterReconciler) canTakeSavepoint() bool {
-	var jobSpec = reconciler.observed.cluster.Spec.Job
-	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
-	var jobStatus = reconciler.observed.cluster.Status.Components.Job
-	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		!isJobStopped(jobStatus) &&
-		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
 }
 
 // Trigger savepoint for a job then return savepoint status to update.

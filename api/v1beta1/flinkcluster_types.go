@@ -43,6 +43,7 @@ const (
 const (
 	JobStatePending   = "Pending"
 	JobStateRunning   = "Running"
+	JobStateUpdating  = "Updating"
 	JobStateSucceeded = "Succeeded"
 	JobStateFailed    = "Failed"
 	JobStateCancelled = "Cancelled"
@@ -574,10 +575,6 @@ type FlinkClusterStatus struct {
 
 	// NextRevision indicates the version of FlinkCluster updating.
 	NextRevision string `json:"nextRevision,omitempty"`
-
-	// observedGeneration is the most recent generation observed for this FlinkCluster. It corresponds to the
-	// FlinkCluster's generation, which is updated on mutation by the API Server.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
 	// collisionCount is the count of hash collisions for the FlinkCluster. The controller
 	// uses this field as a collision avoidance mechanism when it needs to create the name for the

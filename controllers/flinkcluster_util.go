@@ -39,6 +39,17 @@ const (
 	ControlMaxRetries         = "3"
 
 	SavepointTimeoutSec = 60
+
+	// TODO: need to be user configurable
+	SavepointAgeForJobUpdateSec = 300
+)
+
+type JobUpdateState string
+
+const (
+	JobUpdateStatePreparing JobUpdateState = "Preparing"
+	JobUpdateStateUpdating  JobUpdateState = "Updating"
+	JobUpdateStateFinished  JobUpdateState = "Finished"
 )
 
 type objectForPatch struct {
@@ -113,6 +124,16 @@ func setTimestamp(target *string) {
 	*target = tc.ToString(now)
 }
 
+// Checks whether it is possible to take savepoint.
+func canTakeSavepoint(cluster v1beta1.FlinkCluster) bool {
+	var jobSpec = cluster.Spec.Job
+	var savepointStatus = cluster.Status.Savepoint
+	var jobStatus = cluster.Status.Components.Job
+	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
+		!isJobStopped(jobStatus) &&
+		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
+}
+
 // shouldRestartJob returns true if the controller should restart the failed
 // job.
 func shouldRestartJob(
@@ -125,9 +146,12 @@ func shouldRestartJob(
 		len(jobStatus.SavepointLocation) > 0
 }
 
-func shouldUpdateJob(clusterStatus *v1beta1.FlinkClusterStatus) bool {
-	return isJobUpdating(clusterStatus) &&
-		clusterStatus.Savepoint.State == v1beta1.SavepointStateSucceeded
+func shouldUpdateJob(observed ObservedClusterState) bool {
+	var jobStatus = observed.cluster.Status.Components.Job
+	return isJobUpdateRequested(&observed.cluster.Status) &&
+		(isSavepointReadyForJobUpdate(observed.observeTime, *jobStatus) ||
+			isJobStopped(jobStatus) ||
+			jobStatus.State == v1beta1.JobStateUpdating)
 }
 
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
@@ -142,7 +166,14 @@ func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 
 // newRevision generates FlinkClusterSpec patch and makes new child ControllerRevision resource with it.
 func newRevision(cluster *v1beta1.FlinkCluster, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
-	patch, err := getPatch(cluster)
+	// Ignore fields not related to rendering job resource.
+	clusterClone := cluster.DeepCopy()
+	clusterClone.Spec.Job.CleanupPolicy = nil
+	clusterClone.Spec.Job.RestartPolicy = nil
+	clusterClone.Spec.Job.CancelRequested = nil
+	clusterClone.Spec.Job.SavepointGeneration = 0
+
+	patch, err := getPatch(clusterClone)
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +335,17 @@ func isJobStopped(status *v1beta1.JobStatus) bool {
 			status.State == v1beta1.JobStateCancelled)
 }
 
+func isJobCancelRequested(cluster v1beta1.FlinkCluster) bool {
+	var userControl = cluster.Annotations[v1beta1.ControlAnnotation]
+	var cancelRequested = cluster.Spec.Job.CancelRequested
+	return userControl == v1beta1.ControlNameJobCancel ||
+		(cancelRequested != nil && *cancelRequested)
+}
+
+func isJobUpdateRequested(status *v1beta1.FlinkClusterStatus) bool {
+	return status.CurrentRevision != status.NextRevision
+}
+
 func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
 	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
 }
@@ -313,6 +355,30 @@ func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) boo
 		controlStatus.State == v1beta1.ControlStateFailed
 }
 
-func isJobUpdating(status *v1beta1.FlinkClusterStatus) bool {
-	return status.CurrentRevision != status.NextRevision
+// Check recent savepoint is available for job update.
+func isSavepointReadyForJobUpdate(now time.Time, jobStatus v1beta1.JobStatus) bool {
+	if jobStatus.SavepointLocation != "" && jobStatus.LastSavepointTime != "" {
+		tc := &TimeConverter{}
+		completedTime := tc.FromString(jobStatus.LastSavepointTime)
+		availableTime := completedTime.Add(time.Duration(int64(SavepointAgeForJobUpdateSec) * int64(time.Second)))
+		if now.Before(availableTime) {
+			return true
+		}
+	}
+	return false
+}
+
+func getJobUpdateState(observed ObservedClusterState) JobUpdateState {
+	var job = observed.job
+	var nextRevision = observed.cluster.Status.NextRevision
+	if !isJobUpdateRequested(&observed.cluster.Status) {
+		return ""
+	}
+	switch {
+	case job != nil && job.Labels[history.ControllerRevisionHashLabel] == nextRevision:
+		return JobUpdateStateFinished
+	case shouldUpdateJob(observed):
+		return JobUpdateStateUpdating
+	}
+	return JobUpdateStatePreparing
 }

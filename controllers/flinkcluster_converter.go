@@ -593,12 +593,12 @@ func getDesiredJob(
 		return nil
 	}
 
-	var controlStatus = flinkCluster.Status.Control
-	// We need to watch whether job is cancelled already if jobSpec.CancelRequested is deprecated
-	if (flinkCluster.Status.Components.Job != nil && flinkCluster.Status.Components.Job.State == v1beta1.JobStateCancelled) ||
-		(jobSpec.CancelRequested != nil && *jobSpec.CancelRequested) ||
-		(controlStatus != nil && controlStatus.Name == v1beta1.ControlNameJobCancel && controlStatus.State == v1beta1.ControlStateProgressing) {
-		return nil
+	if !isJobUpdateRequested(&flinkCluster.Status) {
+		// We need to watch whether job is cancelled already if jobSpec.CancelRequested is deprecated
+		var jobStatus = flinkCluster.Status.Components.Job
+		if isJobCancelRequested(*flinkCluster) || (jobStatus != nil && jobStatus.State == v1beta1.JobStateCancelled) {
+			return nil
+		}
 	}
 
 	var clusterSpec = flinkCluster.Spec
@@ -740,10 +740,9 @@ func getDesiredJob(
 	return job
 }
 
-func convertFromSavepoint(
-	jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
+func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
 	var jobStatus = clusterStatus.Components.Job
-	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) || shouldUpdateJob(clusterStatus) {
+	if jobStatus != nil && jobStatus.SavepointLocation != "" {
 		return &jobStatus.SavepointLocation
 	}
 	return jobSpec.FromSavepoint
@@ -816,6 +815,10 @@ func shouldCleanup(
 
 	// Session cluster.
 	if jobStatus == nil {
+		return false
+	}
+
+	if isJobUpdateRequested(&cluster.Status) {
 		return false
 	}
 

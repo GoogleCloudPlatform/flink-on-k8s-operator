@@ -96,7 +96,11 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
-	if !reflect.DeepEqual(new.Spec.Job, old.Spec.Job) {
+	jobUpdated, err := v.checkJobUpdateCondition(old, new)
+	if err != nil {
+		return err
+	}
+	if jobUpdated {
 		return nil
 	}
 
@@ -157,12 +161,12 @@ func (v *Validator) checkCancelRequested(
 		var oldCopy = old.DeepCopy()
 		oldCopy.Spec.Job.CancelRequested = new.Spec.Job.CancelRequested
 
-		var accept = reflect.DeepEqual(new.Spec, oldCopy.Spec)
-		if accept {
+		if reflect.DeepEqual(new.Spec, oldCopy.Spec) {
 			return true, nil
 		}
+
 		return false, fmt.Errorf(
-			"you cannot change cancelRequested with others at the same time")
+			"you cannot update cqancelRequested with others at the same time")
 	}
 
 	return false, nil
@@ -193,12 +197,45 @@ func (v *Validator) checkSavepointGeneration(
 	// Check if only `savepointGeneration` changed, no other changes.
 	var oldCopy = old.DeepCopy()
 	oldCopy.Spec.Job.SavepointGeneration = newSpecGen
-	var accept = reflect.DeepEqual(new.Spec, oldCopy.Spec)
-	if accept {
+	if reflect.DeepEqual(new.Spec, oldCopy.Spec) {
 		return true, nil
 	}
+
 	return false, fmt.Errorf(
 		"you cannot update savepointGeneration with others at the same time")
+}
+
+// Check job update constraints.
+func (v *Validator) checkJobUpdateCondition(
+	old *FlinkCluster, new *FlinkCluster) (bool, error) {
+	if old.Spec.Job == nil || new.Spec.Job == nil {
+		return false, nil
+	}
+	if !reflect.DeepEqual(old.Spec.Job.FromSavepoint, new.Spec.Job.FromSavepoint) {
+		return false, fmt.Errorf(
+			"updating fromSavepoint is not allowed")
+	}
+	if old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
+		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == "") {
+		return false, fmt.Errorf(
+			"removing savepointsDir is not allowed")
+	}
+	if !reflect.DeepEqual(old.Spec.Job, new.Spec.Job) {
+		if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
+			return false, fmt.Errorf(
+				"updating job is not allowed when spec.job.savepointsDir was not provided")
+		}
+		oldCopy := old.DeepCopy()
+		newJobSpec := new.Spec.Job.DeepCopy()
+		oldCopy.Spec.Job = newJobSpec
+		if !reflect.DeepEqual(oldCopy.Spec, new.Spec) {
+			return false, fmt.Errorf(
+				"you cannot update fields other than spec.job")
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {

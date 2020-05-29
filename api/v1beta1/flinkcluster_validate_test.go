@@ -586,6 +586,70 @@ func TestUpdateSavepointGeneration(t *testing.T) {
 	assert.Equal(t, err2, nil)
 }
 
+func TestUpdateJob(t *testing.T) {
+	var validator = &Validator{}
+
+	var oldFromSavepoint = "savepoint1"
+	var oldSavepointDir = "/savepoint_dir"
+	var oldCluster1 = FlinkCluster{Spec: FlinkClusterSpec{
+		Job: &JobSpec{
+			JarFile:       "flink-app-v1.jar",
+			FromSavepoint: &oldFromSavepoint,
+			SavepointsDir: &oldSavepointDir,
+		},
+	}}
+
+	var newFromSavepointDir = "savepoint2"
+	var newCluster = FlinkCluster{Spec: FlinkClusterSpec{
+		TaskManager: TaskManagerSpec{
+			Replicas: 2,
+		},
+		Job: &JobSpec{
+			FromSavepoint: &newFromSavepointDir,
+		},
+	}}
+	var err = validator.ValidateUpdate(&oldCluster1, &newCluster)
+	var expectedErr = "updating fromSavepoint is not allowed"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	newCluster = FlinkCluster{Spec: FlinkClusterSpec{
+		Job: &JobSpec{
+			FromSavepoint: &oldFromSavepoint,
+		},
+	}}
+	err = validator.ValidateUpdate(&oldCluster1, &newCluster)
+	expectedErr = "removing savepointsDir is not allowed"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	var newSavepointsDir = "/new_savepoint_dir"
+	newCluster = FlinkCluster{Spec: FlinkClusterSpec{
+		TaskManager: TaskManagerSpec{
+			Replicas: 3,
+		},
+		Job: &JobSpec{
+			FromSavepoint: &oldFromSavepoint,
+			SavepointsDir: &newSavepointsDir,
+		},
+	}}
+	err = validator.ValidateUpdate(&oldCluster1, &newCluster)
+	expectedErr = "you cannot update fields other than spec.job"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	var oldCluster2 = FlinkCluster{Spec: FlinkClusterSpec{
+		Job: &JobSpec{
+			JarFile: "flink-app-v1.jar",
+		},
+	}}
+	newCluster = FlinkCluster{Spec: FlinkClusterSpec{
+		Job: &JobSpec{
+			JarFile: "flink-app-v2.jar",
+		},
+	}}
+	err = validator.ValidateUpdate(&oldCluster2, &newCluster)
+	expectedErr = "updating job is not allowed when spec.job.savepointsDir was not provided"
+	assert.Equal(t, err.Error(), expectedErr)
+}
+
 func TestInvalidGCPConfig(t *testing.T) {
 	var gcpConfig = GCPConfig{
 		ServiceAccount: &GCPServiceAccount{

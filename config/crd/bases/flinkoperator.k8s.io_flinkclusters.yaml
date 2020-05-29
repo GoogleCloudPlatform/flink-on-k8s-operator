@@ -7339,12 +7339,6 @@ spec:
             nextRevision:
               description: NextRevision indicates the version of FlinkCluster updating.
               type: string
-            observedGeneration:
-              description: observedGeneration is the most recent generation observed
-                for this FlinkCluster. It corresponds to the FlinkCluster's generation,
-                which is updated on mutation by the API Server.
-              format: int64
-              type: integer
             savepoint:
               description: The status of savepoint progress
               properties:

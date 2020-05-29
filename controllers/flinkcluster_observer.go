@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 // ClusterStateObserver gets the observed state of the cluster.
@@ -59,6 +60,7 @@ type ObservedClusterState struct {
 	flinkJobID         *string
 	savepoint          *flinkclient.SavepointStatus
 	savepointErr       error
+	observeTime        time.Time
 }
 
 // Observes the state of the cluster and its components.
@@ -178,6 +180,8 @@ func (observer *ClusterStateObserver) observe(
 
 	// (Optional) job.
 	err = observer.observeJob(observed)
+
+	observed.observeTime = time.Now()
 
 	return err
 }
