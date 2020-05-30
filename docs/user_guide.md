@@ -359,7 +359,7 @@ kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io
 
 When canceling, all Pods that make up the Flink cluster are basically terminated.
 If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled
-according to the [CRD doc](./crd.md).
+according to the [FlinkCluster Custom Resource Definition](./crd.md).
 
 When job cancellation is finished, the control annotation disappears and the progress
 can be checked in FlinkCluster status:
@@ -412,15 +412,20 @@ of the Flink job with the FlinkCluster custom resource. In this case, you can co
 of the FlinkCluster custom resource, and the Flink operator takes care of the process required to update the Flink job.
 
 There are several points to note when using the job update feature.
-* To use the job update feature, savepointsDir must be set and the value of this field cannot be deleted when updating.
+* To use the job update feature, `savepointsDir` must be set and the value of this field cannot be deleted when updating.
 This is because the Flink operator requires the value to create a savepoint for job updates.
 * Since fromSavepoint is used only when creating FlinkCluster, it cannot be updated.
-* cancelRequested and savepointGeneration are not allowed to update at the same time with different fields
+* cancelRequested and savepointGeneration are not allowed to update at the same time with other fields
 due to functional characteristics.
 
 There are some behavioral characteristics in job update.
-* Whenever the spec.job is modified, the Flink operator creates a ControllerRevision resource
-that stores the changed spec. ControllerRevision can be used to check the editing history.
-* Even if the job is in the terminated state, it can be updated. Depending on the cleanUpPolicy,
-the cluster may also be in the terminated state. In this case, when the job is updated, the Flink operator redeploys
-the Flink cluster and then submits the Flink job.
+* Whenever the spec.job is modified, the Flink operator creates
+a [ControllerRevision](https://godoc.org/k8s.io/api/apps/v1#ControllerRevision) resource
+that stores the changed spec. ControllerRevisions can be used to check the editing history.
+* FlinkCluster job can be updated even if the job is in terminated state.
+But depending on the cleanUpPolicy, Flink operator may need to recover the Flink cluster first.
+If cleanUpPolicy is `"KeepCluster"`, Flink operator will progress Flink job update immediately.
+But if cleanUpPolicy is `"DeleteCluster"` or `"DeleteTaskManager"`,
+the Flink operator redeploys terminated components of Flink cluster first and then progress the Flink job update.
+because some components of Flink cluster is also terminated when Flink job is stopped.
+For more information about cleanUpPolicy, see [FlinkCluster Custom Resource Definition](./crd.md).

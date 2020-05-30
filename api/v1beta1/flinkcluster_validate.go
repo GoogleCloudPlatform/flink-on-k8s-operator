@@ -96,7 +96,7 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
-	jobUpdated, err := v.checkJobUpdateCondition(old, new)
+	jobUpdated, err := v.validateJobUpdate(old, new)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (v *Validator) checkCancelRequested(
 		}
 
 		return false, fmt.Errorf(
-			"you cannot update cqancelRequested with others at the same time")
+			"you cannot update cancelRequested with others at the same time")
 	}
 
 	return false, nil
@@ -206,7 +206,7 @@ func (v *Validator) checkSavepointGeneration(
 }
 
 // Check job update constraints.
-func (v *Validator) checkJobUpdateCondition(
+func (v *Validator) validateJobUpdate(
 	old *FlinkCluster, new *FlinkCluster) (bool, error) {
 	if old.Spec.Job == nil || new.Spec.Job == nil {
 		return false, nil
