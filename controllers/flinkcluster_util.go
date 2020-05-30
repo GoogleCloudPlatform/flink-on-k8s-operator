@@ -166,14 +166,20 @@ func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 
 // newRevision generates FlinkClusterSpec patch and makes new child ControllerRevision resource with it.
 func newRevision(cluster *v1beta1.FlinkCluster, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
-	// Ignore fields not related to rendering job resource.
-	clusterClone := cluster.DeepCopy()
-	clusterClone.Spec.Job.CleanupPolicy = nil
-	clusterClone.Spec.Job.RestartPolicy = nil
-	clusterClone.Spec.Job.CancelRequested = nil
-	clusterClone.Spec.Job.SavepointGeneration = 0
+	var patch []byte
+	var err error
 
-	patch, err := getPatch(clusterClone)
+	// Ignore fields not related to rendering job resource.
+	if cluster.Spec.Job != nil {
+		clusterClone := cluster.DeepCopy()
+		clusterClone.Spec.Job.CleanupPolicy = nil
+		clusterClone.Spec.Job.RestartPolicy = nil
+		clusterClone.Spec.Job.CancelRequested = nil
+		clusterClone.Spec.Job.SavepointGeneration = 0
+		patch, err = getPatch(clusterClone)
+	} else {
+		patch, err = getPatch(cluster)
+	}
 	if err != nil {
 		return nil, err
 	}

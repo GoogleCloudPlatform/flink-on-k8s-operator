@@ -226,11 +226,10 @@ func (v *Validator) validateJobUpdate(
 				"updating job is not allowed when spec.job.savepointsDir was not provided")
 		}
 		oldCopy := old.DeepCopy()
-		newJobSpec := new.Spec.Job.DeepCopy()
-		oldCopy.Spec.Job = newJobSpec
+		oldCopy.Spec.Job = new.Spec.Job.DeepCopy()
 		if !reflect.DeepEqual(oldCopy.Spec, new.Spec) {
 			return false, fmt.Errorf(
-				"you cannot update fields other than spec.job")
+				"you cannot update fields other than spec.job, old FlinkCluster spec: %v, new FlinkCluster spec: %v", oldCopy.Spec, new.Spec)
 		}
 		return true, nil
 	}

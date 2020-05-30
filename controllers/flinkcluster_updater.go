@@ -439,7 +439,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		if flinkJobID != nil {
 			jobStatus.ID = *flinkJobID
 		}
-		if observedJob.Status.Failed > 0 {
+		// Check whether job is in update state first to prevent cluster cleanup by 'jobStopped' when updating.
+		if isJobUpdateRequested(&observed.cluster.Status) {
+			jobStatus.State = v1beta1.JobStateUpdating
+		} else if observedJob.Status.Failed > 0 {
 			jobStatus.State = v1beta1.JobStateFailed
 			jobStopped = true
 			jobFailed = true
@@ -452,11 +455,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			// Pending (for scheduling), so we use Flink job ID to determine
 			// the actual state.
 			if flinkJobID == nil {
-				if isJobUpdateRequested(&observed.cluster.Status) {
-					jobStatus.State = v1beta1.JobStateUpdating
-				} else {
-					jobStatus.State = v1beta1.JobStatePending
-				}
+				jobStatus.State = v1beta1.JobStatePending
 			} else {
 				jobStatus.State = v1beta1.JobStateRunning
 			}
