@@ -429,3 +429,12 @@ But if `cleanUpPolicy` is `"DeleteCluster"` or `"DeleteTaskManager"`,
 the Flink operator redeploys terminated components of Flink cluster first and then progress the Flink job update,
 because some components of Flink cluster is also terminated when Flink job is stopped.
 For more information about `cleanUpPolicy`, see [FlinkCluster Custom Resource Definition](./crd.md).
+
+You can create and update FlinkCluster like this.
+
+```bash
+kubectl apply -f examples/job_update/wordcount-1.9.2.yaml
+kubectl apply -f examples/job_update/wordcount-1.9.3.yaml
+```
+
+In this example, `job.args` and `job.initContainers.env` is updated to change job jar and argument.
