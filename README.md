@@ -7,8 +7,10 @@ Kubernetes Operator for Apache Flink is a control plane for running [Apache Flin
 
 ## Community
 
-Ask questions, report bugs or propose feature requests [here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/issues)
+* Ask questions, report bugs or propose features [here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/issues)
 or join our [Slack](https://app.slack.com/client/T09NY5SBT/CQYSE926R) channel.
+
+* Check out [who is using the Kubernetes Operator for Apache Flink](docs/who_is_using.md).
 
 ## Project Status
 
