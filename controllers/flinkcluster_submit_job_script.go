@@ -49,7 +49,7 @@ function list_jobs() {
 function check_existing_jobs() {
 	echo "Checking existing jobs..."
 	list_jobs
-	if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" -e "(FINISHED)" -e "(FAILED)" \
+	if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" -e "(FINISHED)" -e "(FAILED)" -e "(CANCELED)" \
 		-e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
 		echo "Found an existing job, skip resubmitting..."
 		return 0
