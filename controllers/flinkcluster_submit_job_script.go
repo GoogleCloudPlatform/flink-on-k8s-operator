@@ -70,7 +70,7 @@ function wait_for_job() {
 		# Find active job first.
 		# If the current job is restarted by the operator, there will be records of past stopped jobs.
 		# TODO: It needs to be improved to determine the job state with the submitted job id.
-		if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)" -e "(RESTARTING)"; then
+		if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" -e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
 			echo -e "\nFound an active job."
 		else
 			if list_jobs | grep "(FINISHED)"; then
