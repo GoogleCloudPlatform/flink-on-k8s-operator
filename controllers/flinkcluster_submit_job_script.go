@@ -49,7 +49,8 @@ function list_jobs() {
 function check_existing_jobs() {
 	echo "Checking existing jobs..."
 	list_jobs
-	if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)" -e "(FINISHED)" -e "(FAILED)"; then
+	if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" -e "(FINISHED)" -e "(FAILED)" -e "(CANCELED)" \
+		-e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
 		echo "Found an existing job, skip resubmitting..."
 		return 0
 	fi
@@ -70,7 +71,8 @@ function wait_for_job() {
 		# Find active job first.
 		# If the current job is restarted by the operator, there will be records of past stopped jobs.
 		# TODO: It needs to be improved to determine the job state with the submitted job id.
-		if list_jobs | grep -e "(SCHEDULED)" -e "(RUNNING)"; then
+		if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" \
+			-e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
 			echo -e "\nFound an active job."
 		else
 			if list_jobs | grep "(FINISHED)"; then
