@@ -87,8 +87,7 @@ function wait_for_job() {
 				echo -e "\nJob has been cancelled, exiting 2"
 				return 2
 			fi
-			echo -e "\nUnknown job state, exiting 3"
-			return 3
+			echo -e "\nUnknown job state, check it again in the next iteration."
 		fi
 		sleep 30
 	done
