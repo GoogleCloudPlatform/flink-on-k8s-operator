@@ -137,7 +137,7 @@ func (in *FlinkClusterControlStatus) DeepCopy() *FlinkClusterControlStatus {
 func (in *FlinkClusterList) DeepCopyInto(out *FlinkClusterList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]FlinkCluster, len(*in))
@@ -472,6 +472,13 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Sidecars != nil {
 		in, out := &in.Sidecars, &out.Sidecars
 		*out = make([]v1.Container, len(*in))
@@ -557,7 +564,7 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 	}
 	if in.RestartPolicy != nil {
 		in, out := &in.RestartPolicy, &out.RestartPolicy
-		*out = new(string)
+		*out = new(JobRestartPolicy)
 		**out = **in
 	}
 	if in.CleanupPolicy != nil {
@@ -692,6 +699,13 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
+		}
+	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Sidecars != nil {

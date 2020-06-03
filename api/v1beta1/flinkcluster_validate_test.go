@@ -352,7 +352,7 @@ func TestInvalidJobSpec(t *testing.T) {
 	var uiPort int32 = 8004
 	var dataPort int32 = 8005
 	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
-	var invalidRestartPolicy = "XXX"
+	var invalidRestartPolicy JobRestartPolicy = "XXX"
 	var validator = &Validator{}
 	var parallelism int32 = 2
 	var memoryOffHeapRatio int32 = 25
