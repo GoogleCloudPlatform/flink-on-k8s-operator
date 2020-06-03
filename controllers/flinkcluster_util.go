@@ -149,9 +149,9 @@ func shouldRestartJob(
 func shouldUpdateJob(observed ObservedClusterState) bool {
 	var jobStatus = observed.cluster.Status.Components.Job
 	return isJobUpdateRequested(&observed.cluster.Status) &&
-		(isSavepointReadyForJobUpdate(observed.observeTime, *jobStatus) ||
+		(jobStatus == nil ||
 			isJobStopped(jobStatus) ||
-			jobStatus.State == v1beta1.JobStateUpdating)
+			isSavepointReadyForJobUpdate(observed.observeTime, *jobStatus))
 }
 
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
@@ -376,6 +376,7 @@ func isSavepointReadyForJobUpdate(now time.Time, jobStatus v1beta1.JobStatus) bo
 
 func getJobUpdateState(observed ObservedClusterState) JobUpdateState {
 	var job = observed.job
+	var jobStatus = observed.cluster.Status.Components.Job
 	var nextRevision = observed.cluster.Status.NextRevision
 	if !isJobUpdateRequested(&observed.cluster.Status) {
 		return ""
@@ -383,7 +384,7 @@ func getJobUpdateState(observed ObservedClusterState) JobUpdateState {
 	switch {
 	case job != nil && job.Labels[history.ControllerRevisionHashLabel] == nextRevision:
 		return JobUpdateStateFinished
-	case shouldUpdateJob(observed):
+	case shouldUpdateJob(observed) || jobStatus.State == v1beta1.JobStateUpdating:
 		return JobUpdateStateUpdating
 	}
 	return JobUpdateStatePreparing

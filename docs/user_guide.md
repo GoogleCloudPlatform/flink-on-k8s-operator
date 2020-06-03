@@ -414,7 +414,8 @@ of the FlinkCluster custom resource, and the Flink operator takes care of the pr
 There are several points to note when using the job update feature.
 * To use the job update feature, `savepointsDir` must be set and the value of this field cannot be deleted when updating.
 This is because the Flink operator requires the value to create a savepoint for job updates.
-* Since `fromSavepoint` is used only when creating FlinkCluster, it cannot be updated.
+* You can replay Flink job from your desired savepoint by updating `fromSavepoint`.
+If you want to resume the updated job from the latest savepoint, remove or unset `fromSavepoint`.
 * `cancelRequested` and `savepointGeneration` are not allowed to update at the same time with other fields
 due to functional characteristics.
 

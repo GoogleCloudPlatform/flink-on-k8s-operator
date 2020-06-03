@@ -744,8 +744,24 @@ func getDesiredJob(
 
 func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
 	var jobStatus = clusterStatus.Components.Job
-	if jobStatus != nil && jobStatus.SavepointLocation != "" {
+	// 1) When operator should restart the  job for some reason, we want the job resume at the stopped point,
+	// so the operator will use the latest savepoint recorded in savepointLocation in job status.
+	//
+	// 2) In the case of job update
+	// 2-1) User may want to replay the job from the savepoint user provided by updating spec.fromSavepoint.
+	// 2-2) Or user may want to resume the job from the latest savepoint after job update just like when job restarting.
+	// In this case, user must make spec.fromSavepoint empty so that the operator know the job should resume from the latest savepoint.
+	if shouldRestartJob(jobSpec.RestartPolicy, jobStatus) {
 		return &jobStatus.SavepointLocation
+	}
+	if isJobUpdateRequested(clusterStatus) {
+		if jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint != "" {
+			return jobSpec.FromSavepoint
+		} else if jobStatus != nil && jobStatus.SavepointLocation != "" {
+			return &jobStatus.SavepointLocation
+		} else {
+			return nil
+		}
 	}
 	return jobSpec.FromSavepoint
 }

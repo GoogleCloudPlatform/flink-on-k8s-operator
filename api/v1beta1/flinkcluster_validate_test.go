@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -589,36 +591,17 @@ func TestUpdateSavepointGeneration(t *testing.T) {
 func TestUpdateJob(t *testing.T) {
 	var validator = &Validator{}
 
-	var oldFromSavepoint = "savepoint1"
 	var oldSavepointDir = "/savepoint_dir"
 	var oldCluster1 = FlinkCluster{Spec: FlinkClusterSpec{
 		Job: &JobSpec{
-			JarFile:       "flink-app-v1.jar",
-			FromSavepoint: &oldFromSavepoint,
 			SavepointsDir: &oldSavepointDir,
 		},
 	}}
-
-	var newFromSavepointDir = "savepoint2"
 	var newCluster = FlinkCluster{Spec: FlinkClusterSpec{
-		TaskManager: TaskManagerSpec{
-			Replicas: 2,
-		},
-		Job: &JobSpec{
-			FromSavepoint: &newFromSavepointDir,
-		},
+		Job: &JobSpec{},
 	}}
 	var err = validator.ValidateUpdate(&oldCluster1, &newCluster)
-	var expectedErr = "updating fromSavepoint is not allowed"
-	assert.Equal(t, err.Error(), expectedErr)
-
-	newCluster = FlinkCluster{Spec: FlinkClusterSpec{
-		Job: &JobSpec{
-			FromSavepoint: &oldFromSavepoint,
-		},
-	}}
-	err = validator.ValidateUpdate(&oldCluster1, &newCluster)
-	expectedErr = "removing savepointsDir is not allowed"
+	var expectedErr = "removing savepointsDir is not allowed"
 	assert.Equal(t, err.Error(), expectedErr)
 
 	var newSavepointsDir = "/new_savepoint_dir"
@@ -627,12 +610,13 @@ func TestUpdateJob(t *testing.T) {
 			Replicas: 3,
 		},
 		Job: &JobSpec{
-			FromSavepoint: &oldFromSavepoint,
 			SavepointsDir: &newSavepointsDir,
 		},
 	}}
 	err = validator.ValidateUpdate(&oldCluster1, &newCluster)
-	expectedErr = "you cannot update fields other than spec.job"
+	oldJson, _ := json.Marshal(&oldCluster1.Spec)
+	newJson, _ := json.Marshal(&newCluster.Spec)
+	expectedErr = fmt.Sprintf("you cannot update fields other than spec.job, old FlinkCluster spec: %q, new FlinkCluster spec: %q", oldJson, newJson)
 	assert.Equal(t, err.Error(), expectedErr)
 
 	var oldCluster2 = FlinkCluster{Spec: FlinkClusterSpec{

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -211,10 +212,6 @@ func (v *Validator) validateJobUpdate(
 	if old.Spec.Job == nil || new.Spec.Job == nil {
 		return false, nil
 	}
-	if !reflect.DeepEqual(old.Spec.Job.FromSavepoint, new.Spec.Job.FromSavepoint) {
-		return false, fmt.Errorf(
-			"updating fromSavepoint is not allowed")
-	}
 	if old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
 		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == "") {
 		return false, fmt.Errorf(
@@ -228,8 +225,10 @@ func (v *Validator) validateJobUpdate(
 		oldCopy := old.DeepCopy()
 		oldCopy.Spec.Job = new.Spec.Job.DeepCopy()
 		if !reflect.DeepEqual(oldCopy.Spec, new.Spec) {
+			oldJson, _ := json.Marshal(&old.Spec)
+			newJson, _ := json.Marshal(&new.Spec)
 			return false, fmt.Errorf(
-				"you cannot update fields other than spec.job, old FlinkCluster spec: %v, new FlinkCluster spec: %v", oldCopy.Spec, new.Spec)
+				"you cannot update fields other than spec.job, old FlinkCluster spec: %q, new FlinkCluster spec: %q", oldJson, newJson)
 		}
 		return true, nil
 	}
