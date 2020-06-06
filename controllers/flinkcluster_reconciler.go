@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -116,9 +117,16 @@ func (reconciler *ClusterReconciler) reconcileDeployment(
 	}
 
 	if desiredDeployment != nil && observedDeployment != nil {
+		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
+			updateComponet := fmt.Sprintf("%v deployment", component)
+			err := reconciler.updateComponent(desiredDeployment, observedDeployment, updateComponet)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 		log.Info("Deployment already exists, no action")
 		return nil
-		// TODO(dagang): compare and update if needed.
 	}
 
 	if desiredDeployment == nil && observedDeployment != nil {
@@ -142,6 +150,25 @@ func (reconciler *ClusterReconciler) createDeployment(
 		log.Info("Deployment created")
 	}
 	return err
+}
+
+func (reconciler *ClusterReconciler) updateComponent(desired runtime.Object, observed runtime.Object, component string) error {
+	var log = reconciler.log.WithValues("component", component)
+	if isComponentUpdated(observed, *reconciler.observed.cluster) {
+		reconciler.log.Info(fmt.Sprintf("%v is already updated, no action", component))
+		return nil
+	}
+
+	var context = reconciler.context
+	var k8sClient = reconciler.k8sClient
+	log.Info("Deleting component", "component", desired)
+	err := k8sClient.Delete(context, desired)
+	if err != nil {
+		log.Error(err, "Failed to update component")
+		return err
+	}
+	log.Info("Component deleted successfully")
+	return nil
 }
 
 func (reconciler *ClusterReconciler) updateDeployment(
@@ -186,14 +213,22 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 	}
 
 	if desiredJmService != nil && observedJmService != nil {
+		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
+			// v1.Service API does not handle update correctly when below values are empty.
+			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
+			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
+			err := reconciler.updateComponent(desiredJmService, observedJmService, "JobManager service")
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 		reconciler.log.Info("JobManager service already exists, no action")
 		return nil
-		// TODO(dagang): compare and update if needed.
 	}
 
 	if desiredJmService == nil && observedJmService != nil {
 		return reconciler.deleteService(observedJmService, "JobManager")
-		// TODO(dagang): compare and update if needed.
 	}
 
 	return nil
@@ -241,9 +276,15 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 	}
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
+		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
+			err := reconciler.updateComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 		reconciler.log.Info("JobManager ingress already exists, no action")
 		return nil
-		// TODO: compare and update if needed.
 	}
 
 	if desiredJmIngress == nil && observedJmIngress != nil {
@@ -295,9 +336,15 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 	}
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
+		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
+			err := reconciler.updateComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 		reconciler.log.Info("ConfigMap already exists, no action")
 		return nil
-		// TODO: compare and update if needed.
 	}
 
 	if desiredConfigMap == nil && observedConfigMap != nil {

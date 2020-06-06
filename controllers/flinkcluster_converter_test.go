@@ -17,7 +17,6 @@ limitations under the License.
 package controllers
 
 import (
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"testing"
 	"time"
 
@@ -246,9 +245,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-jobmanager",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app":       "flink",
-				"cluster":   "flinkjobcluster-sample",
-				"component": "jobmanager",
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"component":                 "jobmanager",
+				"flinkoperator.k8s.io/hash": "",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -398,9 +398,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-jobmanager",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app":       "flink",
-				"cluster":   "flinkjobcluster-sample",
-				"component": "jobmanager",
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"component":                 "jobmanager",
+				"flinkoperator.k8s.io/hash": "",
 			},
 			Annotations: map[string]string{
 				"cloud.google.com/load-balancer-type": "Internal",
@@ -442,9 +443,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-jobmanager",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app":       "flink",
-				"cluster":   "flinkjobcluster-sample",
-				"component": "jobmanager",
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"component":                 "jobmanager",
+				"flinkoperator.k8s.io/hash": "",
 			},
 			Annotations: map[string]string{
 				"kubernetes.io/ingress.class":                "nginx",
@@ -493,9 +495,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-taskmanager",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app":       "flink",
-				"cluster":   "flinkjobcluster-sample",
-				"component": "taskmanager",
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"component":                 "taskmanager",
+				"flinkoperator.k8s.io/hash": "",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -650,7 +653,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Name:      "flinkjobcluster-sample-job",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app": "flink", "cluster": "flinkjobcluster-sample", history.ControllerRevisionHashLabel: ""},
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"flinkoperator.k8s.io/hash": "",
+			},
 			OwnerReferences: []metav1.OwnerReference{
 				{APIVersion: "flinkoperator.k8s.io/v1beta1",
 					Kind:               "FlinkCluster",
@@ -663,7 +669,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 		Spec: batchv1.JobSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": "flink", "cluster": "flinkjobcluster-sample", history.ControllerRevisionHashLabel: ""},
+					Labels: map[string]string{
+						"app":     "flink",
+						"cluster": "flinkjobcluster-sample",
+					},
 				},
 				Spec: v1.PodSpec{
 					InitContainers: []v1.Container{
@@ -789,7 +798,9 @@ taskmanager.rpc.port: 6122
 			Name:      "flinkjobcluster-sample-configmap",
 			Namespace: "default",
 			Labels: map[string]string{
-				"app": "flink", "cluster": "flinkjobcluster-sample",
+				"app":                       "flink",
+				"cluster":                   "flinkjobcluster-sample",
+				"flinkoperator.k8s.io/hash": "",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{

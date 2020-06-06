@@ -20,16 +20,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
 	"time"
-
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
-	batchv1 "k8s.io/api/batch/v1"
 )
 
 const (
@@ -44,12 +45,12 @@ const (
 	SavepointAgeForJobUpdateSec = 300
 )
 
-type JobUpdateState string
+type UpdateState string
 
 const (
-	JobUpdateStatePreparing JobUpdateState = "Preparing"
-	JobUpdateStateUpdating  JobUpdateState = "Updating"
-	JobUpdateStateFinished  JobUpdateState = "Finished"
+	UpdateStateStoppingJob UpdateState = "StoppingJob"
+	UpdateStateUpdating    UpdateState = "Updating"
+	UpdateStateFinished    UpdateState = "Finished"
 )
 
 type objectForPatch struct {
@@ -148,10 +149,16 @@ func shouldRestartJob(
 
 func shouldUpdateJob(observed ObservedClusterState) bool {
 	var jobStatus = observed.cluster.Status.Components.Job
-	return isJobUpdateRequested(&observed.cluster.Status) &&
+	return isUpdateTriggered(observed.cluster.Status) &&
 		(jobStatus == nil ||
 			isJobStopped(jobStatus) ||
-			isSavepointReadyForJobUpdate(observed.observeTime, *jobStatus))
+			isSavepointUpToDate(observed.observeTime, *jobStatus))
+}
+
+func shouldUpdateCluster(observed ObservedClusterState) bool {
+	var jobStatus = observed.cluster.Status.Components.Job
+	return isUpdateTriggered(observed.cluster.Status) &&
+		(jobStatus == nil || isJobStopped(jobStatus))
 }
 
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
@@ -348,7 +355,7 @@ func isJobCancelRequested(cluster v1beta1.FlinkCluster) bool {
 		(cancelRequested != nil && *cancelRequested)
 }
 
-func isJobUpdateRequested(status *v1beta1.FlinkClusterStatus) bool {
+func isUpdateTriggered(status v1beta1.FlinkClusterStatus) bool {
 	return status.CurrentRevision != status.NextRevision
 }
 
@@ -361,8 +368,8 @@ func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) boo
 		controlStatus.State == v1beta1.ControlStateFailed
 }
 
-// Check recent savepoint is available for job update.
-func isSavepointReadyForJobUpdate(now time.Time, jobStatus v1beta1.JobStatus) bool {
+// Check if the savepoint has been created recently.
+func isSavepointUpToDate(now time.Time, jobStatus v1beta1.JobStatus) bool {
 	if jobStatus.SavepointLocation != "" && jobStatus.LastSavepointTime != "" {
 		tc := &TimeConverter{}
 		completedTime := tc.FromString(jobStatus.LastSavepointTime)
@@ -374,18 +381,67 @@ func isSavepointReadyForJobUpdate(now time.Time, jobStatus v1beta1.JobStatus) bo
 	return false
 }
 
-func getJobUpdateState(observed ObservedClusterState) JobUpdateState {
-	var job = observed.job
-	var jobStatus = observed.cluster.Status.Components.Job
-	var nextRevision = observed.cluster.Status.NextRevision
-	if !isJobUpdateRequested(&observed.cluster.Status) {
+func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) bool {
+	if !isUpdateTriggered(cluster.Status) {
+		return true
+	}
+	switch o := component.(type) {
+	case *appsv1.Deployment:
+		if o == nil {
+			return false
+		}
+	case *corev1.ConfigMap:
+		if o == nil {
+			return false
+		}
+	case *corev1.Service:
+		if o == nil {
+			return false
+		}
+	case *batchv1.Job:
+		if o == nil && cluster.Spec.Job != nil {
+			return false
+		}
+	case *extensionsv1beta1.Ingress:
+		if o == nil && cluster.Spec.JobManager.Ingress != nil {
+			return false
+		}
+	}
+
+	var labels, err = meta.NewAccessor().Labels(component)
+	var nextRevision = cluster.Status.NextRevision
+	if err != nil {
+		return false
+	}
+	return labels[history.ControllerRevisionHashLabel] == nextRevision
+}
+
+func isUpdatedAll(observed ObservedClusterState) bool {
+	for _, c := range []runtime.Object{
+		observed.configMap,
+		observed.jmDeployment,
+		observed.tmDeployment,
+		observed.jmService,
+		observed.jmIngress,
+		observed.job,
+	} {
+		if !isComponentUpdated(c, *observed.cluster) {
+			return false
+		}
+	}
+	return true
+}
+
+func getUpdateState(observed ObservedClusterState) UpdateState {
+	if !isUpdateTriggered(observed.cluster.Status) {
 		return ""
 	}
 	switch {
-	case job != nil && job.Labels[history.ControllerRevisionHashLabel] == nextRevision:
-		return JobUpdateStateFinished
-	case shouldUpdateJob(observed) || jobStatus.State == v1beta1.JobStateUpdating:
-		return JobUpdateStateUpdating
+	case observed.job != nil &&
+		observed.job.Labels[history.ControllerRevisionHashLabel] != observed.cluster.Status.NextRevision:
+		return UpdateStateStoppingJob
+	case isUpdatedAll(observed):
+		return UpdateStateFinished
 	}
-	return JobUpdateStatePreparing
+	return UpdateStateUpdating
 }

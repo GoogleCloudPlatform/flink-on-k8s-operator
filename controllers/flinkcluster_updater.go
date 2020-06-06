@@ -199,14 +199,16 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var runningComponents = 0
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
+	var isJobUpdating = recorded.Components.Job != nil && recorded.Components.Job.State == v1beta1.JobStateUpdating
 
 	// ConfigMap.
 	var observedConfigMap = observed.configMap
-	if observedConfigMap != nil {
-		status.Components.ConfigMap.Name =
-			observedConfigMap.ObjectMeta.Name
-		status.Components.ConfigMap.State =
-			v1beta1.ComponentStateReady
+	if !isComponentUpdated(observedConfigMap, *observed.cluster) && isJobUpdating {
+		recorded.Components.ConfigMap.DeepCopyInto(&status.Components.ConfigMap)
+		status.Components.ConfigMap.State = v1beta1.ComponentStateUpdating
+	} else if observedConfigMap != nil {
+		status.Components.ConfigMap.Name = observedConfigMap.ObjectMeta.Name
+		status.Components.ConfigMap.State = v1beta1.ComponentStateReady
 	} else if recorded.Components.ConfigMap.Name != "" {
 		status.Components.ConfigMap =
 			v1beta1.FlinkClusterComponentState{
@@ -217,13 +219,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// JobManager deployment.
 	var observedJmDeployment = observed.jmDeployment
-	if observedJmDeployment != nil {
-		status.Components.JobManagerDeployment.Name =
-			observedJmDeployment.ObjectMeta.Name
-		status.Components.JobManagerDeployment.State =
-			getDeploymentState(observedJmDeployment)
-		if status.Components.JobManagerDeployment.State ==
-			v1beta1.ComponentStateReady {
+	if !isComponentUpdated(observedJmDeployment, *observed.cluster) && isJobUpdating {
+		recorded.Components.JobManagerDeployment.DeepCopyInto(&status.Components.JobManagerDeployment)
+		status.Components.JobManagerDeployment.State = v1beta1.ComponentStateUpdating
+	} else if observedJmDeployment != nil {
+		status.Components.JobManagerDeployment.Name = observedJmDeployment.ObjectMeta.Name
+		status.Components.JobManagerDeployment.State = getDeploymentState(observedJmDeployment)
+		if status.Components.JobManagerDeployment.State == v1beta1.ComponentStateReady {
 			runningComponents++
 		}
 	} else if recorded.Components.JobManagerDeployment.Name != "" {
@@ -236,7 +238,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// JobManager service.
 	var observedJmService = observed.jmService
-	if observedJmService != nil {
+	if !isComponentUpdated(observedJmService, *observed.cluster) && isJobUpdating {
+		recorded.Components.JobManagerService.DeepCopyInto(&status.Components.JobManagerService)
+		status.Components.JobManagerService.State = v1beta1.ComponentStateUpdating
+	} else if observedJmService != nil {
 		var state string
 		var nodePort int32
 		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
@@ -284,7 +289,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// (Optional) JobManager ingress.
 	var observedJmIngress = observed.jmIngress
-	if observedJmIngress != nil {
+	if !isComponentUpdated(observedJmIngress, *observed.cluster) && isJobUpdating {
+		status.Components.JobManagerIngress = &v1beta1.JobManagerIngressStatus{}
+		recorded.Components.JobManagerIngress.DeepCopyInto(status.Components.JobManagerIngress)
+		status.Components.JobManagerIngress.State = v1beta1.ComponentStateUpdating
+	} else if observedJmIngress != nil {
 		var state string
 		var urls []string
 		var useTLS bool
@@ -363,7 +372,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// TaskManager deployment.
 	var observedTmDeployment = observed.tmDeployment
-	if observedTmDeployment != nil {
+	if !isComponentUpdated(observedTmDeployment, *observed.cluster) && isJobUpdating {
+		recorded.Components.TaskManagerDeployment.DeepCopyInto(&status.Components.TaskManagerDeployment)
+		status.Components.TaskManagerDeployment.State = v1beta1.ComponentStateUpdating
+	} else if observedTmDeployment != nil {
 		status.Components.TaskManagerDeployment.Name =
 			observedTmDeployment.ObjectMeta.Name
 		status.Components.TaskManagerDeployment.State =
@@ -380,46 +392,6 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 	}
 
-	// (Optional) Savepoint status
-	// update savepoint status if it is in progress
-	if recorded.Savepoint != nil {
-		var newSavepointStatus = recorded.Savepoint.DeepCopy()
-		if recorded.Savepoint.State == v1beta1.SavepointStateInProgress && observed.savepoint != nil {
-			switch {
-			case observed.savepoint.IsSuccessful():
-				newSavepointStatus.State = v1beta1.SavepointStateSucceeded
-			case observed.savepoint.IsFailed():
-				var msg string
-				newSavepointStatus.State = v1beta1.SavepointStateFailed
-				if observed.savepoint.FailureCause.StackTrace != "" {
-					msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
-				} else if observed.savepointErr != nil {
-					msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
-				} else {
-					msg = "Failed to get triggered savepoint status"
-				}
-				if len(msg) > 1024 {
-					msg = msg[:1024] + "..."
-				}
-				newSavepointStatus.Message = msg
-			}
-		}
-		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateInProgress {
-			if savepointTimeout(newSavepointStatus) {
-				newSavepointStatus.State = v1beta1.SavepointStateFailed
-				newSavepointStatus.Message = "Timed out taking savepoint"
-			} else if isJobStopped(recorded.Components.Job) {
-				newSavepointStatus.Message = "Flink job is stopped"
-				newSavepointStatus.State = v1beta1.SavepointStateFailed
-			} else if flinkJobID := updater.getFlinkJobID(); flinkJobID == nil ||
-				(recorded.Savepoint.TriggerID != "" && *flinkJobID != recorded.Savepoint.JobID) {
-				newSavepointStatus.Message = "There is no Flink job to create savepoint"
-				newSavepointStatus.State = v1beta1.SavepointStateFailed
-			}
-		}
-		status.Savepoint = newSavepointStatus
-	}
-
 	// (Optional) Job.
 	var jobStopped = false
 	var jobSucceeded = false
@@ -428,7 +400,11 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var observedJob = observed.job
 	var recordedJobStatus = recorded.Components.Job
 	var jobStatus *v1beta1.JobStatus
-	if observedJob != nil {
+	if !isComponentUpdated(observedJob, *observed.cluster) && observed.job == nil {
+		jobStatus = &v1beta1.JobStatus{}
+		recorded.Components.Job.DeepCopyInto(jobStatus)
+		jobStatus.State = v1beta1.JobStateUpdating
+	} else if observedJob != nil {
 		jobStatus = &v1beta1.JobStatus{}
 		if recordedJobStatus != nil {
 			recordedJobStatus.DeepCopyInto(jobStatus)
@@ -439,10 +415,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		if flinkJobID != nil {
 			jobStatus.ID = *flinkJobID
 		}
-		// Check whether job is in update state first to prevent cluster cleanup by 'jobStopped' when updating.
-		if isJobUpdateRequested(&observed.cluster.Status) {
-			jobStatus.State = v1beta1.JobStateUpdating
-		} else if observedJob.Status.Failed > 0 {
+		if observedJob.Status.Failed > 0 {
 			jobStatus.State = v1beta1.JobStateFailed
 			jobStopped = true
 			jobFailed = true
@@ -466,12 +439,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 		}
 	} else if recordedJobStatus != nil {
+		jobStopped = true
 		jobStatus = recordedJobStatus.DeepCopy()
-		if isJobUpdateRequested(&observed.cluster.Status) {
-			jobStatus.State = v1beta1.JobStateUpdating
-		} else if isJobCancelRequested(*observed.cluster) || jobStatus.State == v1beta1.JobStateCancelled {
+		if isJobCancelRequested(*observed.cluster) || jobStatus.State == v1beta1.JobStateCancelled {
 			jobStatus.State = v1beta1.JobStateCancelled
-			jobStopped = true
 			jobCancelled = true
 		}
 	}
@@ -522,13 +493,53 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			status.State = v1beta1.ClusterStateStopping
 		}
 	case v1beta1.ClusterStateStopped:
-		if isJobUpdateRequested(recorded) {
+		if isUpdateTriggered(*recorded) {
 			status.State = v1beta1.ClusterStateReconciling
 		} else {
 			status.State = v1beta1.ClusterStateStopped
 		}
 	default:
 		panic(fmt.Sprintf("Unknown cluster state: %v", recorded.State))
+	}
+
+	// Savepoint status
+	// update savepoint status if it is in progress
+	if recorded.Savepoint != nil {
+		var newSavepointStatus = recorded.Savepoint.DeepCopy()
+		if recorded.Savepoint.State == v1beta1.SavepointStateInProgress && observed.savepoint != nil {
+			switch {
+			case observed.savepoint.IsSuccessful():
+				newSavepointStatus.State = v1beta1.SavepointStateSucceeded
+			case observed.savepoint.IsFailed():
+				var msg string
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
+				if observed.savepoint.FailureCause.StackTrace != "" {
+					msg = fmt.Sprintf("Savepoint error: %v", observed.savepoint.FailureCause.StackTrace)
+				} else if observed.savepointErr != nil {
+					msg = fmt.Sprintf("Failed to get triggered savepoint status: %v", observed.savepointErr)
+				} else {
+					msg = "Failed to get triggered savepoint status"
+				}
+				if len(msg) > 1024 {
+					msg = msg[:1024] + "..."
+				}
+				newSavepointStatus.Message = msg
+			}
+		}
+		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateInProgress {
+			if savepointTimeout(newSavepointStatus) {
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
+				newSavepointStatus.Message = "Timed out taking savepoint"
+			} else if isJobStopped(recorded.Components.Job) {
+				newSavepointStatus.Message = "Flink job is stopped"
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
+			} else if flinkJobID := updater.getFlinkJobID(); flinkJobID == nil ||
+				(recorded.Savepoint.TriggerID != "" && *flinkJobID != recorded.Savepoint.JobID) {
+				newSavepointStatus.Message = "There is no Flink job to create savepoint"
+				newSavepointStatus.State = v1beta1.SavepointStateFailed
+			}
+		}
+		status.Savepoint = newSavepointStatus
 	}
 
 	// User requested control
@@ -595,7 +606,10 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					break
 				}
 				// Clear status for new savepoint
-				status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonUserRequested}
+				status.Savepoint = &v1beta1.SavepointStatus{
+					State:         v1beta1.SavepointStateNotTriggered,
+					TriggerReason: v1beta1.SavepointTriggerReasonUserRequested,
+				}
 				controlStatus = getNewUserControlStatus(userControl)
 			case v1beta1.ControlNameJobCancel:
 				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
@@ -604,9 +618,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				}
 				// Savepoint for job-cancel
 				var observedSavepoint = observed.cluster.Status.Savepoint
-				if observedSavepoint == nil || observedSavepoint.State != v1beta1.SavepointStateInProgress {
+				if observedSavepoint == nil ||
+					(observedSavepoint.State != v1beta1.SavepointStateInProgress && observedSavepoint.State != v1beta1.SavepointStateNotTriggered) {
 					updater.log.Info("There is no savepoint in progress. Trigger savepoint in reconciler.")
-					status.Savepoint = &v1beta1.SavepointStatus{State: v1beta1.SavepointStateNotTriggered, TriggerReason: v1beta1.SavepointTriggerReasonJobCancel}
+					status.Savepoint = &v1beta1.SavepointStatus{
+						State:         v1beta1.SavepointStateNotTriggered,
+						TriggerReason: v1beta1.SavepointTriggerReasonJobCancel,
+					}
 				} else {
 					updater.log.Info("There is a savepoint in progress. Skip new savepoint.")
 				}
@@ -620,27 +638,32 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	}
 	status.Control = controlStatus
 
-	// Handle job update.
+	// Handle update.
 	var savepointForJobUpdate *v1beta1.SavepointStatus
-	if isJobUpdateRequested(recorded) {
-		var savepoint = observed.cluster.Status.Savepoint
-		switch getJobUpdateState(*observed) {
-		case JobUpdateStatePreparing:
-			updater.log.Info("Preparing job update")
-			if savepoint == nil || savepoint.State != v1beta1.SavepointStateInProgress {
+	if isUpdateTriggered(*recorded) {
+		switch getUpdateState(*observed) {
+		case UpdateStateStoppingJob:
+			// Even if savepoint has been created for update already, we check the age of savepoint continually.
+			// If created savepoint is old and savepoint can be triggered, we should take savepoint again.
+			// (e.g., for the case update is not progressed by accidents like network partition)
+			if !isSavepointUpToDate(observed.observeTime, *jobStatus) &&
+				canTakeSavepoint(*observed.cluster) &&
+				(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
 				savepointForJobUpdate = &v1beta1.SavepointStatus{
 					State:         v1beta1.SavepointStateNotTriggered,
 					TriggerReason: v1beta1.SavepointTriggerReasonJobUpdate,
 				}
 				updater.log.Info("Savepoint will be triggered for job update")
+			} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
+				updater.log.Info("Savepoint is in progress")
 			} else {
-				updater.log.Info("Savepoint is in progress for job update")
+				updater.log.Info("Stopping job")
 			}
-		case JobUpdateStateUpdating:
-			updater.log.Info("Job update is in progress")
-		case JobUpdateStateFinished:
+		case UpdateStateUpdating:
+			updater.log.Info("Recreating cluster")
+		case UpdateStateFinished:
 			status.CurrentRevision = observed.cluster.Status.NextRevision
-			updater.log.Info("Finished job update")
+			updater.log.Info("Finished update")
 		}
 	}
 	if savepointForJobUpdate != nil {

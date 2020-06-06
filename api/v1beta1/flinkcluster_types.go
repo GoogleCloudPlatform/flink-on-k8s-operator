@@ -36,6 +36,7 @@ const (
 const (
 	ComponentStateNotReady = "NotReady"
 	ComponentStateReady    = "Ready"
+	ComponentStateUpdating = "Updating"
 	ComponentStateDeleted  = "Deleted"
 )
 
