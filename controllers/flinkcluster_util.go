@@ -399,12 +399,18 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 			return false
 		}
 	case *batchv1.Job:
-		if o == nil && cluster.Spec.Job != nil {
-			return false
+		if o == nil {
+			if cluster.Spec.Job != nil {
+				return false
+			}
+			return true
 		}
 	case *extensionsv1beta1.Ingress:
-		if o == nil && cluster.Spec.JobManager.Ingress != nil {
-			return false
+		if o == nil {
+			if cluster.Spec.JobManager.Ingress != nil {
+				return false
+			}
+			return true
 		}
 	}
 

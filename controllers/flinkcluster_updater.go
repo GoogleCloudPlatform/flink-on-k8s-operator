@@ -464,7 +464,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 	case v1beta1.ClusterStateRunning,
 		v1beta1.ClusterStateReconciling:
-		if jobStopped {
+		if jobStopped && !isUpdateTriggered(*recorded) {
 			var policy = observed.cluster.Spec.Job.CleanupPolicy
 			if jobSucceeded &&
 				policy.AfterJobSucceeds != v1beta1.CleanupActionKeepCluster {
@@ -660,7 +660,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				updater.log.Info("Stopping job")
 			}
 		case UpdateStateUpdating:
-			updater.log.Info("Recreating cluster")
+			updater.log.Info("Updating cluster")
 		case UpdateStateFinished:
 			status.CurrentRevision = observed.cluster.Status.NextRevision
 			updater.log.Info("Finished update")
