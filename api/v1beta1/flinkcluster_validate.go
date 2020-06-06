@@ -97,16 +97,14 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
-	jobUpdated, err := v.validateJobUpdate(old, new)
+	err = v.validateJobUpdate(old, new)
 	if err != nil {
 		return err
 	}
-	if jobUpdated {
-		return nil
-	}
 
-	if !reflect.DeepEqual(new.Spec, old.Spec) {
-		return fmt.Errorf("the cluster properties are immutable")
+	err = v.ValidateCreate(new)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -206,34 +204,22 @@ func (v *Validator) checkSavepointGeneration(
 		"you cannot update savepointGeneration with others at the same time")
 }
 
-// Check job update constraints.
-func (v *Validator) validateJobUpdate(
-	old *FlinkCluster, new *FlinkCluster) (bool, error) {
-	if old.Spec.Job == nil || new.Spec.Job == nil {
-		return false, nil
+// Validate job update.
+func (v *Validator) validateJobUpdate(old *FlinkCluster, new *FlinkCluster) error {
+	switch {
+	case old.Spec.Job == nil && new.Spec.Job == nil:
+		return nil
+	case old.Spec.Job == nil || new.Spec.Job == nil:
+		oldJob, _ := json.Marshal(old.Spec.Job)
+		newJob, _ := json.Marshal(new.Spec.Job)
+		return fmt.Errorf("you cannot change cluster type between session cluster and job cluster, old spec.job: %q, new spec.job: %q", oldJob, newJob)
+	case old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "":
+		return fmt.Errorf("updating job is not allowed when spec.job.savepointsDir was not provided")
+	case old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
+		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == ""):
+		return fmt.Errorf("removing savepointsDir is not allowed")
 	}
-	if old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
-		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == "") {
-		return false, fmt.Errorf(
-			"removing savepointsDir is not allowed")
-	}
-	if !reflect.DeepEqual(old.Spec.Job, new.Spec.Job) {
-		if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
-			return false, fmt.Errorf(
-				"updating job is not allowed when spec.job.savepointsDir was not provided")
-		}
-		oldCopy := old.DeepCopy()
-		oldCopy.Spec.Job = new.Spec.Job.DeepCopy()
-		if !reflect.DeepEqual(oldCopy.Spec, new.Spec) {
-			oldJson, _ := json.Marshal(&old.Spec)
-			newJson, _ := json.Marshal(&new.Spec)
-			return false, fmt.Errorf(
-				"you cannot update fields other than spec.job, old FlinkCluster spec: %q, new FlinkCluster spec: %q", oldJson, newJson)
-		}
-		return true, nil
-	}
-
-	return false, nil
+	return nil
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {

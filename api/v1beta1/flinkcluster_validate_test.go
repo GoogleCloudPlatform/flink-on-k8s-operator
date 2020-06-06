@@ -543,17 +543,6 @@ func TestUpdateStatusAllowed(t *testing.T) {
 	assert.NilError(t, err, "updating status failed unexpectedly")
 }
 
-func TestUpdateSpecNotAllowed(t *testing.T) {
-	var oldCluster = FlinkCluster{
-		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.8.1"}}}
-	var newCluster = FlinkCluster{
-		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
-	var validator = &Validator{}
-	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
-	var expectedErr = "the cluster properties are immutable"
-	assert.Equal(t, err.Error(), expectedErr)
-}
-
 func TestUpdateSavepointGeneration(t *testing.T) {
 	var validator = &Validator{}
 
@@ -604,19 +593,11 @@ func TestUpdateJob(t *testing.T) {
 	var expectedErr = "removing savepointsDir is not allowed"
 	assert.Equal(t, err.Error(), expectedErr)
 
-	var newSavepointsDir = "/new_savepoint_dir"
-	newCluster = FlinkCluster{Spec: FlinkClusterSpec{
-		TaskManager: TaskManagerSpec{
-			Replicas: 3,
-		},
-		Job: &JobSpec{
-			SavepointsDir: &newSavepointsDir,
-		},
-	}}
+	newCluster = FlinkCluster{Spec: FlinkClusterSpec{}}
 	err = validator.ValidateUpdate(&oldCluster1, &newCluster)
-	oldJson, _ := json.Marshal(&oldCluster1.Spec)
-	newJson, _ := json.Marshal(&newCluster.Spec)
-	expectedErr = fmt.Sprintf("you cannot update fields other than spec.job, old FlinkCluster spec: %q, new FlinkCluster spec: %q", oldJson, newJson)
+	oldJson, _ := json.Marshal(&oldCluster1.Spec.Job)
+	newJson, _ := json.Marshal(&newCluster.Spec.Job)
+	expectedErr = fmt.Sprintf("you cannot change cluster type between session cluster and job cluster, old spec.job: %q, new spec.job: %q", oldJson, newJson)
 	assert.Equal(t, err.Error(), expectedErr)
 
 	var oldCluster2 = FlinkCluster{Spec: FlinkClusterSpec{
