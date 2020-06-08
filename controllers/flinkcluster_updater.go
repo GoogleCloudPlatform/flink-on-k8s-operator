@@ -651,7 +651,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
 				savepointForJobUpdate = &v1beta1.SavepointStatus{
 					State:         v1beta1.SavepointStateNotTriggered,
-					TriggerReason: v1beta1.SavepointTriggerReasonJobUpdate,
+					TriggerReason: v1beta1.SavepointTriggerReasonUpdate,
 				}
 				updater.log.Info("Savepoint will be triggered for job update")
 			} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {

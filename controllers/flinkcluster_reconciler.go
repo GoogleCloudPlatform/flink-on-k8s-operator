@@ -118,8 +118,9 @@ func (reconciler *ClusterReconciler) reconcileDeployment(
 
 	if desiredDeployment != nil && observedDeployment != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
-			updateComponet := fmt.Sprintf("%v deployment", component)
-			err := reconciler.updateComponent(desiredDeployment, observedDeployment, updateComponet)
+			updateComponent := fmt.Sprintf("%v deployment", component)
+			reconciler.log.Info(fmt.Sprintf("Updating %v", updateComponent))
+			err := reconciler.deleteComponent(desiredDeployment, observedDeployment, updateComponent)
 			if err != nil {
 				return err
 			}
@@ -152,7 +153,7 @@ func (reconciler *ClusterReconciler) createDeployment(
 	return err
 }
 
-func (reconciler *ClusterReconciler) updateComponent(desired runtime.Object, observed runtime.Object, component string) error {
+func (reconciler *ClusterReconciler) deleteComponent(desired runtime.Object, observed runtime.Object, component string) error {
 	var log = reconciler.log.WithValues("component", component)
 	if isComponentUpdated(observed, *reconciler.observed.cluster) {
 		reconciler.log.Info(fmt.Sprintf("%v is already updated, no action", component))
@@ -161,13 +162,13 @@ func (reconciler *ClusterReconciler) updateComponent(desired runtime.Object, obs
 
 	var context = reconciler.context
 	var k8sClient = reconciler.k8sClient
-	log.Info("Deleting component", "component", desired)
+	log.Info("Deleting component for update", "component", desired)
 	err := k8sClient.Delete(context, desired)
 	if err != nil {
-		log.Error(err, "Failed to update component")
+		log.Error(err, "Failed to delete component for update")
 		return err
 	}
-	log.Info("Component deleted successfully")
+	log.Info("Component deleted for update successfully")
 	return nil
 }
 
@@ -217,7 +218,7 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 			// v1.Service API does not handle update correctly when below values are empty.
 			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
 			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
-			err := reconciler.updateComponent(desiredJmService, observedJmService, "JobManager service")
+			err := reconciler.deleteComponent(desiredJmService, observedJmService, "JobManager service")
 			if err != nil {
 				return err
 			}
@@ -277,7 +278,7 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
-			err := reconciler.updateComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			err := reconciler.deleteComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
 			if err != nil {
 				return err
 			}
@@ -337,7 +338,8 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
-			err := reconciler.updateComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			reconciler.log.Info("Updating ConfigMap")
+			err := reconciler.deleteComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
 			if err != nil {
 				return err
 			}
@@ -401,11 +403,9 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 	// Create
 	if desiredJob != nil && observedJob == nil {
-		// If the observed Flink job status list is not nil (e.g., emtpy list),
-		// it means Flink REST API server is up and running. It is the source of
-		// truth of whether we can submit a job.
-		if observed.flinkJobList == nil {
-			log.Info("Waiting for Flink API server to be ready")
+		// Proceed job creation process when the cluster components are updated and Flink API server is ready
+		if !isClusterReady(observed) {
+			log.Info("Waiting for cluster components to be updated and Flink API server to be ready")
 			return requeueResult, nil
 		}
 

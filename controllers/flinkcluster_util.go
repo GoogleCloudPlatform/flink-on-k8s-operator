@@ -317,7 +317,7 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 		msg = msg[:100] + "..."
 	}
 	var triggerReason = status.TriggerReason
-	if triggerReason == v1beta1.SavepointTriggerReasonJobCancel || triggerReason == v1beta1.SavepointTriggerReasonJobUpdate {
+	if triggerReason == v1beta1.SavepointTriggerReasonJobCancel || triggerReason == v1beta1.SavepointTriggerReasonUpdate {
 		triggerReason = "for " + triggerReason
 	}
 	switch status.State {
@@ -381,6 +381,10 @@ func isSavepointUpToDate(now time.Time, jobStatus v1beta1.JobStatus) bool {
 	return false
 }
 
+// isComponentUpdated checks whether the component updated.
+// If the component is observed as well as status.nextRevision and component's label `flinkoperator.k8s.io/hash` are equal, then it is updated already.
+// If the component is not observed and it is required, then it is not updated yet.
+// If the component is not observed and it is optional, but it is specified in the spec, then it is not updated yet.
 func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) bool {
 	if !isUpdateTriggered(cluster.Status) {
 		return true
@@ -422,20 +426,42 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 	return labels[history.ControllerRevisionHashLabel] == nextRevision
 }
 
+func areComponentsUpdated(components []runtime.Object, cluster v1beta1.FlinkCluster) bool {
+	for _, c := range components {
+		if !isComponentUpdated(c, cluster) {
+			return false
+		}
+	}
+	return true
+}
+
 func isUpdatedAll(observed ObservedClusterState) bool {
-	for _, c := range []runtime.Object{
+	components := []runtime.Object{
 		observed.configMap,
 		observed.jmDeployment,
 		observed.tmDeployment,
 		observed.jmService,
 		observed.jmIngress,
 		observed.job,
-	} {
-		if !isComponentUpdated(c, *observed.cluster) {
-			return false
-		}
 	}
-	return true
+	return areComponentsUpdated(components, *observed.cluster)
+}
+
+// isClusterReady checks whether cluster is ready to submit job.
+// It checks if cluster components is update with desired revision and Flink API server is ready.
+func isClusterReady(observed ObservedClusterState) bool {
+	components := []runtime.Object{
+		observed.configMap,
+		observed.jmDeployment,
+		observed.tmDeployment,
+		observed.jmService,
+	}
+
+	// If the observed Flink job status list is not nil (e.g., emtpy list),
+	// it means Flink REST API server is up and running. It is the source of
+	// truth of whether we can submit a job.
+	flinkAPIReady := observed.flinkJobList != nil
+	return flinkAPIReady && areComponentsUpdated(components, *observed.cluster)
 }
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
