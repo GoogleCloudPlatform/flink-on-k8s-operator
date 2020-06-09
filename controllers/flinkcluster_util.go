@@ -447,9 +447,9 @@ func isUpdatedAll(observed ObservedClusterState) bool {
 	return areComponentsUpdated(components, *observed.cluster)
 }
 
-// isClusterReady checks whether cluster is ready to submit job.
-// It checks if cluster components is update with desired revision and Flink API server is ready.
-func isClusterReady(observed ObservedClusterState) bool {
+// isFlinkAPIReady checks whether cluster is ready to submit job.
+// It checks if cluster components is updated with desired revision and Flink API server is ready.
+func isFlinkAPIReady(observed ObservedClusterState) bool {
 	components := []runtime.Object{
 		observed.configMap,
 		observed.jmDeployment,

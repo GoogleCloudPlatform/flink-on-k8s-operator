@@ -120,7 +120,7 @@ func (reconciler *ClusterReconciler) reconcileDeployment(
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
 			updateComponent := fmt.Sprintf("%v deployment", component)
 			reconciler.log.Info(fmt.Sprintf("Updating %v", updateComponent))
-			err := reconciler.deleteComponent(desiredDeployment, observedDeployment, updateComponent)
+			err := reconciler.deleteOldComponent(desiredDeployment, observedDeployment, updateComponent)
 			if err != nil {
 				return err
 			}
@@ -153,7 +153,7 @@ func (reconciler *ClusterReconciler) createDeployment(
 	return err
 }
 
-func (reconciler *ClusterReconciler) deleteComponent(desired runtime.Object, observed runtime.Object, component string) error {
+func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, observed runtime.Object, component string) error {
 	var log = reconciler.log.WithValues("component", component)
 	if isComponentUpdated(observed, *reconciler.observed.cluster) {
 		reconciler.log.Info(fmt.Sprintf("%v is already updated, no action", component))
@@ -218,7 +218,7 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 			// v1.Service API does not handle update correctly when below values are empty.
 			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
 			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
-			err := reconciler.deleteComponent(desiredJmService, observedJmService, "JobManager service")
+			err := reconciler.deleteOldComponent(desiredJmService, observedJmService, "JobManager service")
 			if err != nil {
 				return err
 			}
@@ -278,7 +278,7 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
-			err := reconciler.deleteComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			err := reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
 			if err != nil {
 				return err
 			}
@@ -339,7 +339,7 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 	if desiredConfigMap != nil && observedConfigMap != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
 			reconciler.log.Info("Updating ConfigMap")
-			err := reconciler.deleteComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			err := reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
 			if err != nil {
 				return err
 			}
@@ -403,9 +403,9 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 	// Create
 	if desiredJob != nil && observedJob == nil {
-		// Proceed job creation process when the cluster components are updated and Flink API server is ready
-		if !isClusterReady(observed) {
-			log.Info("Waiting for cluster components to be updated and Flink API server to be ready")
+		// Proceed job creation process when the cluster components and Flink API server is ready
+		if !isFlinkAPIReady(observed) {
+			log.Info("Waiting for cluster components and Flink API server to be ready")
 			return requeueResult, nil
 		}
 
