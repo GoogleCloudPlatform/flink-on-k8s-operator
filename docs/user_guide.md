@@ -408,35 +408,31 @@ See this [doc](./savepoints_guide.md) on how to manage savepoints with the opera
 To update a running Flink job's program or execution settings, you can create new savepoint, terminate the job,
 and create a new FlinkCluster with the new program, settings, and savepoint. 
 However, in some cases, you may want to update the Flink job while maintaining the logical continuity
-of the Flink job with the FlinkCluster custom resource. In this case, you can continuously update the `spec.job`
-of the FlinkCluster custom resource, and the Flink operator takes care of the process required to update the Flink job.
+of the Flink job with the FlinkCluster custom resource. In this case, you can continuously update
+the FlinkCluster custom resource, and the Flink operator takes care of the process required to update
+the Flink job and cluster.
 
 There are several points to note when using the job update feature.
 * To use the job update feature, `savepointsDir` must be set and the value of this field cannot be deleted when updating.
 This is because the Flink operator requires the value to create a savepoint for job updates.
 * You can replay Flink job from your desired savepoint by updating `fromSavepoint`.
-If you want to resume the updated job from the latest savepoint, remove or unset `fromSavepoint`.
+If you want to resume the updated job from the latest savepoint, set `fromSavepoint` to `LATEST`.
 * `cancelRequested` and `savepointGeneration` are not allowed to update at the same time with other fields
 due to functional characteristics.
 
-There are some behavioral characteristics in job update.
-* Whenever the spec.job is modified, the Flink operator creates
+There are some behavioral characteristics in update.
+* Whenever the FlinkCluster spec is updated, the Flink operator creates
 a [ControllerRevision](https://godoc.org/k8s.io/api/apps/v1#ControllerRevision) resource
 that stores the changed spec. ControllerRevisions can be used to check the editing history.
-* FlinkCluster job can be updated even if the job is in terminated state.
-But depending on the `cleanUpPolicy`, Flink operator may need to recover the Flink cluster first.
-If `cleanUpPolicy` is `"KeepCluster"`, Flink operator will progress Flink job update immediately.
-But if `cleanUpPolicy` is `"DeleteCluster"` or `"DeleteTaskManager"`,
-the Flink operator redeploys terminated components of Flink cluster first and then progress the Flink job update,
-because some components of Flink cluster is also terminated when Flink job is stopped.
-For more information about `cleanUpPolicy`, see [FlinkCluster Custom Resource Definition](./crd.md).
+* If update is triggered while the cluster is running, all components are re-created after terminated.
+If update is triggered in terminated state, all components are re-created as well.
 
-For example, you can create [wordcount job v1.9.2](../examples/job_update/wordcount-1.9.2.yaml)
-and update it to [wordcount job v1.9.3](../examples/job_update/wordcount-1.9.3.yaml) like this.
+For example, you can create [wordcount job v1.9.2](../examples/update/wordcount-1.9.2.yaml)
+and update it to [wordcount job v1.9.3](../examples/update/wordcount-1.9.3.yaml) like this.
 
 ```bash
 kubectl apply -f examples/job_update/wordcount-1.9.2.yaml
 kubectl apply -f examples/job_update/wordcount-1.9.3.yaml
 ```
 
-In this example, `job.args` and `job.initContainers.env` are updated to change job jar and arguments.
+In this example, Flink cluster image, job jar and job arguments are updated and the task manager is scaled from 1 to 2.

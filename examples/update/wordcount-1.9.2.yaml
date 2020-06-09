@@ -18,7 +18,7 @@ metadata:
   name: wordcount
 spec:
   image:
-    name: flink:1.9.3
+    name: flink:1.9.2
   jobManager:
     ports:
       ui: 8081
@@ -27,7 +27,7 @@ spec:
         memory: "1024Mi"
         cpu: "200m"
   taskManager:
-    replicas: 2
+    replicas: 1
     resources:
       limits:
         memory: "1024Mi"
@@ -36,7 +36,7 @@ spec:
     jarFile: /cache/flink-app.jar
     className: org.apache.flink.streaming.examples.wordcount.WordCount
     args: ["--input", "./README.txt"]
-    parallelism: 2
+    parallelism: 1
     savepointsDir: /cache/savepoints
     initContainers:
       - name: downloader
