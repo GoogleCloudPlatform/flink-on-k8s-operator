@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script is supposed to be used by the project administrator to release
+# This script is supposed to be used by project administrators to release
 # a new Flink Operator image from a Git commit. It tags the commit with the
 # version number (e.g., v1beta1-5), builds and pushes the image to
 # gcr.io/flink-operator/flink-operator:<version>.
