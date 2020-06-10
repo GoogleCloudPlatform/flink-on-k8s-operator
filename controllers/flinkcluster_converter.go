@@ -743,7 +743,13 @@ func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.Flink
 		if jobStatus == nil {
 			return nil
 		}
-		return &jobStatus.SavepointLocation
+		if jobStatus.SavepointLocation != "" {
+			return &jobStatus.SavepointLocation
+		}
+		if jobStatus.FromSavepoint != "" {
+			return &jobStatus.FromSavepoint
+		}
+		return nil
 	}
 	return jobSpec.FromSavepoint
 }

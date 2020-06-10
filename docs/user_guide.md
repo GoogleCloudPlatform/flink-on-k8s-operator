@@ -403,7 +403,7 @@ you can see the item named "flink-pod-monitor" in the "Service Discovery" sectio
 
 See this [doc](./savepoints_guide.md) on how to manage savepoints with the operator.
 
-### Flink Job update
+### Update Flink clusters and jobs
 
 To update a running Flink job's program or execution settings, you can create new savepoint, terminate the job,
 and create a new FlinkCluster with the new program, settings, and savepoint. 
