@@ -197,7 +197,7 @@ FlinkCluster
         protocols (e.g., `https://`, `gs://`) are supported by the Flink image.
       * **className** (required): Fully qualified Java class name of the job.
       * **args** (optional): Command-line args of the job.
-      * **savepoint** (optional): Savepoint where to restore the job from.
+      * **fromSavepoint** (optional): Savepoint where to restore the job from.
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointsDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.

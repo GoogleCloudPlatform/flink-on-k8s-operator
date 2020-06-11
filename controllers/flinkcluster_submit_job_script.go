@@ -87,6 +87,10 @@ function wait_for_job() {
 				echo -e "\nJob has been cancelled, exiting 2"
 				return 2
 			fi
+			if list_jobs | grep "No running jobs" && list_jobs | grep "No scheduled jobs"; then
+				echo -e "\nNo running and scheduled jobs, exiting 3"
+				return 3
+			fi
 			echo -e "\nUnknown job state, check it again in the next iteration."
 		fi
 		sleep 30
