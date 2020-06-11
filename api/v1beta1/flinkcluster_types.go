@@ -395,7 +395,7 @@ type FlinkClusterSpec struct {
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
 
-	// The maximum number of revision history to keep.
+	// The maximum number of revision history to keep, default: 10.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 

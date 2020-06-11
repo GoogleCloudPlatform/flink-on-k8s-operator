@@ -81,6 +81,7 @@ FlinkCluster
             |__ secretName
             |__ keyFile
             |__ mountPath
+    |__ revisionHistoryLimit
 |__ status
     |__ state
     |__ components
@@ -108,6 +109,22 @@ FlinkCluster
             |__ lastSavepointTriggerID
             |__ lastSavepointTime
             |__ restartCount
+    |__ control
+        |__ name
+        |__ details
+        |__ state
+        |__ message
+        |__ updateTime
+    |__ savepoint
+        |__ jobID
+        |__ triggerID
+        |__ triggerTime
+        |__ triggerReason
+        |__ state
+        |__ message
+    |__ currentRevision
+    |__ nextRevision
+    |__ collisionCount
     |__ lastUpdateTime
 ```
 
@@ -241,6 +258,7 @@ FlinkCluster
           same namespace as the FlinkCluster.
         * **keyFile**: The name of the service account key file.
         * **mountPath**: The path where to mount the Volume of the Secret.
+    * **revisionHistoryLimit** (optional): The maximum number of revision history to keep, default: 10.
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.
     * **components**: The status of the components.
@@ -272,4 +290,22 @@ FlinkCluster
         * **lastSavepointTriggerID**: Last savepoint trigger ID.
         * **lastSavepointTime**: Last successful or failed savepoint operation timestamp.
         * **restartCount**: The number of restarts.
+    * **control**: The status of control requested by user.
+      * **name**: Requested control name.
+      * **details**: Control details.
+      * **state**: Control state.
+      * **message**: Control message.
+      * **updateTime**: The updated time of control status.  
+    * **savepoint**: The status of savepoint progress.
+      * **jobID**: The ID of the Flink job.
+      * **triggerID**: Savepoint trigger ID.
+      * **triggerTime**: Savepoint triggered time.
+      * **triggerReason**: Savepoint triggered reason.
+      * **state**: Savepoint state.
+      * **message**: Savepoint message.   
+    * **currentRevision**: CurrentRevision indicates the version of FlinkCluster.
+    * **nextRevision**: NextRevision indicates the version of FlinkCluster updating.
+    * **collisionCount**: collisionCount is the count of hash collisions for the FlinkCluster.
+      The controller uses this field as a collision avoidance mechanism
+      when it needs to create the name for the newest ControllerRevision.
     * **lastUpdateTime**: Last update timestamp of this status.

@@ -402,7 +402,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var jobStatus *v1beta1.JobStatus
 	if !isComponentUpdated(observedJob, *observed.cluster) && observed.job == nil {
 		jobStatus = &v1beta1.JobStatus{}
-		recorded.Components.Job.DeepCopyInto(jobStatus)
+		if recorded.Components.Job != nil {
+			recorded.Components.Job.DeepCopyInto(jobStatus)
+		}
 		jobStatus.State = v1beta1.JobStateUpdating
 	} else if observedJob != nil {
 		jobStatus = &v1beta1.JobStatus{}

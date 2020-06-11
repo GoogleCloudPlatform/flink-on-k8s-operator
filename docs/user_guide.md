@@ -439,3 +439,9 @@ kubectl apply -f examples/job_update/wordcount-1.9.3.yaml
 ```
 
 In this example, Flink cluster image, job jar and job arguments are updated and the task manager is scaled from 1 to 2.
+You can check the list of revisions and their contents like this:
+
+```bash
+kubectl get controllerrevision
+kubectl get controllerrevision <REVISION-NAME> -o yaml
+```

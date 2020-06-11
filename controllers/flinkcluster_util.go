@@ -155,12 +155,6 @@ func shouldUpdateJob(observed ObservedClusterState) bool {
 			isSavepointUpToDate(observed.observeTime, *jobStatus))
 }
 
-func shouldUpdateCluster(observed ObservedClusterState) bool {
-	var jobStatus = observed.cluster.Status.Components.Job
-	return isUpdateTriggered(observed.cluster.Status) &&
-		(jobStatus == nil || isJobStopped(jobStatus))
-}
-
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 	var jobArgs = jobSpec.Template.Spec.Containers[0].Args
 	for i, arg := range jobArgs {
