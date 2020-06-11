@@ -198,6 +198,8 @@ FlinkCluster
       * **className** (required): Fully qualified Java class name of the job.
       * **args** (optional): Command-line args of the job.
       * **fromSavepoint** (optional): Savepoint where to restore the job from.
+        If Flink job must be restored from the latest available savepoint when Flink job updating,
+        this field must be unspecified.
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointsDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
