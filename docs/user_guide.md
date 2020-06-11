@@ -414,9 +414,9 @@ the Flink job and cluster.
 
 There are several points to note when using the job update feature.
 * To use the job update feature, `savepointsDir` must be set and the value of this field cannot be deleted when updating.
-This is because the Flink operator requires the value to create a savepoint for job updates.
-* You can replay Flink job from your desired savepoint by updating `fromSavepoint`.
-If you want to resume the updated job from the latest savepoint, set `fromSavepoint` to `LATEST`.
+This is because the Flink operator requires it to create a savepoint for job updates.
+* You can resume Flink job from your desired savepoint by updating `fromSavepoint`.
+If you want to resume the updated job from the latest savepoint, `fromSavepoint` must be unspecified.
 * `cancelRequested` and `savepointGeneration` are not allowed to update at the same time with other fields
 due to functional characteristics.
 
@@ -426,6 +426,9 @@ a [ControllerRevision](https://godoc.org/k8s.io/api/apps/v1#ControllerRevision) 
 that stores the changed spec. ControllerRevisions can be used to check the editing history.
 * If update is triggered while the cluster is running, all components are re-created after terminated.
 If update is triggered in terminated state, all components are re-created as well.
+* When job is to be updated, the Flink operator will restore the job from the latest savepoint available
+- `savepointLocation` or `fromSavepoint` in job status.
+If those are not available, the job is restarted from the beginning.
 
 For example, you can create [wordcount job v1.9.2](../examples/update/wordcount-1.9.2.yaml)
 and update it to [wordcount job v1.9.3](../examples/update/wordcount-1.9.3.yaml) like this.

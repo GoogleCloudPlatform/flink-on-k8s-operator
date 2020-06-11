@@ -731,21 +731,23 @@ func getDesiredJob(
 // case 1) Restore job from the user provided savepoint
 // When FlinkCluster is created or updated, if spec.job.fromSavepoint is specified, Flink job will be restored from it.
 //
-// case 2) Restore Flink job from the latest savepoint created by the operator.
-// When FlinkCluster is updated with `LATEST` spec.job.fromSavepoint, or job is restarted from the failed state,
-// Flink job will be restored from the latest savepoint created by the operator.
+// case 2) Restore Flink job from the latest savepoint.
+// When FlinkCluster is updated not specifying spec.job.fromSavepoint, or job is restarted from the failed state,
+// Flink job will be restored from the latest savepoint created by the operator or the savepoint from which current job was restored.
 func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
 	var jobStatus = clusterStatus.Components.Job
 	switch {
 	case shouldRestartJob(jobSpec.RestartPolicy, jobStatus):
-		fallthrough
-	case isUpdateTriggered(*clusterStatus) && (jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint == "LATEST"):
+		return &jobStatus.SavepointLocation
+	case isUpdateTriggered(*clusterStatus) && (jobSpec.FromSavepoint == nil || *jobSpec.FromSavepoint == ""):
 		if jobStatus == nil {
 			return nil
 		}
+		// Latest savepoint created by Flink operator
 		if jobStatus.SavepointLocation != "" {
 			return &jobStatus.SavepointLocation
 		}
+		// The savepoint from which current running job was restored
 		if jobStatus.FromSavepoint != "" {
 			return &jobStatus.FromSavepoint
 		}
