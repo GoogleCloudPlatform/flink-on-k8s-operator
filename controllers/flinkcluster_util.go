@@ -42,7 +42,8 @@ const (
 	SavepointTimeoutSec = 60
 
 	// TODO: need to be user configurable
-	SavepointAgeForJobUpdateSec = 300
+	SavepointAgeForJobUpdateSec      = 300
+	SavepointTriggerRetryIntervalSec = 10
 )
 
 type UpdateState string
@@ -365,12 +366,20 @@ func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) boo
 // Check if the savepoint has been created recently.
 func isSavepointUpToDate(now time.Time, jobStatus v1beta1.JobStatus) bool {
 	if jobStatus.SavepointLocation != "" && jobStatus.LastSavepointTime != "" {
-		tc := &TimeConverter{}
-		completedTime := tc.FromString(jobStatus.LastSavepointTime)
-		availableTime := completedTime.Add(time.Duration(int64(SavepointAgeForJobUpdateSec) * int64(time.Second)))
-		if now.Before(availableTime) {
+		if !hasTimeElapsed(jobStatus.LastSavepointTime, now, SavepointAgeForJobUpdateSec) {
 			return true
 		}
+	}
+	return false
+}
+
+// Check time has passed
+func hasTimeElapsed(timeToCheckStr string, now time.Time, intervalSec int) bool {
+	tc := &TimeConverter{}
+	timeToCheck := tc.FromString(timeToCheckStr)
+	intervalPassedTime := timeToCheck.Add(time.Duration(int64(intervalSec) * int64(time.Second)))
+	if now.After(intervalPassedTime) {
+		return true
 	}
 	return false
 }

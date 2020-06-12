@@ -526,6 +526,12 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					msg = msg[:1024] + "..."
 				}
 				newSavepointStatus.Message = msg
+				// TODO: organize more making savepoint status
+				if newSavepointStatus.TriggerReason == v1beta1.SavepointTriggerReasonUpdate {
+					newSavepointStatus.Message =
+						"Failed to take savepoint for update. " +
+							"The update process is being postponed until a savepoint is available. " + newSavepointStatus.Message
+				}
 			}
 		}
 		if newSavepointStatus.State == v1beta1.SavepointStateNotTriggered || newSavepointStatus.State == v1beta1.SavepointStateInProgress {
@@ -539,6 +545,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				(recorded.Savepoint.TriggerID != "" && *flinkJobID != recorded.Savepoint.JobID) {
 				newSavepointStatus.Message = "There is no Flink job to create savepoint"
 				newSavepointStatus.State = v1beta1.SavepointStateFailed
+			}
+			// TODO: organize more making savepoint status
+			if newSavepointStatus.State == v1beta1.SavepointStateFailed &&
+				newSavepointStatus.TriggerReason == v1beta1.SavepointTriggerReasonUpdate {
+				newSavepointStatus.Message =
+					"Failed to take savepoint for update. " +
+						"The update process is being postponed until a savepoint is available. " + newSavepointStatus.Message
 			}
 		}
 		status.Savepoint = newSavepointStatus
@@ -651,11 +664,17 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			if !isSavepointUpToDate(observed.observeTime, *jobStatus) &&
 				canTakeSavepoint(*observed.cluster) &&
 				(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
-				savepointForJobUpdate = &v1beta1.SavepointStatus{
-					State:         v1beta1.SavepointStateNotTriggered,
-					TriggerReason: v1beta1.SavepointTriggerReasonUpdate,
+				// If failed to take savepoint, retry after SavepointTriggerRetryIntervalSec.
+				if recorded.Savepoint != nil &&
+					!hasTimeElapsed(recorded.Savepoint.TriggerTime, time.Now(), SavepointTriggerRetryIntervalSec) {
+					updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint in %v seconds because previous request was failed", SavepointTriggerRetryIntervalSec))
+				} else {
+					savepointForJobUpdate = &v1beta1.SavepointStatus{
+						State:         v1beta1.SavepointStateNotTriggered,
+						TriggerReason: v1beta1.SavepointTriggerReasonUpdate,
+					}
+					updater.log.Info("Savepoint will be triggered for job update")
 				}
-				updater.log.Info("Savepoint will be triggered for job update")
 			} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
 				updater.log.Info("Savepoint is in progress")
 			} else {

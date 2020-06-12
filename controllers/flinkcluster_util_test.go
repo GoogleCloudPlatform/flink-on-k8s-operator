@@ -518,3 +518,14 @@ func TestGetUpdateState(t *testing.T) {
 	state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateFinished)
 }
+
+func TestHasTimeElapsed(t *testing.T) {
+	var tc = &TimeConverter{}
+	var timeToCheckStr = "2020-01-01T00:00:00+00:00"
+	var timeToCompare = tc.FromString("2020-01-01T00:00:20+00:00")
+	var elapsed = hasTimeElapsed(timeToCheckStr, timeToCompare, 10)
+	assert.Equal(t, elapsed, true)
+
+	elapsed = hasTimeElapsed(timeToCheckStr, timeToCompare, 30)
+	assert.Equal(t, elapsed, false)
+}

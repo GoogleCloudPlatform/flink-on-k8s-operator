@@ -434,8 +434,8 @@ For example, you can create [wordcount job v1.9.2](../examples/update/wordcount-
 and update it to [wordcount job v1.9.3](../examples/update/wordcount-1.9.3.yaml) like this.
 
 ```bash
-kubectl apply -f examples/job_update/wordcount-1.9.2.yaml
-kubectl apply -f examples/job_update/wordcount-1.9.3.yaml
+kubectl apply -f examples/update/wordcount-1.9.2.yaml
+kubectl apply -f examples/update/wordcount-1.9.3.yaml
 ```
 
 In this example, Flink cluster image, job jar and job arguments are updated and the task manager is scaled from 1 to 2.
