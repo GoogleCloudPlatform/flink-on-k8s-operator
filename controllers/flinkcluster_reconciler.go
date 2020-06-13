@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -506,8 +507,11 @@ func (reconciler *ClusterReconciler) deleteJob(job *batchv1.Job) error {
 	var log = reconciler.log
 	var k8sClient = reconciler.k8sClient
 
+	var deletePolicy = metav1.DeletePropagationBackground
+	var deleteOption = client.DeleteOptions{PropagationPolicy: &deletePolicy}
+
 	log.Info("Deleting job", "job", job)
-	var err = k8sClient.Delete(context, job)
+	var err = k8sClient.Delete(context, job, &deleteOption)
 	err = client.IgnoreNotFound(err)
 	if err != nil {
 		log.Error(err, "Failed to delete job")
@@ -712,7 +716,12 @@ func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerRea
 		triggerSuccess = true
 		log.Info("Savepoint is triggered successfully.", "jobID", jobID, "triggerID", triggerID)
 	}
-	newSavepointStatus := getNewSavepointStatus(jobID, triggerID, triggerReason, message, triggerSuccess)
+	newSavepointStatus := getTriggeredSavepointStatus(jobID, triggerID, triggerReason, message, triggerSuccess)
+	requestedSavepoint := reconciler.observed.cluster.Status.Savepoint
+	// When savepoint was requested, maintain the requested time
+	if requestedSavepoint != nil && requestedSavepoint.State == v1beta1.SavepointStateNotTriggered {
+		newSavepointStatus.RequestTime = requestedSavepoint.RequestTime
+	}
 	return &newSavepointStatus, err
 }
 

@@ -43,7 +43,7 @@ const (
 
 	// TODO: need to be user configurable
 	SavepointAgeForJobUpdateSec      = 300
-	SavepointTriggerRetryIntervalSec = 10
+	SavepointRequestRetryIntervalSec = 10
 )
 
 type UpdateState string
@@ -253,14 +253,15 @@ func getNewUserControlStatus(controlName string) *v1beta1.FlinkClusterControlSta
 	return controlStatus
 }
 
-func getNewSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) v1beta1.SavepointStatus {
+func getTriggeredSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) v1beta1.SavepointStatus {
 	var savepointStatus = v1beta1.SavepointStatus{}
 	var now string
 	setTimestamp(&now)
 	savepointStatus.JobID = jobID
 	savepointStatus.TriggerID = triggerID
-	savepointStatus.TriggerTime = now
 	savepointStatus.TriggerReason = triggerReason
+	savepointStatus.TriggerTime = now
+	savepointStatus.RequestTime = now
 	savepointStatus.Message = message
 	if triggerSuccess {
 		savepointStatus.State = v1beta1.SavepointStateInProgress
@@ -268,6 +269,16 @@ func getNewSavepointStatus(jobID string, triggerID string, triggerReason string,
 		savepointStatus.State = v1beta1.SavepointStateTriggerFailed
 	}
 	return savepointStatus
+}
+
+func getRequestedSavepointStatus(triggerReason string) *v1beta1.SavepointStatus {
+	var now string
+	setTimestamp(&now)
+	return &v1beta1.SavepointStatus{
+		State:         v1beta1.SavepointStateNotTriggered,
+		TriggerReason: triggerReason,
+		RequestTime:   now,
+	}
 }
 
 func savepointTimeout(s *v1beta1.SavepointStatus) bool {

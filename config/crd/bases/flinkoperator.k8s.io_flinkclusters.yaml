@@ -7721,6 +7721,9 @@ spec:
                 message:
                   description: Savepoint message.
                   type: string
+                requestTime:
+                  description: Savepoint requested time.
+                  type: string
                 state:
                   description: Savepoint state.
                   type: string

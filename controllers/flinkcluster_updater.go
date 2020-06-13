@@ -621,10 +621,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 					break
 				}
 				// Clear status for new savepoint
-				status.Savepoint = &v1beta1.SavepointStatus{
-					State:         v1beta1.SavepointStateNotTriggered,
-					TriggerReason: v1beta1.SavepointTriggerReasonUserRequested,
-				}
+				status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUserRequested)
 				controlStatus = getNewUserControlStatus(userControl)
 			case v1beta1.ControlNameJobCancel:
 				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
@@ -636,10 +633,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				if observedSavepoint == nil ||
 					(observedSavepoint.State != v1beta1.SavepointStateInProgress && observedSavepoint.State != v1beta1.SavepointStateNotTriggered) {
 					updater.log.Info("There is no savepoint in progress. Trigger savepoint in reconciler.")
-					status.Savepoint = &v1beta1.SavepointStatus{
-						State:         v1beta1.SavepointStateNotTriggered,
-						TriggerReason: v1beta1.SavepointTriggerReasonJobCancel,
-					}
+					status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonJobCancel)
 				} else {
 					updater.log.Info("There is a savepoint in progress. Skip new savepoint.")
 				}
@@ -664,15 +658,12 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			if !isSavepointUpToDate(observed.observeTime, *jobStatus) &&
 				canTakeSavepoint(*observed.cluster) &&
 				(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
-				// If failed to take savepoint, retry after SavepointTriggerRetryIntervalSec.
+				// If failed to take savepoint, retry after SavepointRequestRetryIntervalSec.
 				if recorded.Savepoint != nil &&
-					!hasTimeElapsed(recorded.Savepoint.TriggerTime, time.Now(), SavepointTriggerRetryIntervalSec) {
-					updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint in %v seconds because previous request was failed", SavepointTriggerRetryIntervalSec))
+					!hasTimeElapsed(recorded.Savepoint.RequestTime, time.Now(), SavepointRequestRetryIntervalSec) {
+					updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint in %v seconds because previous request was failed", SavepointRequestRetryIntervalSec))
 				} else {
-					savepointForJobUpdate = &v1beta1.SavepointStatus{
-						State:         v1beta1.SavepointStateNotTriggered,
-						TriggerReason: v1beta1.SavepointTriggerReasonUpdate,
-					}
+					status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUpdate)
 					updater.log.Info("Savepoint will be triggered for job update")
 				}
 			} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
