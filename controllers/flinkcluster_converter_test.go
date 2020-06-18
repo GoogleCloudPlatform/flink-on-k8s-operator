@@ -153,6 +153,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 				},
+				PodAnnotations: map[string]string{
+					"example.com": "example",
+				},
 			},
 			JobManager: v1beta1.JobManagerSpec{
 				AccessScope: v1beta1.AccessScopeVPC,
@@ -184,6 +187,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 				Tolerations:        tolerations,
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
+				PodAnnotations: map[string]string{
+					"example.com": "example",
+				},
 			},
 			TaskManager: v1beta1.TaskManagerSpec{
 				Replicas: 42,
@@ -217,6 +223,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 					{Name: "cache-volume", MountPath: "/cache"},
 				},
 				Tolerations: tolerations,
+				PodAnnotations: map[string]string{
+					"example.com": "example",
+				},
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
@@ -273,6 +282,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 						"app":       "flink",
 						"cluster":   "flinkjobcluster-sample",
 						"component": "jobmanager",
+					},
+					Annotations: map[string]string{
+						"example.com": "example",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -522,6 +534,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 						"cluster":   "flinkjobcluster-sample",
 						"component": "taskmanager",
 					},
+					Annotations: map[string]string{
+						"example.com": "example",
+					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -662,7 +677,13 @@ func TestGetDesiredClusterState(t *testing.T) {
 		Spec: batchv1.JobSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": "flink", "cluster": "flinkjobcluster-sample"},
+					Labels: map[string]string{
+						"app":     "flink",
+						"cluster": "flinkjobcluster-sample",
+					},
+					Annotations: map[string]string{
+						"example.com": "example",
+					},
 				},
 				Spec: v1.PodSpec{
 					InitContainers: []v1.Container{

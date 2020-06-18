@@ -223,7 +223,8 @@ func getDesiredJobManagerDeployment(
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: jobManagerSpec.PodAnnotations,
 				},
 				Spec: podSpec,
 			},
@@ -512,7 +513,8 @@ func getDesiredTaskManagerDeployment(
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: taskManagerSpec.PodAnnotations,
 				},
 				Spec: podSpec,
 			},
@@ -731,8 +733,11 @@ func getDesiredJob(
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: labels},
-				Spec:       podSpec,
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: jobSpec.PodAnnotations,
+				},
+				Spec: podSpec,
 			},
 			BackoffLimit: &backoffLimit,
 		},

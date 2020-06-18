@@ -210,6 +210,9 @@ type JobManagerSpec struct {
 	// Sidecar containers running alongside with the JobManager container in the
 	// pod.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+
+	// JobManager Deployment pod template annotations.
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -271,6 +274,9 @@ type TaskManagerSpec struct {
 	// Sidecar containers running alongside with the TaskManager container in the
 	// pod.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+
+	// TaskManager Deployment pod template annotations.
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 // CleanupAction defines the action to take after job finishes.
@@ -361,6 +367,9 @@ type JobSpec struct {
 	// `savePointsDir` is provided, a savepoint will be taken before stopping the
 	// job.
 	CancelRequested *bool `json:"cancelRequested,omitempty"`
+
+	// Job pod template annotations.
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 // FlinkClusterSpec defines the desired state of FlinkCluster

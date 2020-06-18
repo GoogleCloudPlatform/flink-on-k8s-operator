@@ -36,6 +36,7 @@ FlinkCluster
         |__ nodeSelector
         |__ tolerations
         |__ sidecars
+        |__ podAnnotations
     |__ taskManager
         |__ replicas
         |__ ports
@@ -51,6 +52,7 @@ FlinkCluster
         |__ nodeSelector
         |__ tolerations
         |__ sidecars
+        |__ podAnnotations
     |__ job
         |__ jarFile
         |__ className
@@ -71,6 +73,7 @@ FlinkCluster
             |__ afterJobFails
             |__ afterJobCancelled
         |__ cancelRequested
+        |__ podAnnotations
     |__ envVars
     |__ flinkProperties
     |__ hadoopConfig
@@ -159,6 +162,8 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
       * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.  
+      * **podAnnotations** (optional): Pod template annotations for the JobManager deployment.
+        See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
     * **taskManager** (required): TaskManager spec.
       * **replicas** (required): The number of TaskManager replicas.
       * **ports** (optional): Ports that TaskManager listening on.
@@ -191,6 +196,8 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
+      * **podAnnotations** (optional): Pod template annotations for the TaskManager deployment.
+        See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
       session cluster.
       * **jarFile** (required): JAR file of the job. It could be a local file or remote URI, depending on which
@@ -227,6 +234,8 @@ FlinkCluster
           `enum("KeepCluster", "DeleteCluster", "DeleteTaskManager")`, default `"DeleteCluster"`.
       * **cancelRequested** (optional): Request the job to be cancelled. Only applies to running jobs. If
         `savePointsDir` is provided, a savepoint will be taken before stopping the job.
+      * **podAnnotations** (optional): Pod template annotations for the job.
+        See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
     * **envVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
     * **flinkProperties** (optional): Flink properties which are appened to flink-conf.yaml.
     * **hadoopConfig** (optional): Configs for Hadoop.
