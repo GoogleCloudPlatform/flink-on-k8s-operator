@@ -224,7 +224,7 @@ func getDesiredJobManagerDeployment(
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
-					Annotations: jobManagerSpec.PodTemplateAnnotations,
+					Annotations: jobManagerSpec.PodAnnotations,
 				},
 				Spec: podSpec,
 			},
@@ -514,7 +514,7 @@ func getDesiredTaskManagerDeployment(
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
-					Annotations: taskManagerSpec.PodTemplateAnnotations,
+					Annotations: taskManagerSpec.PodAnnotations,
 				},
 				Spec: podSpec,
 			},
@@ -735,7 +735,7 @@ func getDesiredJob(
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labels,
-					Annotations: jobSpec.PodTemplateAnnotations,
+					Annotations: jobSpec.PodAnnotations,
 				},
 				Spec: podSpec,
 			},

@@ -1328,7 +1328,7 @@ spec:
                   description: 'Job parallelism, default: 1.'
                   format: int32
                   type: integer
-                podTemplateAnnotations:
+                podAnnotations:
                   additionalProperties:
                     type: string
                   description: Job pod template annotations.
@@ -2698,7 +2698,7 @@ spec:
                   description: 'Selector which must match a node''s labels for the
                     JobManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                   type: object
-                podTemplateAnnotations:
+                podAnnotations:
                   additionalProperties:
                     type: string
                   description: JobManager Deployment pod template annotations.
@@ -5190,7 +5190,7 @@ spec:
                   description: 'Selector which must match a node''s labels for the
                     TaskManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                   type: object
-                podTemplateAnnotations:
+                podAnnotations:
                   additionalProperties:
                     type: string
                   description: TaskManager Deployment pod template annotations.

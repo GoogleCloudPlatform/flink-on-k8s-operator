@@ -153,7 +153,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 				},
-				PodTemplateAnnotations: map[string]string{
+				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
 			},
@@ -187,7 +187,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				Tolerations:        tolerations,
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
-				PodTemplateAnnotations: map[string]string{
+				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
 			},
@@ -223,7 +223,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					{Name: "cache-volume", MountPath: "/cache"},
 				},
 				Tolerations: tolerations,
-				PodTemplateAnnotations: map[string]string{
+				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
 			},
