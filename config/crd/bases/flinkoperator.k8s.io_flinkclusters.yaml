@@ -1475,6 +1475,11 @@ spec:
                   description: 'Job parallelism, default: 1.'
                   format: int32
                   type: integer
+                podAnnotations:
+                  additionalProperties:
+                    type: string
+                  description: Job pod template annotations.
+                  type: object
                 restartPolicy:
                   description: "Restart policy when the job fails, \"Never\" or \"FromSavepointOnFailure\",
                     default: \"Never\". \n \"Never\" means the operator will never
@@ -2805,6 +2810,11 @@ spec:
                     type: string
                   description: 'Selector which must match a node''s labels for the
                     JobManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                  type: object
+                podAnnotations:
+                  additionalProperties:
+                    type: string
+                  description: JobManager Deployment pod template annotations.
                   type: object
                 ports:
                   description: Ports.
@@ -5200,6 +5210,11 @@ spec:
                     type: string
                   description: 'Selector which must match a node''s labels for the
                     TaskManager pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
+                  type: object
+                podAnnotations:
+                  additionalProperties:
+                    type: string
+                  description: TaskManager Deployment pod template annotations.
                   type: object
                 ports:
                   description: Ports.
