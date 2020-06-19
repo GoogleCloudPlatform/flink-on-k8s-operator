@@ -63,6 +63,10 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	if getUpdateState(reconciler.observed) == UpdateStateUpdating {
+		reconciler.log.Info("The cluster update is in progress")
+	}
+
 	err = reconciler.reconcileConfigMap()
 	if err != nil {
 		return ctrl.Result{}, err
@@ -120,7 +124,6 @@ func (reconciler *ClusterReconciler) reconcileDeployment(
 	if desiredDeployment != nil && observedDeployment != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
 			updateComponent := fmt.Sprintf("%v deployment", component)
-			reconciler.log.Info(fmt.Sprintf("Updating %v", updateComponent))
 			err := reconciler.deleteOldComponent(desiredDeployment, observedDeployment, updateComponent)
 			if err != nil {
 				return err
@@ -339,7 +342,6 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateUpdating {
-			reconciler.log.Info("Updating ConfigMap")
 			err := reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
 			if err != nil {
 				return err
@@ -426,7 +428,12 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var observedJobStatus = observed.cluster.Status.Components.Job
 
-		if shouldRestartJob(restartPolicy, observedJobStatus) || shouldUpdateJob(observed) {
+		switch {
+		case shouldUpdateJob(observed):
+			log.Info("Job is about to be restarted to update")
+			fallthrough
+		case shouldRestartJob(restartPolicy, observedJobStatus):
+			log.Info("Job is about to be restarted to recover failure")
 			var err = reconciler.restartJob()
 			if err != nil {
 				return requeueResult, err

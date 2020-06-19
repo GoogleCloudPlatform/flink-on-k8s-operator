@@ -535,29 +535,6 @@ func TestInvalidJobSpec(t *testing.T) {
 	assert.Equal(t, err.Error(), expectedErr)
 }
 
-func TestUpdateNamespacedNameNotAllowed(t *testing.T) {
-	var oldClusterMeta = metav1.ObjectMeta{Namespace: "dev", Name: "wordcount"}
-	var newClusterMeta = metav1.ObjectMeta{Namespace: "dev", Name: "wordcount"}
-	var err = validator.validateNamespacedName(oldClusterMeta, newClusterMeta)
-	var expectedErr string
-	assert.NilError(t, err, "namespaced name validation failed unexpectedly")
-
-	newClusterMeta = metav1.ObjectMeta{Namespace: "prod", Name: "wordcount"}
-	err = validator.validateNamespacedName(oldClusterMeta, newClusterMeta)
-	expectedErr = "namespace and name of FlinkCluster cannot be changed, old: dev/wordcount, new: prod/wordcount"
-	assert.Equal(t, err.Error(), expectedErr)
-
-	newClusterMeta = metav1.ObjectMeta{Namespace: "dev", Name: "wordcount-v2"}
-	err = validator.validateNamespacedName(oldClusterMeta, newClusterMeta)
-	expectedErr = "namespace and name of FlinkCluster cannot be changed, old: dev/wordcount, new: dev/wordcount-v2"
-	assert.Equal(t, err.Error(), expectedErr)
-
-	newClusterMeta = metav1.ObjectMeta{Namespace: "prod", Name: "wordcount-v2"}
-	err = validator.validateNamespacedName(oldClusterMeta, newClusterMeta)
-	expectedErr = "namespace and name of FlinkCluster cannot be changed, old: dev/wordcount, new: prod/wordcount-v2"
-	assert.Equal(t, err.Error(), expectedErr)
-}
-
 func TestUpdateStatusAllowed(t *testing.T) {
 	var oldCluster = getSimpleFlinkCluster()
 	var newCluster = getSimpleFlinkCluster()

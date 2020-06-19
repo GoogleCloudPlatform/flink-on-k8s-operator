@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -40,6 +41,8 @@ const (
 	ControlMaxRetries         = "3"
 
 	SavepointTimeoutSec = 60
+
+	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
 
 	// TODO: need to be user configurable
 	SavepointAgeForJobUpdateSec      = 300
@@ -230,6 +233,19 @@ func getNextRevisionNumber(revisions []*appsv1.ControllerRevision) int64 {
 	return revisions[count-1].Revision + 1
 }
 
+func getCurrentRevisionName(status v1beta1.FlinkClusterStatus) string {
+	return status.CurrentRevision[:strings.LastIndex(status.CurrentRevision, "-")]
+}
+
+func getNextRevisionName(status v1beta1.FlinkClusterStatus) string {
+	return status.NextRevision[:strings.LastIndex(status.NextRevision, "-")]
+}
+
+// Compose revision in FlinkClusterStatus with name and number of ControllerRevision
+func getRevisionWithNameNumber(cr *appsv1.ControllerRevision) string {
+	return fmt.Sprintf("%v-%v", cr.Name, cr.Revision)
+}
+
 func getRetryCount(data map[string]string) (string, error) {
 	var err error
 	var retries, ok = data["retries"]
@@ -396,7 +412,7 @@ func hasTimeElapsed(timeToCheckStr string, now time.Time, intervalSec int) bool 
 }
 
 // isComponentUpdated checks whether the component updated.
-// If the component is observed as well as status.nextRevision and component's label `flinkoperator.k8s.io/hash` are equal, then it is updated already.
+// If the component is observed as well as the next revision name in status.nextRevision and component's label `flinkoperator.k8s.io/hash` are equal, then it is updated already.
 // If the component is not observed and it is required, then it is not updated yet.
 // If the component is not observed and it is optional, but it is specified in the spec, then it is not updated yet.
 func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) bool {
@@ -433,11 +449,11 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 	}
 
 	var labels, err = meta.NewAccessor().Labels(component)
-	var nextRevision = cluster.Status.NextRevision
+	var nextRevisionName = getNextRevisionName(cluster.Status)
 	if err != nil {
 		return false
 	}
-	return labels[history.ControllerRevisionHashLabel] == nextRevision
+	return labels[RevisionNameLabel] == nextRevisionName
 }
 
 func areComponentsUpdated(components []runtime.Object, cluster v1beta1.FlinkCluster) bool {
@@ -461,21 +477,26 @@ func isUpdatedAll(observed ObservedClusterState) bool {
 	return areComponentsUpdated(components, *observed.cluster)
 }
 
-// isFlinkAPIReady checks whether cluster is ready to submit job.
-// It checks if cluster components is updated with desired revision and Flink API server is ready.
-func isFlinkAPIReady(observed ObservedClusterState) bool {
+func isClusterUpdated(observed ObservedClusterState) bool {
+	if !isUpdateTriggered(observed.cluster.Status) {
+		return true
+	}
 	components := []runtime.Object{
 		observed.configMap,
 		observed.jmDeployment,
 		observed.tmDeployment,
 		observed.jmService,
 	}
+	return areComponentsUpdated(components, *observed.cluster)
+}
 
+// isFlinkAPIReady checks whether cluster is ready to submit job.
+// It checks if cluster components is updated with desired revision and Flink API server is ready.
+func isFlinkAPIReady(observed ObservedClusterState) bool {
 	// If the observed Flink job status list is not nil (e.g., emtpy list),
 	// it means Flink REST API server is up and running. It is the source of
 	// truth of whether we can submit a job.
-	flinkAPIReady := observed.flinkJobList != nil
-	return flinkAPIReady && areComponentsUpdated(components, *observed.cluster)
+	return isClusterUpdated(observed) && observed.flinkJobList != nil
 }
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
@@ -484,7 +505,7 @@ func getUpdateState(observed ObservedClusterState) UpdateState {
 	}
 	switch {
 	case observed.job != nil &&
-		observed.job.Labels[history.ControllerRevisionHashLabel] != observed.cluster.Status.NextRevision:
+		observed.job.Labels[RevisionNameLabel] != getNextRevisionName(observed.cluster.Status):
 		return UpdateStateStoppingJob
 	case isUpdatedAll(observed):
 		return UpdateStateFinished

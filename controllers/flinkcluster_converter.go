@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"fmt"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"math"
 	"regexp"
 	"sort"
@@ -1018,7 +1017,7 @@ func getComponentLabels(cluster v1beta1.FlinkCluster, component string) map[stri
 
 func getRevisionHashLabels(status v1beta1.FlinkClusterStatus) map[string]string {
 	return map[string]string{
-		history.ControllerRevisionHashLabel: status.NextRevision,
+		RevisionNameLabel: getNextRevisionName(status),
 	}
 }
 

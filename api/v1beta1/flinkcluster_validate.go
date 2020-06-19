@@ -76,11 +76,7 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
-	err := v.validateNamespacedName(old.ObjectMeta, new.ObjectMeta)
-	if err != nil {
-		return err
-	}
-
+	var err error
 	err = v.checkControlAnnotations(old, new)
 	if err != nil {
 		return err
@@ -112,16 +108,6 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return err
 	}
 
-	return nil
-}
-
-func (v *Validator) validateNamespacedName(old metav1.ObjectMeta, new metav1.ObjectMeta) error {
-	if old.Name != new.Name || old.Namespace != new.Namespace {
-		return fmt.Errorf("namespace and name of FlinkCluster cannot be changed, old: %v/%v, new: %v/%v",
-			old.Namespace, old.Name,
-			new.Namespace, new.Name,
-		)
-	}
 	return nil
 }
 

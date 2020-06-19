@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,7 @@ type ObservedClusterState struct {
 	flinkRunningJobIDs []string
 	flinkJobID         *string
 	savepoint          *flinkclient.SavepointStatus
+	revisionStatus     *RevisionStatus
 	savepointErr       error
 	observeTime        time.Time
 }
@@ -93,9 +95,13 @@ func (observer *ClusterStateObserver) observe(
 			log.Error(err, "Failed to get the controllerRevision resource list")
 			return err
 		}
-		log.Info("Observed controllerRevision", "controllerRevision", "nil")
+		log.Info("Observed controllerRevisions", "controllerRevisions", "nil")
 	} else {
-		log.Info("Observed controllerRevision", "controllerRevision", observedRevisions)
+		var b strings.Builder
+		for _, cr := range observedRevisions {
+			fmt.Fprintf(&b, "{name: %v, revision: %v},", cr.Name, cr.Revision)
+		}
+		log.Info("Observed controllerRevisions", "controllerRevisions", fmt.Sprintf("[%v]", b.String()))
 		observed.revisions = observedRevisions
 	}
 
@@ -435,4 +441,124 @@ func (observer *ClusterStateObserver) observeJobResource(
 			Name:      getJobName(clusterName),
 		},
 		observedJob)
+}
+
+type RevisionStatus struct {
+	currentRevision *appsv1.ControllerRevision
+	nextRevision    *appsv1.ControllerRevision
+	collisionCount  int32
+}
+
+// syncRevisionStatus synchronizes current FlinkCluster resource and its child ControllerRevision resources.
+// When FlinkCluster resource is edited, the operator creates new child ControllerRevision for it
+// and updates nextRevision in FlinkClusterStatus to the name of the new ControllerRevision.
+// At that time, the name of the ControllerRevision is composed with the hash string generated
+// from the FlinkClusterSpec which is to be stored in it.
+// Therefore the contents of the ControllerRevision resources are maintained not duplicate.
+// If edited FlinkClusterSpec is the same with the content of any existing ControllerRevision resources,
+// the operator will only update nextRevision of the FlinkClusterStatus to the name of the ControllerRevision
+// that has the same content, instead of creating new ControllerRevision.
+// Finally, it maintains the number of child ControllerRevision resources according to RevisionHistoryLimit.
+func (observer *ClusterStateObserver) syncRevisionStatus(observed *ObservedClusterState) error {
+	var revisions = observed.revisions
+	var cluster = observed.cluster
+	var recordedStatus = cluster.Status
+	var currentRevision, nextRevision *appsv1.ControllerRevision
+	var controllerHistory = observer.history
+	var revisionStatus = observed.revisionStatus
+
+	revisionCount := len(revisions)
+	history.SortControllerRevisions(revisions)
+
+	// Use a local copy of cluster.Status.CollisionCount to avoid modifying cluster.Status directly.
+	var collisionCount int32
+	if recordedStatus.CollisionCount != nil {
+		collisionCount = *recordedStatus.CollisionCount
+	}
+
+	// create a new revision from the current cluster
+	nextRevision, err := newRevision(cluster, getNextRevisionNumber(revisions), &collisionCount)
+	if err != nil {
+		return err
+	}
+
+	// find any equivalent revisions
+	equalRevisions := history.FindEqualRevisions(revisions, nextRevision)
+	equalCount := len(equalRevisions)
+	if equalCount > 0 && history.EqualRevision(revisions[revisionCount-1], equalRevisions[equalCount-1]) {
+		// if the equivalent revision is immediately prior the next revision has not changed
+		nextRevision = revisions[revisionCount-1]
+	} else if equalCount > 0 {
+		// if the equivalent revision is not immediately prior we will roll back by incrementing the
+		// Revision of the equivalent revision
+		nextRevision, err = controllerHistory.UpdateControllerRevision(
+			equalRevisions[equalCount-1],
+			nextRevision.Revision)
+		if err != nil {
+			return err
+		}
+	} else {
+		//if there is no equivalent revision we create a new one
+		nextRevision, err = controllerHistory.CreateControllerRevision(cluster, nextRevision, &collisionCount)
+		if err != nil {
+			return err
+		}
+	}
+
+	// if the current revision is nil we initialize the history by setting it to the next revision
+	if recordedStatus.CurrentRevision == "" {
+		currentRevision = nextRevision
+		// attempt to find the revision that corresponds to the current revision
+	} else {
+		for i := range revisions {
+			if revisions[i].Name == getCurrentRevisionName(recordedStatus) {
+				currentRevision = revisions[i]
+				break
+			}
+		}
+	}
+	if currentRevision == nil {
+		return fmt.Errorf("current ControlRevision resoucre not found")
+	}
+
+	// update revision status
+	revisionStatus = new(RevisionStatus)
+	revisionStatus.currentRevision = currentRevision.DeepCopy()
+	revisionStatus.nextRevision = nextRevision.DeepCopy()
+	revisionStatus.collisionCount = collisionCount
+	observed.revisionStatus = revisionStatus
+
+	// maintain the revision history limit
+	err = observer.truncateHistory(observed)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (observer *ClusterStateObserver) truncateHistory(observed *ObservedClusterState) error {
+	var cluster = observed.cluster
+	var revisions = observed.revisions
+	// TODO: default limit
+	var historyLimit int
+	if cluster.Spec.RevisionHistoryLimit != nil {
+		historyLimit = int(*cluster.Spec.RevisionHistoryLimit)
+	} else {
+		historyLimit = 10
+	}
+
+	history := make([]*appsv1.ControllerRevision, 0, len(revisions))
+	historyLen := len(history)
+	if historyLen <= historyLimit {
+		return nil
+	}
+	// delete any non-live history to maintain the revision limit.
+	history = history[:(historyLen - historyLimit)]
+	for i := 0; i < len(history); i++ {
+		if err := observer.history.DeleteControllerRevision(history[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

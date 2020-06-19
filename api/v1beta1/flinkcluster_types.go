@@ -27,6 +27,7 @@ const (
 	ClusterStateCreating         = "Creating"
 	ClusterStateRunning          = "Running"
 	ClusterStateReconciling      = "Reconciling"
+	ClusterStateUpdating         = "Updating"
 	ClusterStateStopping         = "Stopping"
 	ClusterStatePartiallyStopped = "PartiallyStopped"
 	ClusterStateStopped          = "Stopped"
@@ -581,6 +582,9 @@ type FlinkClusterStatus struct {
 	// which is to be stored in ControllerRevision and uses it to compose the ControllerRevision name.
 	// Then the controller updates nextRevision to the ControllerRevision name.
 	// When update process is completed, the controller updates currentRevision as nextRevision.
+	// currentRevision and nextRevision is composed like this:
+	// <FLINK_CLUSTER_NAME>-<FLINK_CLUSTER_SPEC_HASH>-<REVISION_NUMBER_IN_CONTROLLERREVISION>
+	// e.g., myflinkcluster-c464ff7-5
 
 	// CurrentRevision indicates the version of FlinkCluster.
 	CurrentRevision string `json:"currentRevision,omitempty"`

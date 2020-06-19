@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"time"
@@ -43,7 +42,6 @@ type ClusterStatusUpdater struct {
 	log       logr.Logger
 	recorder  record.EventRecorder
 	observed  ObservedClusterState
-	history   history.Interface
 }
 
 // Compares the current status recorded in the cluster's status field and the
@@ -64,12 +62,6 @@ func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
 	// New status derived from the cluster's components.
 	var newStatus = updater.deriveClusterStatus(
 		&updater.observed.cluster.Status, &updater.observed)
-
-	// Sync history and revision status
-	err := updater.syncRevisionStatus(&newStatus)
-	if err != nil {
-		updater.log.Error(err, "Failed to sync flinkCluster history")
-	}
 
 	// Compare
 	var changed = updater.isStatusChanged(oldStatus, newStatus)
@@ -199,6 +191,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var runningComponents = 0
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
+	var isClusterUpdating = !isClusterUpdated(*observed)
 	var isJobUpdating = recorded.Components.Job != nil && recorded.Components.Job.State == v1beta1.JobStateUpdating
 
 	// ConfigMap.
@@ -464,9 +457,23 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		} else {
 			status.State = v1beta1.ClusterStateRunning
 		}
+	case v1beta1.ClusterStateUpdating:
+		if isClusterUpdating {
+			status.State = v1beta1.ClusterStateUpdating
+		} else if runningComponents < totalComponents {
+			if isUpdateTriggered(*recorded) {
+				status.State = v1beta1.ClusterStateUpdating
+			} else {
+				status.State = v1beta1.ClusterStateReconciling
+			}
+		} else {
+			status.State = v1beta1.ClusterStateRunning
+		}
 	case v1beta1.ClusterStateRunning,
 		v1beta1.ClusterStateReconciling:
-		if jobStopped && !isUpdateTriggered(*recorded) {
+		if isClusterUpdating {
+			status.State = v1beta1.ClusterStateUpdating
+		} else if jobStopped {
 			var policy = observed.cluster.Spec.Job.CleanupPolicy
 			if jobSucceeded &&
 				policy.AfterJobSucceeds != v1beta1.CleanupActionKeepCluster {
@@ -487,7 +494,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 	case v1beta1.ClusterStateStopping,
 		v1beta1.ClusterStatePartiallyStopped:
-		if runningComponents == 0 {
+		if isClusterUpdating {
+			status.State = v1beta1.ClusterStateUpdating
+		} else if runningComponents == 0 {
 			status.State = v1beta1.ClusterStateStopped
 		} else if runningComponents < totalComponents {
 			status.State = v1beta1.ClusterStatePartiallyStopped
@@ -495,8 +504,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			status.State = v1beta1.ClusterStateStopping
 		}
 	case v1beta1.ClusterStateStopped:
-		if isUpdateTriggered(*recorded) {
-			status.State = v1beta1.ClusterStateReconciling
+		if isClusterUpdating {
+			status.State = v1beta1.ClusterStateUpdating
 		} else {
 			status.State = v1beta1.ClusterStateStopped
 		}
@@ -682,6 +691,20 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Savepoint = savepointForJobUpdate
 	}
 
+	// Update revision status
+	status.NextRevision = getRevisionWithNameNumber(observed.revisionStatus.nextRevision)
+	if status.CurrentRevision == "" {
+		if recorded.CurrentRevision == "" {
+			status.CurrentRevision = getRevisionWithNameNumber(observed.revisionStatus.currentRevision)
+		} else {
+			status.CurrentRevision = recorded.CurrentRevision
+		}
+	}
+	if observed.revisionStatus.collisionCount != 0 {
+		status.CollisionCount = new(int32)
+		*status.CollisionCount = observed.revisionStatus.collisionCount
+	}
+
 	return status
 }
 
@@ -821,7 +844,13 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 	}
 	if newStatus.CurrentRevision != currentStatus.CurrentRevision ||
 		newStatus.NextRevision != currentStatus.NextRevision ||
-		!reflect.DeepEqual(newStatus.CollisionCount, currentStatus.CollisionCount) {
+		(newStatus.CollisionCount != nil && currentStatus.CollisionCount == nil) ||
+		(currentStatus.CollisionCount != nil && *newStatus.CollisionCount != *currentStatus.CollisionCount) {
+		updater.log.Info(
+			"FlinkCluster revision status changed", "current",
+			fmt.Sprintf("currentRevision: %v, nextRevision: %v, collisionCount: %v", currentStatus.CurrentRevision, currentStatus.NextRevision, currentStatus.CollisionCount),
+			"new",
+			fmt.Sprintf("currentRevision: %v, nextRevision: %v, collisionCount: %v", newStatus.CurrentRevision, newStatus.NextRevision, newStatus.CollisionCount))
 		changed = true
 	}
 	return changed
@@ -869,114 +898,4 @@ func getDeploymentState(deployment *appsv1.Deployment) string {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady
-}
-
-// syncRevisionStatus synchronizes current FlinkCluster resource and its child ControllerRevision resources.
-// When FlinkCluster resource is edited, the operator creates new child ControllerRevision for it
-// and updates nextRevision in FlinkClusterStatus to the name of the new ControllerRevision.
-// At that time, the name of the ControllerRevision is composed with the hash string generated
-// from the FlinkClusterSpec which is to be stored in it.
-// Therefore the contents of the ControllerRevision resources are maintained not duplicate.
-// If edited FlinkClusterSpec is the same with the content of any existing ControllerRevision resources,
-// the operator will only update nextRevision of the FlinkClusterStatus to the name of the ControllerRevision
-// that has the same content, instead of creating new ControllerRevision.
-// Finally, it maintains the number of child ControllerRevision resources according to RevisionHistoryLimit.
-func (updater *ClusterStatusUpdater) syncRevisionStatus(status *v1beta1.FlinkClusterStatus) error {
-	var revisions = updater.observed.revisions
-	var cluster = updater.observed.cluster
-	var currentRevision, nextRevision *appsv1.ControllerRevision
-	var controllerHistory = updater.history
-
-	revisionCount := len(revisions)
-	history.SortControllerRevisions(revisions)
-
-	// Use a local copy of cluster.Status.CollisionCount to avoid modifying cluster.Status directly.
-	// This copy is returned so the value gets carried over to cluster.Status in updateStatefulcluster.
-	var collisionCount int32
-	if cluster.Status.CollisionCount != nil {
-		collisionCount = *cluster.Status.CollisionCount
-	}
-
-	// create a new revision from the current cluster
-	nextRevision, err := newRevision(cluster, getNextRevisionNumber(revisions), &collisionCount)
-	if err != nil {
-		return err
-	}
-
-	// find any equivalent revisions
-	equalRevisions := history.FindEqualRevisions(revisions, nextRevision)
-	equalCount := len(equalRevisions)
-	if equalCount > 0 && history.EqualRevision(revisions[revisionCount-1], equalRevisions[equalCount-1]) {
-		// if the equivalent revision is immediately prior the update revision has not changed
-		nextRevision = revisions[revisionCount-1]
-	} else if equalCount > 0 {
-		// if the equivalent revision is not immediately prior we will roll back by incrementing the
-		// Revision of the equivalent revision
-		nextRevision, err = controllerHistory.UpdateControllerRevision(
-			equalRevisions[equalCount-1],
-			nextRevision.Revision)
-		if err != nil {
-			return err
-		}
-	} else {
-		//if there is no equivalent revision we create a new one
-		nextRevision, err = controllerHistory.CreateControllerRevision(cluster, nextRevision, &collisionCount)
-		if err != nil {
-			return err
-		}
-	}
-
-	// if the current revision is nil we initialize the history by setting it to the update revision
-	if len(cluster.Status.CurrentRevision) == 0 {
-		currentRevision = nextRevision
-		// attempt to find the revision that corresponds to the current revision
-	} else {
-		for i := range revisions {
-			if revisions[i].Name == cluster.Status.CurrentRevision {
-				currentRevision = revisions[i]
-				break
-			}
-		}
-	}
-
-	// Revision status
-	if status.CurrentRevision == "" {
-		status.CurrentRevision = currentRevision.Name
-	}
-	status.NextRevision = nextRevision.Name
-	status.CollisionCount = &collisionCount
-
-	// maintain the revision history limit
-	err = updater.truncateHistory()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (updater *ClusterStatusUpdater) truncateHistory() error {
-	var cluster = updater.observed.cluster
-	var revisions = updater.observed.revisions
-	// TODO: default limit
-	var historyLimit int
-	if cluster.Spec.RevisionHistoryLimit != nil {
-		historyLimit = int(*cluster.Spec.RevisionHistoryLimit)
-	} else {
-		historyLimit = 10
-	}
-
-	history := make([]*appsv1.ControllerRevision, 0, len(revisions))
-	historyLen := len(history)
-	if historyLen <= historyLimit {
-		return nil
-	}
-	// delete any non-live history to maintain the revision limit.
-	history = history[:(historyLen - historyLimit)]
-	for i := 0; i < len(history); i++ {
-		if err := updater.history.DeleteControllerRevision(history[i]); err != nil {
-			return err
-		}
-	}
-	return nil
 }

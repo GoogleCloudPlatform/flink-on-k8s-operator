@@ -136,6 +136,13 @@ func (handler *FlinkClusterHandler) reconcile(
 		return ctrl.Result{}, err
 	}
 
+	// Sync history and observe revision status
+	err = observer.syncRevisionStatus(observed)
+	if err != nil {
+		log.Error(err, "Failed to sync flinkCluster history")
+		return ctrl.Result{}, err
+	}
+
 	log.Info("---------- 2. Update cluster status ----------")
 
 	var updater = ClusterStatusUpdater{
@@ -144,7 +151,6 @@ func (handler *FlinkClusterHandler) reconcile(
 		log:       handler.log,
 		recorder:  handler.recorder,
 		observed:  handler.observed,
-		history:   history,
 	}
 	statusChanged, err = updater.updateStatusIfChanged()
 	if err != nil {

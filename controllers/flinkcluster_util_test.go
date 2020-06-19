@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -356,17 +355,17 @@ func TestIsSavepointUpToDate(t *testing.T) {
 
 func TestIsComponentUpdated(t *testing.T) {
 	var cluster = v1beta1.FlinkCluster{
-		Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+		Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 	}
 	var cluster2 = v1beta1.FlinkCluster{
 		Spec: v1beta1.FlinkClusterSpec{
 			JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 			Job:        &v1beta1.JobSpec{},
 		},
-		Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+		Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 	}
 	var deploy = &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-		history.ControllerRevisionHashLabel: "2",
+		RevisionNameLabel: "cluster-85dc8f749",
 	}}}
 	var update = isComponentUpdated(deploy, cluster)
 	assert.Equal(t, update, true)
@@ -380,7 +379,7 @@ func TestIsComponentUpdated(t *testing.T) {
 	assert.Equal(t, update, false)
 
 	var job = &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-		history.ControllerRevisionHashLabel: "2",
+		RevisionNameLabel: "cluster-85dc8f749",
 	}}}
 	update = isComponentUpdated(job, cluster2)
 	assert.Equal(t, update, true)
@@ -405,12 +404,12 @@ func TestIsFlinkAPIReady(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		flinkJobList: &flinkclient.JobStatusList{},
 	}
 	var ready = isFlinkAPIReady(observed)
@@ -423,12 +422,12 @@ func TestIsFlinkAPIReady(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -440,11 +439,11 @@ func TestIsFlinkAPIReady(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -456,12 +455,12 @@ func TestIsFlinkAPIReady(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "2"},
+			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "1"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -474,13 +473,13 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "2", NextRevision: "3"},
+			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
-		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	var state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateStoppingJob)
@@ -491,11 +490,11 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "2", NextRevision: "3"},
+			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "2"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateUpdating)
@@ -506,14 +505,14 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "2", NextRevision: "3"},
+			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
-		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
-		jmIngress:    &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{history.ControllerRevisionHashLabel: "3"}}},
+		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmIngress:    &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 	}
 	state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateFinished)
