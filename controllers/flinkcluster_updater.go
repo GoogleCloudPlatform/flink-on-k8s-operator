@@ -505,7 +505,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			status.State = v1beta1.ClusterStateStopping
 		}
 	case v1beta1.ClusterStateStopped:
-		if isClusterUpdating {
+		if isUpdateTriggered(*recorded) {
 			status.State = v1beta1.ClusterStateUpdating
 		} else {
 			status.State = v1beta1.ClusterStateStopped
