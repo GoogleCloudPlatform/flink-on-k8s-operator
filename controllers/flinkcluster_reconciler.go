@@ -428,13 +428,16 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var observedJobStatus = observed.cluster.Status.Components.Job
 
-		switch {
-		case shouldUpdateJob(observed):
+		var restartJob bool
+		if shouldUpdateJob(observed) {
 			log.Info("Job is about to be restarted to update")
-			fallthrough
-		case shouldRestartJob(restartPolicy, observedJobStatus):
+			restartJob = true
+		} else if shouldRestartJob(restartPolicy, observedJobStatus) {
 			log.Info("Job is about to be restarted to recover failure")
-			var err = reconciler.restartJob()
+			restartJob = true
+		}
+		if restartJob {
+			err := reconciler.restartJob()
 			if err != nil {
 				return requeueResult, err
 			}
