@@ -708,6 +708,7 @@ func getDesiredJob(
 				Args:            jobArgs,
 				Env:             envVars,
 				VolumeMounts:    volumeMounts,
+				Resources:       jobSpec.Resources,
 			},
 		},
 		RestartPolicy:    corev1.RestartPolicyNever,
