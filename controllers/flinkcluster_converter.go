@@ -220,7 +220,7 @@ func getDesiredJobManagerDeployment(
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
 					Annotations: jobManagerSpec.PodAnnotations,
 				},
 				Spec: podSpec,

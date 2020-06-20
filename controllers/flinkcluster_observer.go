@@ -460,6 +460,10 @@ type RevisionStatus struct {
 // that has the same content, instead of creating new ControllerRevision.
 // Finally, it maintains the number of child ControllerRevision resources according to RevisionHistoryLimit.
 func (observer *ClusterStateObserver) syncRevisionStatus(observed *ObservedClusterState) error {
+	if observed.cluster == nil {
+		return nil
+	}
+
 	var revisions = observed.revisions
 	var cluster = observed.cluster
 	var recordedStatus = cluster.Status

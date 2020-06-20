@@ -191,7 +191,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	var runningComponents = 0
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
-	var isClusterUpdating = !isClusterUpdated(*observed)
+	var updateState = getUpdateState(*observed)
+	var isClusterUpdating = !isClusterUpdated(*observed) && updateState == UpdateStateUpdating
 	var isJobUpdating = recorded.Components.Job != nil && recorded.Components.Job.State == v1beta1.JobStateUpdating
 
 	// ConfigMap.
@@ -658,34 +659,32 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// Handle update.
 	var savepointForJobUpdate *v1beta1.SavepointStatus
-	if isUpdateTriggered(*recorded) {
-		switch getUpdateState(*observed) {
-		case UpdateStateStoppingJob:
-			// Even if savepoint has been created for update already, we check the age of savepoint continually.
-			// If created savepoint is old and savepoint can be triggered, we should take savepoint again.
-			// (e.g., for the case update is not progressed by accidents like network partition)
-			if !isSavepointUpToDate(observed.observeTime, *jobStatus) &&
-				canTakeSavepoint(*observed.cluster) &&
-				(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
-				// If failed to take savepoint, retry after SavepointRequestRetryIntervalSec.
-				if recorded.Savepoint != nil &&
-					!hasTimeElapsed(recorded.Savepoint.RequestTime, time.Now(), SavepointRequestRetryIntervalSec) {
-					updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint in %v seconds because previous request was failed", SavepointRequestRetryIntervalSec))
-				} else {
-					status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUpdate)
-					updater.log.Info("Savepoint will be triggered for job update")
-				}
-			} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
-				updater.log.Info("Savepoint is in progress")
+	switch updateState {
+	case UpdateStateStoppingJob:
+		// Even if savepoint has been created for update already, we check the age of savepoint continually.
+		// If created savepoint is old and savepoint can be triggered, we should take savepoint again.
+		// (e.g., for the case update is not progressed by accidents like network partition)
+		if !isSavepointUpToDate(observed.observeTime, *jobStatus) &&
+			canTakeSavepoint(*observed.cluster) &&
+			(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
+			// If failed to take savepoint, retry after SavepointRequestRetryIntervalSec.
+			if recorded.Savepoint != nil &&
+				!hasTimeElapsed(recorded.Savepoint.RequestTime, time.Now(), SavepointRequestRetryIntervalSec) {
+				updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint for update, in %v seconds because previous request was failed", SavepointRequestRetryIntervalSec))
 			} else {
-				updater.log.Info("Stopping job")
+				status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUpdate)
+				updater.log.Info("Savepoint will be triggered for update")
 			}
-		case UpdateStateUpdating:
-			updater.log.Info("Updating cluster")
-		case UpdateStateFinished:
-			status.CurrentRevision = observed.cluster.Status.NextRevision
-			updater.log.Info("Finished update")
+		} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
+			updater.log.Info("Savepoint for update is in progress")
+		} else {
+			updater.log.Info("Stopping job for update")
 		}
+	case UpdateStateUpdating:
+		updater.log.Info("Updating cluster")
+	case UpdateStateFinished:
+		status.CurrentRevision = observed.cluster.Status.NextRevision
+		updater.log.Info("Finished update")
 	}
 	if savepointForJobUpdate != nil {
 		status.Savepoint = savepointForJobUpdate
