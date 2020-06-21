@@ -131,6 +131,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 				ClassName:     &className,
 				JarFile:       "/cache/my-job.jar",
 				Parallelism:   &parallelism,
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 				RestartPolicy: &restartPolicy,
 				Volumes: []corev1.Volume{
 					{
@@ -724,6 +734,16 @@ func TestGetDesiredClusterState(t *testing.T) {
 									Value: "/etc/gcp_service_account/gcp_service_account_key.json",
 								},
 								{Name: "FOO", Value: "abc"},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+								Limits: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("512Mi"),
+								},
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
