@@ -370,6 +370,12 @@ type JobSpec struct {
 
 	// Job pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// Compute resources required by each Job container.
+	// If omitted, a default value will be used.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // FlinkClusterSpec defines the desired state of FlinkCluster
