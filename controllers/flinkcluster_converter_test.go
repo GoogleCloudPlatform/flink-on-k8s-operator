@@ -127,10 +127,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 		Spec: v1beta1.FlinkClusterSpec{
 			Image: v1beta1.ImageSpec{Name: "flink:1.8.1"},
 			Job: &v1beta1.JobSpec{
-				Args:          []string{"--input", "./README.txt"},
-				ClassName:     &className,
-				JarFile:       "/cache/my-job.jar",
-				Parallelism:   &parallelism,
+				Args:        []string{"--input", "./README.txt"},
+				ClassName:   &className,
+				JarFile:     "/cache/my-job.jar",
+				Parallelism: &parallelism,
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceCPU:    resource.MustParse("100m"),

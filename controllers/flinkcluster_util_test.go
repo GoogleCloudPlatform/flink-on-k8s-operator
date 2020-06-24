@@ -137,10 +137,10 @@ func TestNewRevision(t *testing.T) {
 	var revision, _ = newRevision(&flinkCluster, 1, &collisionCount)
 	var expectedRevision = appsv1.ControllerRevision{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mycluster-fd56cb4fb",
+			Name:      "mycluster-6d95c76b9c",
 			Namespace: "default",
 			Labels: map[string]string{
-				"flinkoperator.k8s.io/hash":       "fd56cb4fb",
+				"flinkoperator.k8s.io/hash":       "6d95c76b9c",
 				"flinkoperator.k8s.io/managed-by": "mycluster",
 			},
 			Annotations: map[string]string{},
