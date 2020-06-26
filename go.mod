@@ -3,6 +3,7 @@ module github.com/googlecloudplatform/flink-operator
 go 1.14
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logr/logr v0.1.0
 	github.com/google/go-cmp v0.3.1
 	github.com/onsi/ginkgo v1.11.0

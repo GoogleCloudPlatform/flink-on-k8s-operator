@@ -359,7 +359,7 @@ kubectl annotate flinkclusters <CLUSTER-NAME> flinkclusters.flinkoperator.k8s.io
 
 When canceling, all Pods that make up the Flink cluster are basically terminated.
 If you want to leave the cluster, configure spec.job.cleanupPolicy.afterJobCancelled
-according to the [CRD doc](./crd.md).
+according to the [FlinkCluster Custom Resource Definition](./crd.md).
 
 When job cancellation is finished, the control annotation disappears and the progress
 can be checked in FlinkCluster status:
@@ -402,3 +402,46 @@ you can see the item named "flink-pod-monitor" in the "Service Discovery" sectio
 ### Manage savepoints
 
 See this [doc](./savepoints_guide.md) on how to manage savepoints with the operator.
+
+### Update Flink clusters and jobs
+
+To update a running Flink job's program or execution settings, you can create new savepoint, terminate the job,
+and create a new FlinkCluster with the new program, settings, and savepoint. 
+However, in some cases, you may want to update the Flink job while maintaining the logical continuity
+of the Flink job with the FlinkCluster custom resource. In this case, you can continuously update
+the FlinkCluster custom resource, and the Flink operator takes care of the process required to update
+the Flink job and cluster.
+
+There are several points to note when using the job update feature.
+* To use the job update feature, `savepointsDir` must be set and the value of this field cannot be deleted when updating.
+This is because the Flink operator requires it to create a savepoint for job updates.
+* You can resume Flink job from your desired savepoint by updating `fromSavepoint`.
+If you want to resume the updated job from the latest savepoint, `fromSavepoint` must be unspecified.
+* `cancelRequested` and `savepointGeneration` are not allowed to update at the same time with other fields
+due to functional characteristics.
+
+There are some behavioral characteristics in update.
+* Whenever the FlinkCluster spec is updated, the Flink operator creates
+a [ControllerRevision](https://godoc.org/k8s.io/api/apps/v1#ControllerRevision) resource
+that stores the changed spec. ControllerRevisions can be used to check the editing history.
+* If update is triggered while the cluster is running, all components are re-created after terminated.
+If update is triggered in terminated state, all components are re-created as well.
+* When job is to be updated, the Flink operator will restore the job from the latest savepoint available
+- `savepointLocation` or `fromSavepoint` in job status.
+If those are not available, the job is restarted from the beginning.
+
+For example, you can create [wordcount job v1.9.2](../examples/update/wordcount-1.9.2.yaml)
+and update it to [wordcount job v1.9.3](../examples/update/wordcount-1.9.3.yaml) like this.
+
+```bash
+kubectl apply -f examples/update/wordcount-1.9.2.yaml
+kubectl apply -f examples/update/wordcount-1.9.3.yaml
+```
+
+In this example, Flink cluster image, job jar and job arguments are updated and the task manager is scaled from 1 to 2.
+You can check the list of revisions and their contents like this:
+
+```bash
+kubectl get controllerrevision
+kubectl get controllerrevision <REVISION-NAME> -o yaml
+```

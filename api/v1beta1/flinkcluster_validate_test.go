@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -534,56 +536,230 @@ func TestInvalidJobSpec(t *testing.T) {
 }
 
 func TestUpdateStatusAllowed(t *testing.T) {
-	var oldCluster = FlinkCluster{Status: FlinkClusterStatus{State: "NoReady"}}
-	var newCluster = FlinkCluster{Status: FlinkClusterStatus{State: "Running"}}
+	var oldCluster = getSimpleFlinkCluster()
+	var newCluster = getSimpleFlinkCluster()
 	var validator = &Validator{}
-	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	oldCluster.Status = FlinkClusterStatus{State: "NoReady"}
+	newCluster.Status = FlinkClusterStatus{State: "Running"}
+	err := validator.ValidateUpdate(&oldCluster, &newCluster)
 	assert.NilError(t, err, "updating status failed unexpectedly")
-}
-
-func TestUpdateSpecNotAllowed(t *testing.T) {
-	var oldCluster = FlinkCluster{
-		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.8.1"}}}
-	var newCluster = FlinkCluster{
-		Spec: FlinkClusterSpec{Image: ImageSpec{Name: "flink:1.9.0"}}}
-	var validator = &Validator{}
-	var err = validator.ValidateUpdate(&oldCluster, &newCluster)
-	var expectedErr = "the cluster properties are immutable"
-	assert.Equal(t, err.Error(), expectedErr)
 }
 
 func TestUpdateSavepointGeneration(t *testing.T) {
 	var validator = &Validator{}
-
-	var oldCluster = FlinkCluster{
-		Spec: FlinkClusterSpec{
-			Job: &JobSpec{},
+	var parallelism int32 = 2
+	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
+	var savepointDir = "/savepoint_dir"
+	oldCluster := getSimpleFlinkCluster()
+	oldCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		SavepointsDir: &savepointDir,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
 		},
-		Status: FlinkClusterStatus{
-			Components: FlinkClusterComponentsStatus{
-				Job: &JobStatus{
-					SavepointGeneration: 2,
-				},
+	}
+	oldCluster.Status = FlinkClusterStatus{
+		Components: FlinkClusterComponentsStatus{
+			Job: &JobStatus{
+				SavepointGeneration: 2,
 			},
 		},
 	}
-	var newCluster1 = FlinkCluster{
-		Spec: FlinkClusterSpec{
-			Job: &JobSpec{SavepointGeneration: 4},
+	newCluster := getSimpleFlinkCluster()
+	newCluster.Spec.Job = &JobSpec{
+		SavepointGeneration: 4,
+		JarFile:             "gs://my-bucket/myjob.jar",
+		Parallelism:         &parallelism,
+		RestartPolicy:       &restartPolicy,
+		SavepointsDir:       nil,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
 		},
 	}
+	err := validator.ValidateUpdate(&oldCluster, &newCluster)
+	expectedErr := "you can only update savepointGeneration to 3"
+	assert.Equal(t, err.Error(), expectedErr)
 
-	var err1 = validator.ValidateUpdate(&oldCluster, &newCluster1)
-	var expectedErr1 = "you can only update savepointGeneration to 3"
-	assert.Equal(t, err1.Error(), expectedErr1)
-
-	var newCluster2 = FlinkCluster{
-		Spec: FlinkClusterSpec{
-			Job: &JobSpec{SavepointGeneration: 3},
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.Job = &JobSpec{
+		SavepointGeneration: 3,
+		JarFile:             "gs://my-bucket/myjob-v2.jar",
+		Parallelism:         &parallelism,
+		RestartPolicy:       &restartPolicy,
+		SavepointsDir:       &savepointDir,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
 		},
 	}
-	var err2 = validator.ValidateUpdate(&oldCluster, &newCluster2)
-	assert.Equal(t, err2, nil)
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	expectedErr = "you cannot update savepointGeneration with others at the same time"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.Job = &JobSpec{
+		SavepointGeneration: 3,
+		JarFile:             "gs://my-bucket/myjob.jar",
+		Parallelism:         &parallelism,
+		RestartPolicy:       &restartPolicy,
+		SavepointsDir:       &savepointDir,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	assert.Equal(t, err, nil)
+}
+
+func TestUpdateJob(t *testing.T) {
+	var validator = &Validator{}
+	var parallelism int32 = 2
+	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
+	var savepointDir = "/savepoint_dir"
+
+	oldCluster := getSimpleFlinkCluster()
+	oldCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		SavepointsDir: &savepointDir,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	newCluster := getSimpleFlinkCluster()
+	newCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		SavepointsDir: nil,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	err := validator.ValidateUpdate(&oldCluster, &newCluster)
+	expectedErr := "removing savepointsDir is not allowed"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	oldCluster = getSimpleFlinkCluster()
+	oldCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		SavepointsDir: &savepointDir,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.Job = nil
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	oldJson, _ := json.Marshal(&oldCluster.Spec.Job)
+	newJson, _ := json.Marshal(&newCluster.Spec.Job)
+	expectedErr = fmt.Sprintf("you cannot change cluster type between session cluster and job cluster, old spec.job: %q, new spec.job: %q", oldJson, newJson)
+	assert.Equal(t, err.Error(), expectedErr)
+
+	oldCluster = getSimpleFlinkCluster()
+	oldCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob-v1.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.Job = &JobSpec{
+		JarFile:       "gs://my-bucket/myjob-v2.jar",
+		Parallelism:   &parallelism,
+		RestartPolicy: &restartPolicy,
+		CleanupPolicy: &CleanupPolicy{
+			AfterJobSucceeds: CleanupActionKeepCluster,
+			AfterJobFails:    CleanupActionDeleteTaskManager,
+		},
+	}
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	expectedErr = "updating job is not allowed when spec.job.savepointsDir was not provided"
+	assert.Equal(t, err.Error(), expectedErr)
+}
+
+func TestUpdateCluster(t *testing.T) {
+	var validator = &Validator{}
+	var jmReplicas int32 = 1
+	var rpcPort int32 = 8001
+	var blobPort int32 = 8002
+	var queryPort int32 = 8003
+	var uiPort int32 = 8004
+	var dataPort int32 = 8005
+	var memoryOffHeapRatio int32 = 25
+	var memoryOffHeapMin = resource.MustParse("600M")
+
+	oldCluster := getSimpleFlinkCluster()
+	oldCluster.Spec.Image = ImageSpec{
+		Name:       "flink:1.8.1",
+		PullPolicy: corev1.PullAlways,
+	}
+	newCluster := getSimpleFlinkCluster()
+	newCluster.Spec.Image = ImageSpec{
+		Name:       "flink:1.9.3",
+		PullPolicy: corev1.PullIfNotPresent,
+	}
+	err := validator.ValidateUpdate(&oldCluster, &newCluster)
+	assert.NilError(t, err, "updating FlinkCluster image failed unexpectedly")
+
+	oldCluster = getSimpleFlinkCluster()
+	oldCluster.Spec.JobManager = JobManagerSpec{
+		Replicas:    &jmReplicas,
+		AccessScope: AccessScopeVPC,
+		Ports: JobManagerPorts{
+			RPC:   &rpcPort,
+			Blob:  &blobPort,
+			Query: &queryPort,
+			UI:    &uiPort,
+		},
+		MemoryOffHeapRatio: &memoryOffHeapRatio,
+		MemoryOffHeapMin:   memoryOffHeapMin,
+	}
+	var newMemoryOffHeapRatio int32 = 20
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.JobManager = JobManagerSpec{
+		Replicas:    &jmReplicas,
+		AccessScope: AccessScopeVPC,
+		Ports: JobManagerPorts{
+			RPC:   &rpcPort,
+			Blob:  &blobPort,
+			Query: &queryPort,
+			UI:    &uiPort,
+		},
+		MemoryOffHeapRatio: &newMemoryOffHeapRatio,
+		MemoryOffHeapMin:   memoryOffHeapMin,
+	}
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	assert.NilError(t, err, "updating JobManger failed unexpectedly")
+
+	var newTMReplicas int32 = 5
+	newCluster = getSimpleFlinkCluster()
+	newCluster.Spec.TaskManager = TaskManagerSpec{
+		Replicas: newTMReplicas,
+		Ports: TaskManagerPorts{
+			RPC:   &rpcPort,
+			Data:  &dataPort,
+			Query: &queryPort,
+		},
+		MemoryOffHeapRatio: &memoryOffHeapRatio,
+		MemoryOffHeapMin:   memoryOffHeapMin,
+	}
+	err = validator.ValidateUpdate(&oldCluster, &newCluster)
+	assert.NilError(t, err, "updating TaskManger failed unexpectedly")
 }
 
 func TestInvalidGCPConfig(t *testing.T) {
@@ -777,4 +953,62 @@ func TestDupPort(t *testing.T) {
 	err = validator.validateJobManager(&jm)
 	expectedErr = "duplicate containerPort 9249 in jobmanager, each port number of ports and extraPorts must be unique"
 	assert.Equal(t, err.Error(), expectedErr)
+}
+
+func getSimpleFlinkCluster() FlinkCluster {
+	var jmReplicas int32 = 1
+	var rpcPort int32 = 8001
+	var blobPort int32 = 8002
+	var queryPort int32 = 8003
+	var uiPort int32 = 8004
+	var dataPort int32 = 8005
+	var memoryOffHeapRatio int32 = 25
+	var memoryOffHeapMin = resource.MustParse("600M")
+	var parallelism int32 = 2
+	var restartPolicy = JobRestartPolicyFromSavepointOnFailure
+	var savepointDir = "/savepoint_dir"
+	return FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScopeVPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 3,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			Job: &JobSpec{
+				JarFile:       "gs://my-bucket/myjob.jar",
+				Parallelism:   &parallelism,
+				RestartPolicy: &restartPolicy,
+				SavepointsDir: &savepointDir,
+				CleanupPolicy: &CleanupPolicy{
+					AfterJobSucceeds: CleanupActionKeepCluster,
+					AfterJobFails:    CleanupActionDeleteTaskManager,
+				},
+			},
+		},
+	}
 }

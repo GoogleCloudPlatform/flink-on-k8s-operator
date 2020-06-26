@@ -27,6 +27,7 @@ const (
 	ClusterStateCreating         = "Creating"
 	ClusterStateRunning          = "Running"
 	ClusterStateReconciling      = "Reconciling"
+	ClusterStateUpdating         = "Updating"
 	ClusterStateStopping         = "Stopping"
 	ClusterStatePartiallyStopped = "PartiallyStopped"
 	ClusterStateStopped          = "Stopped"
@@ -36,6 +37,7 @@ const (
 const (
 	ComponentStateNotReady = "NotReady"
 	ComponentStateReady    = "Ready"
+	ComponentStateUpdating = "Updating"
 	ComponentStateDeleted  = "Deleted"
 )
 
@@ -43,6 +45,7 @@ const (
 const (
 	JobStatePending   = "Pending"
 	JobStateRunning   = "Running"
+	JobStateUpdating  = "Updating"
 	JobStateSucceeded = "Succeeded"
 	JobStateFailed    = "Failed"
 	JobStateCancelled = "Cancelled"
@@ -93,8 +96,9 @@ const (
 	SavepointStateSucceeded     = "Succeeded"
 
 	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonJobCancel     = "for job-cancel"
 	SavepointTriggerReasonScheduled     = "scheduled"
+	SavepointTriggerReasonJobCancel     = "job cancel"
+	SavepointTriggerReasonUpdate        = "update"
 )
 
 // ImageSpec defines Flink image of JobManager and TaskManager containers.
@@ -406,6 +410,9 @@ type FlinkClusterSpec struct {
 
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
+
+	// The maximum number of revision history to keep, default: 10.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // HadoopConfig defines configs for Hadoop.
@@ -535,6 +542,9 @@ type SavepointStatus struct {
 	// Savepoint triggered reason.
 	TriggerReason string `json:"triggerReason,omitempty"`
 
+	// Savepoint requested time.
+	RequestTime string `json:"requestTime,omitempty"`
+
 	// Savepoint state.
 	State string `json:"state"`
 
@@ -582,6 +592,25 @@ type FlinkClusterStatus struct {
 
 	// The status of savepoint progress
 	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
+
+	// When the controller creates new ControllerRevision, it generates hash string from the FlinkCluster spec
+	// which is to be stored in ControllerRevision and uses it to compose the ControllerRevision name.
+	// Then the controller updates nextRevision to the ControllerRevision name.
+	// When update process is completed, the controller updates currentRevision as nextRevision.
+	// currentRevision and nextRevision is composed like this:
+	// <FLINK_CLUSTER_NAME>-<FLINK_CLUSTER_SPEC_HASH>-<REVISION_NUMBER_IN_CONTROLLERREVISION>
+	// e.g., myflinkcluster-c464ff7-5
+
+	// CurrentRevision indicates the version of FlinkCluster.
+	CurrentRevision string `json:"currentRevision,omitempty"`
+
+	// NextRevision indicates the version of FlinkCluster updating.
+	NextRevision string `json:"nextRevision,omitempty"`
+
+	// collisionCount is the count of hash collisions for the FlinkCluster. The controller
+	// uses this field as a collision avoidance mechanism when it needs to create the name for the
+	// newest ControllerRevision.
+	CollisionCount *int32 `json:"collisionCount,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`

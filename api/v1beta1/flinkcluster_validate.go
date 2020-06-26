@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -75,7 +76,8 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 
 // ValidateUpdate validates update request.
 func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
-	err := v.checkControlAnnotations(old, new)
+	var err error
+	err = v.checkControlAnnotations(old, new)
 	if err != nil {
 		return err
 	}
@@ -96,8 +98,14 @@ func (v *Validator) ValidateUpdate(old *FlinkCluster, new *FlinkCluster) error {
 		return nil
 	}
 
-	if !reflect.DeepEqual(new.Spec, old.Spec) {
-		return fmt.Errorf("the cluster properties are immutable")
+	err = v.validateJobUpdate(old, new)
+	if err != nil {
+		return err
+	}
+
+	err = v.ValidateCreate(new)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -152,7 +160,13 @@ func (v *Validator) checkCancelRequested(
 		// Check if only `cancelRequested` changed, no other changes.
 		var oldCopy = old.DeepCopy()
 		oldCopy.Spec.Job.CancelRequested = new.Spec.Job.CancelRequested
-		return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
+
+		if reflect.DeepEqual(new.Spec, oldCopy.Spec) {
+			return true, nil
+		}
+
+		return false, fmt.Errorf(
+			"you cannot update cancelRequested with others at the same time")
 	}
 
 	return false, nil
@@ -183,7 +197,30 @@ func (v *Validator) checkSavepointGeneration(
 	// Check if only `savepointGeneration` changed, no other changes.
 	var oldCopy = old.DeepCopy()
 	oldCopy.Spec.Job.SavepointGeneration = newSpecGen
-	return reflect.DeepEqual(new.Spec, oldCopy.Spec), nil
+	if reflect.DeepEqual(new.Spec, oldCopy.Spec) {
+		return true, nil
+	}
+
+	return false, fmt.Errorf(
+		"you cannot update savepointGeneration with others at the same time")
+}
+
+// Validate job update.
+func (v *Validator) validateJobUpdate(old *FlinkCluster, new *FlinkCluster) error {
+	switch {
+	case old.Spec.Job == nil && new.Spec.Job == nil:
+		return nil
+	case old.Spec.Job == nil || new.Spec.Job == nil:
+		oldJob, _ := json.Marshal(old.Spec.Job)
+		newJob, _ := json.Marshal(new.Spec.Job)
+		return fmt.Errorf("you cannot change cluster type between session cluster and job cluster, old spec.job: %q, new spec.job: %q", oldJob, newJob)
+	case old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "":
+		return fmt.Errorf("updating job is not allowed when spec.job.savepointsDir was not provided")
+	case old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
+		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == ""):
+		return fmt.Errorf("removing savepointsDir is not allowed")
+	}
+	return nil
 }
 
 func (v *Validator) validateMeta(meta *metav1.ObjectMeta) error {
