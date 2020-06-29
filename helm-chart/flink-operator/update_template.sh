@@ -11,6 +11,6 @@ sed -i 's/flink-operator-system/{{ .Values.flinkOperatorNamespace }}/g' template
 sed -i 's/replicas: 1/replicas: {{ .Values.replicas }}/g' templates/flink-operator.yaml
 sed -i "s/$IMG/{{ .Values.operatorImage.name }}/g" templates/flink-operator.yaml
 sed -i 's/--watch-namespace=/--watch-namespace={{ .Values.watchNamespace }}/' templates/flink-operator.yaml
-cp ../../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml crds/
+cp ../../config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml ../../config/crd/bases
 
 git checkout ../../config/default/kustomization.yaml

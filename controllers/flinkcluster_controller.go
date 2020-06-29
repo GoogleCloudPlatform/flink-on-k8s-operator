@@ -24,6 +24,8 @@ import (
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
+	"github.com/googlecloudplatform/flink-operator/controllers/model"
+
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -101,8 +103,8 @@ type FlinkClusterHandler struct {
 	log               logr.Logger
 	recorder          record.EventRecorder
 	observed          ObservedClusterState
-	desired           DesiredClusterState
 	controllerHistory history.Interface
+	desired           model.DesiredClusterState
 }
 
 func (handler *FlinkClusterHandler) reconcile(
@@ -146,9 +148,9 @@ func (handler *FlinkClusterHandler) reconcile(
 	log.Info("---------- 2. Update cluster status ----------")
 
 	var updater = ClusterStatusUpdater{
-		k8sClient: handler.k8sClient,
-		context:   handler.context,
-		log:       handler.log,
+		k8sClient: k8sClient,
+		context:   context,
+		log:       log,
 		recorder:  handler.recorder,
 		observed:  handler.observed,
 	}
@@ -204,13 +206,12 @@ func (handler *FlinkClusterHandler) reconcile(
 	log.Info("---------- 4. Take actions ----------")
 
 	var reconciler = ClusterReconciler{
-		k8sClient:   handler.k8sClient,
+		k8sClient:   k8sClient,
 		flinkClient: flinkClient,
-		context:     handler.context,
-		log:         handler.log,
+		context:     context,
+		log:         log,
 		observed:    handler.observed,
-		desired:     handler.desired,
-		recorder:    handler.recorder,
+		desired:     handler.desired, recorder: handler.recorder,
 	}
 	result, err := reconciler.reconcile()
 	if err != nil {

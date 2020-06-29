@@ -28,6 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	"github.com/googlecloudplatform/flink-operator/controllers/model"
+
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -55,25 +57,15 @@ var flinkSysProps = map[string]struct{}{
 	"rest.port":              {},
 }
 
-// DesiredClusterState holds desired state of a cluster.
-type DesiredClusterState struct {
-	JmDeployment *appsv1.Deployment
-	JmService    *corev1.Service
-	JmIngress    *extensionsv1beta1.Ingress
-	TmDeployment *appsv1.Deployment
-	ConfigMap    *corev1.ConfigMap
-	Job          *batchv1.Job
-}
-
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
 	cluster *v1beta1.FlinkCluster,
-	now time.Time) DesiredClusterState {
+	now time.Time) model.DesiredClusterState {
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
-		return DesiredClusterState{}
+		return model.DesiredClusterState{}
 	}
-	return DesiredClusterState{
+	return model.DesiredClusterState{
 		ConfigMap:    getDesiredConfigMap(cluster),
 		JmDeployment: getDesiredJobManagerDeployment(cluster),
 		JmService:    getDesiredJobManagerService(cluster),
@@ -212,7 +204,7 @@ func getDesiredJobManagerDeployment(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
 			Name:            jobManagerDeploymentName,
-			OwnerReferences: []metav1.OwnerReference{toOwnerReference(flinkCluster)},
+			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
 			Labels:          deploymentLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -265,7 +257,7 @@ func getDesiredJobManagerService(
 			Namespace: clusterNamespace,
 			Name:      jobManagerServiceName,
 			OwnerReferences: []metav1.OwnerReference{
-				toOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels: serviceLabels,
 		},
 		Spec: corev1.ServiceSpec{
@@ -341,7 +333,7 @@ func getDesiredJobManagerIngress(
 			Namespace: clusterNamespace,
 			Name:      ingressName,
 			OwnerReferences: []metav1.OwnerReference{
-				toOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels:      labels,
 			Annotations: ingressAnnotations,
 		},
@@ -494,7 +486,7 @@ func getDesiredTaskManagerDeployment(
 			Namespace: clusterNamespace,
 			Name:      taskManagerDeploymentName,
 			OwnerReferences: []metav1.OwnerReference{
-				toOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels: deploymentLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -561,7 +553,7 @@ func getDesiredConfigMap(
 			Namespace: clusterNamespace,
 			Name:      configMapName,
 			OwnerReferences: []metav1.OwnerReference{
-				toOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels: labels,
 		},
 		Data: map[string]string{
@@ -714,7 +706,7 @@ func getDesiredJob(
 			Namespace: clusterNamespace,
 			Name:      jobName,
 			OwnerReferences: []metav1.OwnerReference{
-				toOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels: jobLabels,
 		},
 		Spec: batchv1.JobSpec{
@@ -785,7 +777,7 @@ func convertJobInitContainers(jobSpec *v1beta1.JobSpec) []corev1.Container {
 }
 
 // Converts the FlinkCluster as owner reference for its child resources.
-func toOwnerReference(
+func ToOwnerReference(
 	flinkCluster *v1beta1.FlinkCluster) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         flinkCluster.APIVersion,
