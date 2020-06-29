@@ -22,6 +22,6 @@ import (
 type BatchScheduler interface {
 	// Name gets the name of the scheduler
 	Name() string
-	// DoBatchScheduling reconciles batch scheduling
-	DoBatchScheduling(cluster *v1beta1.FlinkCluster, desired *model.DesiredClusterState) error
+	// Schedule reconciles batch scheduling
+	Schedule(cluster *v1beta1.FlinkCluster, desired *model.DesiredClusterState) error
 }

@@ -36,10 +36,12 @@ const (
 	schedulerName = "volcano"
 )
 
+// volcano scheduler implements the BatchScheduler interface.
 type VolcanoBatchScheduler struct {
 	volcanoClient volcanoclient.Interface
 }
 
+// Create volcano BatchScheduler
 func New() (schedulerinterface.BatchScheduler, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
@@ -55,11 +57,13 @@ func New() (schedulerinterface.BatchScheduler, error) {
 	}, nil
 }
 
+// Name returns the current scheduler name.
 func (v *VolcanoBatchScheduler) Name() string {
 	return schedulerName
 }
 
-func (v *VolcanoBatchScheduler) DoBatchScheduling(cluster *v1beta1.FlinkCluster, state *model.DesiredClusterState) error {
+// Schedule reconciles batch scheduling
+func (v *VolcanoBatchScheduler) Schedule(cluster *v1beta1.FlinkCluster, state *model.DesiredClusterState) error {
 	res, size := getClusterResource(state)
 	if err := v.syncPodGroup(cluster, size, res); err != nil {
 		return err

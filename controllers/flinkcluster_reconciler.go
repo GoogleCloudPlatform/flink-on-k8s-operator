@@ -76,7 +76,7 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 
-		err = scheduler.DoBatchScheduling(reconciler.observed.cluster, &reconciler.desired)
+		err = scheduler.Schedule(reconciler.observed.cluster, &reconciler.desired)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
