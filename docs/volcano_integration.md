@@ -76,24 +76,7 @@ job.batch/volcano-admission-init   1/1           42s        57s
  
 ## Install Flink Operator with Volcano enabled
 
-## Installing the Chart
-
-1. Prepare a Flink operator image. Follow the instructions [here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/docs/developer_guide.md#build-and-push-docker-image) to build and push an image from the source code.
-
-2. Run the bash script `update_template.sh` to update the manifest files in templates from the Flink operator source repo (This step is only required if you want to install from the local chart repo).
-
-3. Finally operator chart can be installed by running:
-
-	```bash
-	helm repo add flink-operator-repo https://googlecloudplatform.github.io/flink-on-k8s-operator/
-	helm install [RELEASE_NAME] flink-operator-repo/flink-operator --set operatorImage.name=[IMAGE_NAME]
-	```
-    or to install it using local repo with command:
-
-    ```bash
-    helm install [RELEASE_NAME] . --set operatorImage.name=[IMAGE_NAME]
-    ```
-
+Please refer to [Deploy the operator to a Kubernetes cluster](./user_guide.md#deploy-the-operator-to-a-kubernetes-cluster)
 
 # Create a sample Flink session cluster
 

@@ -389,7 +389,7 @@ type FlinkClusterSpec struct {
 
 	// BatchSchedulerName specifies the batch scheduler name for JobManager, TaskManager.
 	// If empty, no batch scheduling is enabled.
-	BatchSchedulerName string `json:"batchSchedulerName"`
+	BatchSchedulerName string `json:"batchSchedulerName,omitempty"`
 
 	// Flink JobManager spec.
 	JobManager JobManagerSpec `json:"jobManager"`
