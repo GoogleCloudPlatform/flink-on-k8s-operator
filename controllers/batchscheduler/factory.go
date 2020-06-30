@@ -29,7 +29,7 @@ var (
 	schedulerPlugins = map[string]schedulerinterface.BatchScheduler{}
 )
 
-func lazyInitialize() {
+func init() {
 	scheduler, err := volcano.New()
 	if err != nil {
 		klog.Errorf("Failed initializing volcano batch scheduler: %v", err)
@@ -40,23 +40,15 @@ func lazyInitialize() {
 
 // GetScheduler gets the real batch scheduler.
 func GetScheduler(name string) (schedulerinterface.BatchScheduler, error) {
-	once.Do(func() {
-		lazyInitialize()
-	})
-
 	mutex.Lock()
 	defer mutex.Unlock()
-	// TODO: respect real scheduler name
-	if scheduler, exist := schedulerPlugins["volcano"]; exist {
+	if scheduler, exist := schedulerPlugins[name]; exist {
 		return scheduler, nil
 	}
 	return nil, fmt.Errorf("failed to find batch scheduler named with %s", name)
 }
 
 func GetRegisteredNames() []string {
-	once.Do(func() {
-		lazyInitialize()
-	})
 	mutex.Lock()
 	defer mutex.Unlock()
 	var pluginNames []string

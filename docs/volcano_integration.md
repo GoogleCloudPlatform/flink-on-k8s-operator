@@ -21,56 +21,15 @@ kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/ins
 
 Please refer to [Volcano Official Guide](https://volcano.sh/docs/getting-started/)
 
-### Verify Volcano is up and run
+### Verify Volcano is up and running
 
 ```bash
-$ kubectl get all -n volcano-system
+$ kubectl get pod -n volcano-system
 NAME                                      READY   STATUS      RESTARTS   AGE
 pod/volcano-admission-75688c79bf-b8fmj    1/1     Running     0          52s
 pod/volcano-admission-init-d684j          0/1     Completed   0          53s
 pod/volcano-controllers-d87bdbd7c-q6ds6   1/1     Running     0          52s
 pod/volcano-scheduler-5476779fd9-8rslv    1/1     Running     0          52s
-
-NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
-service/volcano-admission-service   ClusterIP   10.97.190.50   <none>        443/TCP   55s
-
-NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/volcano-admission     1/1     1            1           55s
-deployment.apps/volcano-controllers   1/1     1            1           55s
-deployment.apps/volcano-scheduler     1/1     1            1           55s
-
-NAME                                            DESIRED   CURRENT   READY   AGE
-replicaset.apps/volcano-admission-75688c79bf    1         1         1       52s
-replicaset.apps/volcano-controllers-d87bdbd7c   1         1         1       52s
-replicaset.apps/volcano-scheduler-5476779fd9    1         1         1       52s
-
-NAME                               COMPLETIONS   DURATION   AGE
-job.batch/volcano-admission-init   1/1           42s        55s
-root@opensrc:/mnt/go/src/volcano.sh/volcano# 
-root@opensrc:/mnt/go/src/volcano.sh/volcano# 
-root@opensrc:/mnt/go/src/volcano.sh/volcano# 
-root@opensrc:/mnt/go/src/volcano.sh/volcano# kubectl get all -n volcano-system
-NAME                                      READY   STATUS      RESTARTS   AGE
-pod/volcano-admission-75688c79bf-b8fmj    1/1     Running     0          54s
-pod/volcano-admission-init-d684j          0/1     Completed   0          55s
-pod/volcano-controllers-d87bdbd7c-q6ds6   1/1     Running     0          54s
-pod/volcano-scheduler-5476779fd9-8rslv    1/1     Running     0          54s
-
-NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
-service/volcano-admission-service   ClusterIP   10.97.190.50   <none>        443/TCP   57s
-
-NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/volcano-admission     1/1     1            1           57s
-deployment.apps/volcano-controllers   1/1     1            1           57s
-deployment.apps/volcano-scheduler     1/1     1            1           57s
-
-NAME                                            DESIRED   CURRENT   READY   AGE
-replicaset.apps/volcano-admission-75688c79bf    1         1         1       54s
-replicaset.apps/volcano-controllers-d87bdbd7c   1         1         1       54s
-replicaset.apps/volcano-scheduler-5476779fd9    1         1         1       54s
-
-NAME                               COMPLETIONS   DURATION   AGE
-job.batch/volcano-admission-init   1/1           42s        57s
 
 ```
  
