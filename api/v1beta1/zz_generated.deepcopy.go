@@ -169,6 +169,11 @@ func (in *FlinkClusterList) DeepCopyObject() runtime.Object {
 func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 	*out = *in
 	in.Image.DeepCopyInto(&out.Image)
+	if in.BatchSchedulerName != nil {
+		in, out := &in.BatchSchedulerName, &out.BatchSchedulerName
+		*out = new(string)
+		**out = **in
+	}
 	in.JobManager.DeepCopyInto(&out.JobManager)
 	in.TaskManager.DeepCopyInto(&out.TaskManager)
 	if in.Job != nil {
