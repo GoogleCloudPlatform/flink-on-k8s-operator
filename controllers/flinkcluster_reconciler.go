@@ -70,8 +70,8 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		reconciler.log.Info("The cluster update is in progress")
 	}
 	// If batch-scheduling enabled
-	if reconciler.observed.cluster.Spec.BatchSchedulerName != "" {
-		scheduler, err := batchscheduler.GetScheduler(reconciler.observed.cluster.Spec.BatchSchedulerName)
+	if reconciler.observed.cluster.Spec.BatchSchedulerName != nil {
+		scheduler, err := batchscheduler.GetScheduler(*reconciler.observed.cluster.Spec.BatchSchedulerName)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
