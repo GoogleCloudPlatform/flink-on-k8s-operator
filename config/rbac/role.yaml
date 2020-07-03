@@ -48,10 +48,13 @@ rules:
   - ""
   resources:
   - pods
+  - secrets
   verbs:
+  - create
   - get
   - list
   - watch
+  - patch
 - apiGroups:
     - apps
   resources:
@@ -154,3 +157,21 @@ rules:
   - ingresses/status
   verbs:
   - get
+- apiGroups: 
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - create
+  - update
+  - patch
+- apiGroups:
+  - scheduling.volcano.sh
+  resources:
+  - podgroups
+  verbs:
+  - get
+  - create
+  - update

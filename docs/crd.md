@@ -15,6 +15,7 @@ FlinkCluster
         |__ name
         |__ pullPolicy
         |__ pullSecrets
+    |__ batchSchedulerName
     |__ jobManager
         |__ accessScope
         |__ ports
@@ -138,6 +139,8 @@ FlinkCluster
       * **name** (required): Image name.
       * **pullPolicy** (optional): Image pull policy.
       * **pullSecrets** (optional): Secrets for image pull.
+    * **batchSchedulerName** (optional): BatchSchedulerName specifies the batch scheduler name for JobManager, TaskManager.
+      If empty, no batch scheduling is enabled.
     * **jobManager** (required): JobManager spec.
       * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External", 
       "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 

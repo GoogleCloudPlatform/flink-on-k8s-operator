@@ -29,7 +29,10 @@ import (
 
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	"github.com/googlecloudplatform/flink-operator/controllers/batchscheduler"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
+	"github.com/googlecloudplatform/flink-operator/controllers/model"
+
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,7 +49,7 @@ type ClusterReconciler struct {
 	context     context.Context
 	log         logr.Logger
 	observed    ObservedClusterState
-	desired     DesiredClusterState
+	desired     model.DesiredClusterState
 	recorder    record.EventRecorder
 }
 
@@ -65,6 +68,19 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 
 	if getUpdateState(reconciler.observed) == UpdateStateUpdating {
 		reconciler.log.Info("The cluster update is in progress")
+	}
+	// If batch-scheduling enabled
+	if reconciler.observed.cluster.Spec.BatchSchedulerName != nil &&
+		*reconciler.observed.cluster.Spec.BatchSchedulerName != "" {
+		scheduler, err := batchscheduler.GetScheduler(*reconciler.observed.cluster.Spec.BatchSchedulerName)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = scheduler.Schedule(reconciler.observed.cluster, &reconciler.desired)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	err = reconciler.reconcileConfigMap()

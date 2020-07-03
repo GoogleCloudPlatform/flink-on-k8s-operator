@@ -238,21 +238,22 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	} else if observedJmService != nil {
 		var state string
 		var nodePort int32
-		if observedJmService.Spec.Type == corev1.ServiceTypeClusterIP {
+		switch observedJmService.Spec.Type {
+		case corev1.ServiceTypeClusterIP:
 			if observedJmService.Spec.ClusterIP != "" {
 				state = v1beta1.ComponentStateReady
 				runningComponents++
 			} else {
 				state = v1beta1.ComponentStateNotReady
 			}
-		} else if observedJmService.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		case corev1.ServiceTypeLoadBalancer:
 			if len(observedJmService.Status.LoadBalancer.Ingress) > 0 {
 				state = v1beta1.ComponentStateReady
 				runningComponents++
 			} else {
 				state = v1beta1.ComponentStateNotReady
 			}
-		} else if observedJmService.Spec.Type == corev1.ServiceTypeNodePort {
+		case corev1.ServiceTypeNodePort:
 			if len(observedJmService.Spec.Ports) > 0 {
 				state = v1beta1.ComponentStateReady
 				runningComponents++
@@ -264,7 +265,6 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			} else {
 				state = v1beta1.ComponentStateNotReady
 			}
-
 		}
 
 		status.Components.JobManagerService =
