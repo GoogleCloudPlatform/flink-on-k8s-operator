@@ -51,6 +51,8 @@ clusters and jobs.
 * Restarting failed job from the latest savepoint automatically
 * Cancelling job with savepoint
 * Cleanup policy on job success and failure
+* Updating cluster or job
+* Batch scheduling for JobManager and TaskManager Pods
 * GCP integration (service account, GCS connector, networking)
 * Support for Beam Python jobs
 
