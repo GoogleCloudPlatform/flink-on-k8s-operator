@@ -302,6 +302,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: make([]corev1.Container, 0),
 					Containers: []corev1.Container{
 						{
 							Name:  "jobmanager",
@@ -556,6 +557,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				Spec: corev1.PodSpec{
+					InitContainers: make([]corev1.Container, 0),
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "taskmanager",

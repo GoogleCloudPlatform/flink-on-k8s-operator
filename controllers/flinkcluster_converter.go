@@ -193,6 +193,7 @@ func getDesiredJobManagerDeployment(
 	containers = append(containers, jobManagerSpec.Sidecars...)
 
 	var podSpec = corev1.PodSpec{
+		InitContainers:   convertJobManagerInitContainers(&jobManagerSpec),
 		Containers:       containers,
 		Volumes:          volumes,
 		NodeSelector:     jobManagerSpec.NodeSelector,
@@ -475,6 +476,7 @@ func getDesiredTaskManagerDeployment(
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var podSpec = corev1.PodSpec{
+		InitContainers:   convertTaskManagerInitContainers(&taskManagerSpec),
 		Containers:       containers,
 		Volumes:          volumes,
 		NodeSelector:     taskManagerSpec.NodeSelector,
@@ -753,27 +755,38 @@ func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.Flink
 	return jobSpec.FromSavepoint
 }
 
-func convertJobInitContainers(jobSpec *v1beta1.JobSpec) []corev1.Container {
-	var initContainers = []corev1.Container{}
-	// Add jobSpec level volume mounts to each init container if there is no
-	// conflict.
-	for _, initContainer := range jobSpec.InitContainers {
-		for _, jobMount := range jobSpec.VolumeMounts {
-			var conflit = false
+// Copy any non-duplicate volume mounts to the specified initContainers
+func ensureVolumeMountsInitContainer(initContainers []corev1.Container, volumeMounts []corev1.VolumeMount) []corev1.Container {
+	var updatedInitContainers = []corev1.Container{}
+	for _, initContainer := range initContainers {
+		for _, mounts := range volumeMounts {
+			var conflict = false
 			for _, mount := range initContainer.VolumeMounts {
-				if jobMount.MountPath == mount.MountPath {
-					conflit = true
+				if mounts.MountPath == mount.MountPath {
+					conflict = true
 					break
 				}
 			}
-			if !conflit {
+			if !conflict {
 				initContainer.VolumeMounts =
-					append(initContainer.VolumeMounts, jobMount)
+					append(initContainer.VolumeMounts, mounts)
 			}
 		}
-		initContainers = append(initContainers, initContainer)
+		updatedInitContainers = append(updatedInitContainers, initContainer)
 	}
-	return initContainers
+	return updatedInitContainers
+}
+
+func convertJobManagerInitContainers(jobManagerSpec *v1beta1.JobManagerSpec) []corev1.Container {
+	return ensureVolumeMountsInitContainer(jobManagerSpec.InitContainers, jobManagerSpec.VolumeMounts)
+}
+
+func convertTaskManagerInitContainers(taskSpec *v1beta1.TaskManagerSpec) []corev1.Container {
+	return ensureVolumeMountsInitContainer(taskSpec.InitContainers, taskSpec.VolumeMounts)
+}
+
+func convertJobInitContainers(jobSpec *v1beta1.JobSpec) []corev1.Container {
+	return ensureVolumeMountsInitContainer(jobSpec.InitContainers, jobSpec.VolumeMounts)
 }
 
 // Converts the FlinkCluster as owner reference for its child resources.
