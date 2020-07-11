@@ -143,8 +143,9 @@ FlinkCluster
       If empty, no batch scheduling is enabled.
     * **jobManager** (required): JobManager spec.
       * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External", 
-      "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 
-      `External`:accessible from the internet. `NodePort`: accessible through node port.  
+      "NodePort", "Headless")`. `Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 
+      `External`: accessible from the internet. `NodePort`: accessible through node port; `Headless`: pod IPs assumed to 
+      be routable and advertised directly with `clusterIP: None`.  
       Currently `VPC` and `External` are only available for GKE.
       * **ports** (optional): Ports that JobManager listening on.
         * **rpc** (optional): RPC port, default: 6123.

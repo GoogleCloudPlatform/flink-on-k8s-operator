@@ -58,6 +58,7 @@ const (
 	AccessScopeVPC      = "VPC"
 	AccessScopeExternal = "External"
 	AccessScopeNodePort = "NodePort"
+	AccessScopeHeadless = "Headless"
 )
 
 // JobRestartPolicy defines the restart policy when a job fails.
