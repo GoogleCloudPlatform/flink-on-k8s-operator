@@ -34,6 +34,7 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
+        |__ initContainers
         |__ nodeSelector
         |__ tolerations
         |__ sidecars
@@ -50,6 +51,7 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
+        |__ initContainers
         |__ nodeSelector
         |__ tolerations
         |__ sidecars
@@ -142,16 +144,16 @@ FlinkCluster
     * **batchSchedulerName** (optional): BatchSchedulerName specifies the batch scheduler name for JobManager, TaskManager.
       If empty, no batch scheduling is enabled.
     * **jobManager** (required): JobManager spec.
-      * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External", 
-      "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC; 
-      `External`:accessible from the internet. `NodePort`: accessible through node port.  
+      * **accessScope** (optional): Access scope of the JobManager service. `enum("Cluster", "VPC", "External",
+      "NodePort")`.`Cluster`: accessible from within the same cluster; `VPC`: accessible from within the same VPC;
+      `External`:accessible from the internet. `NodePort`: accessible through node port.
       Currently `VPC` and `External` are only available for GKE.
       * **ports** (optional): Ports that JobManager listening on.
         * **rpc** (optional): RPC port, default: 6123.
         * **blob** (optional): Blob port, default: 6124.
         * **query** (optional): Query port, default: 6125.
         * **ui** (optional): UI port, default: 8081.
-      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, 
+      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus,
         JMX and so on. Each port number and name must be unique among ports and extraPorts. ContainerPort is required
         and name and protocol are optional.
       * **ingress** (optional): Provide external access to JobManager UI/API.
@@ -174,14 +176,16 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the JobManager container.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) volume mounts.
-      * **nodeSelector** (optional): Selector which must match a node's labels for the JobManager pod 
+      * **initContainers** (optional): Init containers of the JobManager pod.
+        See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
+      * **nodeSelector** (optional): Selector which must match a node's labels for the JobManager pod
         to be scheduled on that node.
         See [more info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
       * **tolerations** (optional): Allows the JobManager pod to run on a tainted node
         in the cluster.
-        See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
+        See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
       * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
-        See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.  
+        See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
       * **podAnnotations** (optional): Pod template annotations for the JobManager deployment.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
     * **taskManager** (required): TaskManager spec.
@@ -190,7 +194,7 @@ FlinkCluster
         * **data** (optional): Data port.
         * **rpc** (optional): RPC port.
         * **query** (optional): Query port.
-      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus, 
+      * **extraPorts** (optional): Extra ports to be exposed. For example, Flink metrics reporter ports: Prometheus,
         JMX and so on. Each port number and name must be unique among ports and extraPorts. ContainerPort is required
         and name and protocol are optional.
       * **resources** (optional): Compute resources required by JobManager
@@ -208,12 +212,14 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the TaskManager containers.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
-      * **nodeSelector** (optional): Selector which must match a node's labels for the TaskManager pod to 
+      * **initContainers** (optional): Init containers of the TaskManager pod.
+        See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
+      * **nodeSelector** (optional): Selector which must match a node's labels for the TaskManager pod to
         be scheduled on that node.
-        See [more info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)  
+        See [more info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
       * **tolerations** (optional): Allows the TaskManager pod to run on a tainted node
         in the cluster.
-        See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)  
+        See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
       * **podAnnotations** (optional): Pod template annotations for the TaskManager deployment.
@@ -307,14 +313,14 @@ FlinkCluster
       * **details**: Control details.
       * **state**: Control state.
       * **message**: Control message.
-      * **updateTime**: The updated time of control status.  
+      * **updateTime**: The updated time of control status.
     * **savepoint**: The status of savepoint progress.
       * **jobID**: The ID of the Flink job.
       * **triggerID**: Savepoint trigger ID.
       * **triggerTime**: Savepoint triggered time.
       * **triggerReason**: Savepoint triggered reason.
       * **state**: Savepoint state.
-      * **message**: Savepoint message.   
+      * **message**: Savepoint message.
     * **currentRevision**: CurrentRevision indicates the version of FlinkCluster.
     * **nextRevision**: NextRevision indicates the version of FlinkCluster updating.
     * **collisionCount**: collisionCount is the count of hash collisions for the FlinkCluster.
