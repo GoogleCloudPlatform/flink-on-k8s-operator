@@ -280,6 +280,11 @@ func getDesiredJobManagerService(
 		jobManagerService.Spec.Type = corev1.ServiceTypeLoadBalancer
 	case v1beta1.AccessScopeNodePort:
 		jobManagerService.Spec.Type = corev1.ServiceTypeNodePort
+	case v1beta1.AccessScopeHeadless:
+		// Headless services do not allocate any sort of VIP or LoadBalancer, and merely
+		// collect a set of Pod IPs that are assumed to be independently routable:
+		jobManagerService.Spec.Type = corev1.ServiceTypeClusterIP
+		jobManagerService.Spec.ClusterIP = "None"
 	default:
 		panic(fmt.Sprintf(
 			"Unknown service access cope: %v", jobManagerSpec.AccessScope))
