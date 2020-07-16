@@ -187,7 +187,7 @@ func getDesiredJobManagerDeployment(
 		ReadinessProbe:  &readinessProbe,
 		Resources:       jobManagerSpec.Resources,
 		Env:             envVars,
-		EnvFrom:         flinkCluster.Spec.EnvFroms,
+		EnvFrom:         flinkCluster.Spec.EnvFrom,
 		VolumeMounts:    volumeMounts,
 	}}
 
@@ -478,7 +478,7 @@ func getDesiredTaskManagerDeployment(
 		ReadinessProbe:  &readinessProbe,
 		Resources:       taskManagerSpec.Resources,
 		Env:             envVars,
-		EnvFrom:         flinkCluster.Spec.EnvFroms,
+		EnvFrom:         flinkCluster.Spec.EnvFrom,
 		VolumeMounts:    volumeMounts,
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
