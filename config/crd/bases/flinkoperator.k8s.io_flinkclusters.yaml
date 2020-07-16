@@ -30,6 +30,27 @@ spec:
           properties:
             batchSchedulerName:
               type: string
+            envFrom:
+              items:
+                properties:
+                  configMapRef:
+                    properties:
+                      name:
+                        type: string
+                      optional:
+                        type: boolean
+                    type: object
+                  prefix:
+                    type: string
+                  secretRef:
+                    properties:
+                      name:
+                        type: string
+                      optional:
+                        type: boolean
+                    type: object
+                type: object
+              type: array
             envVars:
               items:
                 properties:
