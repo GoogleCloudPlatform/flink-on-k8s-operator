@@ -413,6 +413,10 @@ type FlinkClusterSpec struct {
 	// containers.
 	EnvVars []corev1.EnvVar `json:"envVars,omitempty"`
 
+	// Environment variables injected from a source, shared by all JobManager,
+	// TaskManager and job containers.
+	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
+
 	// Flink properties which are appened to flink-conf.yaml.
 	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
 

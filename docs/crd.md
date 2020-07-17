@@ -78,6 +78,7 @@ FlinkCluster
         |__ cancelRequested
         |__ podAnnotations
     |__ envVars
+    |__ envFrom
     |__ flinkProperties
     |__ hadoopConfig
         |__ configMapName
@@ -266,6 +267,7 @@ FlinkCluster
       * **podAnnotations** (optional): Pod template annotations for the job.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
     * **envVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
+    * **envFrom** (optional): Environment variables from ConfigMaps or Secrets shared by all JobManager, TaskManager and job containers.
     * **flinkProperties** (optional): Flink properties which are appened to flink-conf.yaml.
     * **hadoopConfig** (optional): Configs for Hadoop.
       * **configMapName**: The name of the ConfigMap which holds the Hadoop config files. The ConfigMap must be in the

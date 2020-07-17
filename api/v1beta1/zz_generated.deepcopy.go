@@ -188,6 +188,13 @@ func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.EnvFrom != nil {
+		in, out := &in.EnvFrom, &out.EnvFrom
+		*out = make([]v1.EnvFromSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.FlinkProperties != nil {
 		in, out := &in.FlinkProperties, &out.FlinkProperties
 		*out = make(map[string]string, len(*in))

@@ -239,6 +239,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
+			EnvFrom:        []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "FOOMAP",
+			}}}},
 			HadoopConfig: &v1beta1.HadoopConfig{
 				ConfigMapName: "hadoop-configmap",
 				MountPath:     "/etc/hadoop/conf",
@@ -345,6 +349,15 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{
 									Name:  "FOO",
 									Value: "abc",
+								},
+							},
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									ConfigMapRef: &corev1.ConfigMapEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "FOOMAP",
+										},
+									},
 								},
 							},
 							Resources: corev1.ResourceRequirements{
@@ -599,6 +612,15 @@ func TestGetDesiredClusterState(t *testing.T) {
 								{
 									Name:  "FOO",
 									Value: "abc",
+								},
+							},
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									ConfigMapRef: &corev1.ConfigMapEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "FOOMAP",
+										},
+									},
 								},
 							},
 							Resources: corev1.ResourceRequirements{
