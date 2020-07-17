@@ -693,6 +693,7 @@ func getDesiredJob(
 				ImagePullPolicy: imageSpec.PullPolicy,
 				Args:            jobArgs,
 				Env:             envVars,
+				EnvFrom:         flinkCluster.Spec.EnvFrom,
 				VolumeMounts:    volumeMounts,
 				Resources:       jobSpec.Resources,
 			},

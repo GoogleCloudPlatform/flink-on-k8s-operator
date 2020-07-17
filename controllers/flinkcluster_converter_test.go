@@ -769,6 +769,15 @@ func TestGetDesiredClusterState(t *testing.T) {
 								},
 								{Name: "FOO", Value: "abc"},
 							},
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									ConfigMapRef: &corev1.ConfigMapEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "FOOMAP",
+										},
+									},
+								},
+							},
 							Resources: corev1.ResourceRequirements{
 								Requests: map[corev1.ResourceName]resource.Quantity{
 									corev1.ResourceCPU:    resource.MustParse("100m"),
