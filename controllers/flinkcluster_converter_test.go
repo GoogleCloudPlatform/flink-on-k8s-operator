@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
