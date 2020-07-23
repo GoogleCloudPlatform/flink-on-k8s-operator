@@ -557,6 +557,7 @@ func getDesiredConfigMap(
 	// TODO: Provide logging options: log4j-console.properties and log4j.properties
 	var log4jPropName = "log4j-console.properties"
 	var logbackXMLName = "logback-console.xml"
+	var logConf = getLogConf(flinkCluster.Spec)
 	var configMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -567,8 +568,8 @@ func getDesiredConfigMap(
 		},
 		Data: map[string]string{
 			"flink-conf.yaml": getFlinkProperties(flinkProps),
-			log4jPropName:     getLogConf()[log4jPropName],
-			logbackXMLName:    getLogConf()[logbackXMLName],
+			log4jPropName:     logConf[log4jPropName],
+			logbackXMLName:    logConf[logbackXMLName],
 			"submit-job.sh":   submitJobScript,
 		},
 	}
@@ -1051,10 +1052,8 @@ func mergeLabels(labels1 map[string]string, labels2 map[string]string) map[strin
 	return mergedLabels
 }
 
-// TODO: Wouldn't it be better to create a file, put it in an operator image, and read from them?.
-// Provide logging profiles
-func getLogConf() map[string]string {
-	var log4jConsoleProperties = `log4j.rootLogger=INFO, console
+const (
+	DefaultLog4jConfig = `log4j.rootLogger=INFO, console
 log4j.logger.akka=INFO
 log4j.logger.org.apache.kafka=INFO
 log4j.logger.org.apache.hadoop=INFO
@@ -1063,7 +1062,7 @@ log4j.appender.console=org.apache.log4j.ConsoleAppender
 log4j.appender.console.layout=org.apache.log4j.PatternLayout
 log4j.appender.console.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
 log4j.logger.org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline=ERROR, console`
-	var logbackConsoleXML = `<configuration>
+	DefaultLogbackConfig = `<configuration>
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{60} %X{sourceThread} - %msg%n</pattern>
@@ -1088,9 +1087,16 @@ log4j.logger.org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannel
         <appender-ref ref="console"/>
     </logger>
 </configuration>`
+)
 
+// TODO: Wouldn't it be better to create a file, put it in an operator image, and read from them?.
+// Provide logging profiles
+func getLogConf(spec v1beta1.FlinkClusterSpec) map[string]string {
+	if spec.LogConfig != nil && spec.LogConfig["log4j-console.properties"] != "" && spec.LogConfig["logback-console.xml"] != "" {
+		return spec.LogConfig
+	}
 	return map[string]string{
-		"log4j-console.properties": log4jConsoleProperties,
-		"logback-console.xml":      logbackConsoleXML,
+		"log4j-console.properties": DefaultLog4jConfig,
+		"logback-console.xml":      DefaultLogbackConfig,
 	}
 }

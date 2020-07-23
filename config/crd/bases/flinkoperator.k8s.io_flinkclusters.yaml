@@ -3161,6 +3161,10 @@ spec:
               required:
               - accessScope
               type: object
+            logConfig:
+              additionalProperties:
+                type: string
+              type: object
             revisionHistoryLimit:
               format: int32
               type: integer
