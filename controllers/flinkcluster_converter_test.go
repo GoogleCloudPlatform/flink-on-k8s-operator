@@ -993,22 +993,22 @@ func Test_getLogConf(t *testing.T) {
 			},
 		},
 		{
-			name: "map missing log4j-console.properties uses defaults",
+			name: "map missing log4j-console.properties uses default",
 			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
 				"logback-console.xml": "xyz",
 			}}},
 			want: map[string]string{
 				"log4j-console.properties": DefaultLog4jConfig,
-				"logback-console.xml":      DefaultLogbackConfig,
+				"logback-console.xml":      "xyz",
 			},
 		},
 		{
-			name: "map missing logback-console.xml uses defaults",
+			name: "map missing logback-console.xml uses default",
 			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
 				"log4j-console.properties": "xyz",
 			}}},
 			want: map[string]string{
-				"log4j-console.properties": DefaultLog4jConfig,
+				"log4j-console.properties": "xyz",
 				"logback-console.xml":      DefaultLogbackConfig,
 			},
 		},
@@ -1021,6 +1021,18 @@ func Test_getLogConf(t *testing.T) {
 			want: map[string]string{
 				"log4j-console.properties": "hello",
 				"logback-console.xml":      "world",
+			},
+		},
+		{
+			name: "extra keys preserved",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
+				"log4j-console.properties": "abc",
+				"file.txt":      						"def",
+			}}},
+			want: map[string]string{
+				"log4j-console.properties": "abc",
+				"logback-console.xml": 			DefaultLogbackConfig,
+				"file.txt":      						"def",
 			},
 		},
 	}
