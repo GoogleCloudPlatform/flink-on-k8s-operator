@@ -89,8 +89,6 @@ FlinkCluster
             |__ keyFile
             |__ mountPath
     |__ logConfig
-        |__ "log4j-console.properties"
-        |__ "logback-console.xml"
     |__ revisionHistoryLimit
 |__ status
     |__ state
@@ -282,11 +280,13 @@ FlinkCluster
           same namespace as the FlinkCluster.
         * **keyFile**: The name of the service account key file.
         * **mountPath**: The path where to mount the Volume of the Secret.
-    * **logConfig** (optional): The logging configuration, which should have keys `log4j-console.properties` and
-      `logback-console.xml`. These will end up in the `flink-config-volume` ConfigMap, which gets mounted at
-      `/opt/flink/conf`. If not provided, defaults that log to console only will be used.
-      * **log4j-console.properties**: The contents of the log4j properties file to use.
-      * **logback-console.xml**: The contents of the logback XML file to use.
+    * **logConfig** (optional): The logging configuration, a string-to-string map that becomes the ConfigMap mounted at 
+      `/opt/flink/conf` in launched Flink pods. See below for some possible keys to include:
+      * **log4j-console.properties**: The contents of the log4j properties file to use. If not provided, a default that 
+        logs only to stdout will be provided.
+      * **logback-console.xml**: The contents of the logback XML file to use. If not provided, a default that logs only 
+        to stdout will be provided.
+      * Other arbitrary keys are also allowed, and will become part of the ConfigMap.
     * **revisionHistoryLimit** (optional): The maximum number of revision history to keep, default: 10.
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.

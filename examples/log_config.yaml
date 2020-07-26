@@ -1,0 +1,69 @@
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata:
+  name: my-cool-cluster
+spec:
+  image:
+    name: flink:1.11.1
+  jobManager:
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: "1.0"
+  taskManager:
+    replicas: 2
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: "1.0"
+  flinkProperties:
+    taskmanager.numberOfTaskSlots: "1"
+  logConfig:
+    "log4j-console.properties": |
+      rootLogger.level = INFO
+      rootLogger.appenderRef.file.ref = LogFile
+      rootLogger.appenderRef.console.ref = LogConsole
+      appender.file.name = LogFile
+      appender.file.type = File
+      appender.file.append = false
+      appender.file.fileName = ${sys:log.file}
+      appender.file.layout.type = PatternLayout
+      appender.file.layout.pattern = %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
+      appender.console.name = LogConsole
+      appender.console.type = CONSOLE
+      appender.console.layout.type = PatternLayout
+      appender.console.layout.pattern = %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %-60c %x - %m%n
+      logger.akka.name = akka
+      logger.akka.level = INFO
+      logger.kafka.name= org.apache.kafka
+      logger.kafka.level = INFO
+      logger.hadoop.name = org.apache.hadoop
+      logger.hadoop.level = INFO
+      logger.zookeeper.name = org.apache.zookeeper
+      logger.zookeeper.level = INFO
+      logger.netty.name = org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline
+      logger.netty.level = OFF
+    "logback-console.xml": |
+      <configuration>
+        <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+          <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{60} %X{sourceThread} - %msg%n</pattern>
+          </encoder>
+        </appender>
+        <appender name="file" class="ch.qos.logback.core.FileAppender">
+          <file>${log.file}</file>
+          <append>false</append>
+          <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{60} %X{sourceThread} - %msg%n</pattern>
+          </encoder>
+        </appender>
+        <root level="INFO">
+          <appender-ref ref="console"/>
+          <appender-ref ref="file"/>
+        </root>
+        <logger name="akka" level="INFO" />
+        <logger name="org.apache.kafka" level="INFO" />
+        <logger name="org.apache.hadoop" level="INFO" />
+        <logger name="org.apache.zookeeper" level="INFO" />
+        <logger name="org.apache.flink.shaded.akka.org.jboss.netty.channel.DefaultChannelPipeline" level="ERROR" />
+      </configuration>

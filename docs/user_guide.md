@@ -445,3 +445,22 @@ You can check the list of revisions and their contents like this:
 kubectl get controllerrevision
 kubectl get controllerrevision <REVISION-NAME> -o yaml
 ```
+
+### Control Logging Behavior
+
+The default logging configuration provided by the operator sends logs from JobManager and TaskManager to `stdout`. This
+has the effect of making it so that logging from Flink workloads running on Kubernetes behaves like every other 
+Kubernetes pod. Your Flink logs should be stored wherever you generally expect to see your container logs in your 
+environment.
+
+Sometimes, however, this is not a good fit. An example of when you might want to customize logging behavior is to 
+restore the visibility of logs in the Flink JobManager web interface. Or you might want to ship logs directly to a 
+different sink, or using a different formatter. 
+
+You can use the `spec.logConfig` field to fully control the log4j and logback configuration. It is a string-to-string map,
+whose keys and values become filenames and contents (respectively) in the folder `/opt/flink/conf` in each container. 
+The default Flink docker entrypoint expects this directory to contain two files: `log4j-console.properties` and 
+`logback-console.xml`.
+
+An example of using this parameter to make logs visible in both the Flink UI and on stdout 
+[can be found here](../examples/log_config.yaml).
