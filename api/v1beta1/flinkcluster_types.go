@@ -426,6 +426,11 @@ type FlinkClusterSpec struct {
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
 
+	// The logging configuration, which should have keys 'log4j-console.properties' and 'logback-console.xml'.
+	// These will end up in the 'flink-config-volume' ConfigMap, which gets mounted at /opt/flink/conf.
+	// If not provided, defaults that log to console only will be used.
+	LogConfig map[string]string `json:"logConfig,omitempty"`
+
 	// The maximum number of revision history to keep, default: 10.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }

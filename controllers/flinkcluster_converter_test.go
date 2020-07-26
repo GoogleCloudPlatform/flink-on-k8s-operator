@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -253,6 +254,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 					KeyFile:    "gcp_service_account_key.json",
 					MountPath:  "/etc/gcp_service_account/",
 				},
+			},
+			LogConfig: map[string]string{
+				"extra-file.txt":           "hello!",
+				"log4j-console.properties": "foo",
+				"logback-console.xml":      "bar",
 			},
 		},
 		Status: v1beta1.FlinkClusterStatus{
@@ -888,8 +894,9 @@ taskmanager.rpc.port: 6122
 		},
 		Data: map[string]string{
 			"flink-conf.yaml":          flinkConfYaml,
-			"log4j-console.properties": getLogConf()["log4j-console.properties"],
-			"logback-console.xml":      getLogConf()["logback-console.xml"],
+			"extra-file.txt":           "hello!",
+			"log4j-console.properties": "foo",
+			"logback-console.xml":      "bar",
 			"submit-job.sh":            submitJobScript,
 		},
 	}
@@ -968,4 +975,74 @@ func TestCalFlinkHeapSize(t *testing.T) {
 
 	flinkHeapSize = calFlinkHeapSize(cluster)
 	assert.Assert(t, len(flinkHeapSize) == 0)
+}
+
+func Test_getLogConf(t *testing.T) {
+	type args struct {
+		spec v1beta1.FlinkClusterSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]string
+	}{
+		{
+			name: "nil map uses defaults",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: nil}},
+			want: map[string]string{
+				"log4j-console.properties": DefaultLog4jConfig,
+				"logback-console.xml":      DefaultLogbackConfig,
+			},
+		},
+		{
+			name: "map missing log4j-console.properties uses default",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
+				"logback-console.xml": "xyz",
+			}}},
+			want: map[string]string{
+				"log4j-console.properties": DefaultLog4jConfig,
+				"logback-console.xml":      "xyz",
+			},
+		},
+		{
+			name: "map missing logback-console.xml uses default",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
+				"log4j-console.properties": "xyz",
+			}}},
+			want: map[string]string{
+				"log4j-console.properties": "xyz",
+				"logback-console.xml":      DefaultLogbackConfig,
+			},
+		},
+		{
+			name: "map with both keys overrides defaults",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
+				"log4j-console.properties": "hello",
+				"logback-console.xml":      "world",
+			}}},
+			want: map[string]string{
+				"log4j-console.properties": "hello",
+				"logback-console.xml":      "world",
+			},
+		},
+		{
+			name: "extra keys preserved",
+			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
+				"log4j-console.properties": "abc",
+				"file.txt":      						"def",
+			}}},
+			want: map[string]string{
+				"log4j-console.properties": "abc",
+				"logback-console.xml": 			DefaultLogbackConfig,
+				"file.txt":      						"def",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getLogConf(tt.args.spec); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getLogConf() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

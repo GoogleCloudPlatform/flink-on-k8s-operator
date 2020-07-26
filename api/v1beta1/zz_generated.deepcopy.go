@@ -212,6 +212,13 @@ func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 		*out = new(GCPConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.LogConfig != nil {
+		in, out := &in.LogConfig, &out.LogConfig
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)
