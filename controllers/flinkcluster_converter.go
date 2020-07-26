@@ -554,10 +554,9 @@ func getDesiredConfigMap(
 		}
 		flinkProps[k] = v
 	}
-	// TODO: Provide logging options: log4j-console.properties and log4j.properties
-	var log4jPropName = "log4j-console.properties"
-	var logbackXMLName = "logback-console.xml"
-	var logConf = getLogConf(flinkCluster.Spec)
+	var configData = getLogConf(flinkCluster.Spec)
+	configData["flink-conf.yaml"] = getFlinkProperties(flinkProps)
+	configData["submit-job.sh"] = submitJobScript
 	var configMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -566,12 +565,7 @@ func getDesiredConfigMap(
 				ToOwnerReference(flinkCluster)},
 			Labels: labels,
 		},
-		Data: map[string]string{
-			"flink-conf.yaml": getFlinkProperties(flinkProps),
-			log4jPropName:     logConf[log4jPropName],
-			logbackXMLName:    logConf[logbackXMLName],
-			"submit-job.sh":   submitJobScript,
-		},
+		Data: configData,
 	}
 
 	return configMap

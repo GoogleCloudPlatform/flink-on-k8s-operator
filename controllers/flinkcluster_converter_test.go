@@ -256,6 +256,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 			LogConfig: map[string]string{
+				"extra-file.txt":           "hello!",
 				"log4j-console.properties": "foo",
 				"logback-console.xml":      "bar",
 			},
@@ -893,6 +894,7 @@ taskmanager.rpc.port: 6122
 		},
 		Data: map[string]string{
 			"flink-conf.yaml":          flinkConfYaml,
+			"extra-file.txt":           "hello!",
 			"log4j-console.properties": "foo",
 			"logback-console.xml":      "bar",
 			"submit-job.sh":            submitJobScript,
