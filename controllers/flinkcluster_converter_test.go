@@ -714,7 +714,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					Kind:               "FlinkCluster",
 					Name:               "flinkjobcluster-sample",
 					Controller:         &controller,
-					BlockOwnerDeletion: &blockOwnerDeletion,
+					BlockOwnerDeletion: &[]bool{true}[0],
 				},
 			},
 		},

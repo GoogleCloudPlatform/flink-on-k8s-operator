@@ -562,7 +562,7 @@ func getDesiredConfigMap(
 			Namespace: clusterNamespace,
 			Name:      configMapName,
 			OwnerReferences: []metav1.OwnerReference{
-				ToOwnerReference(flinkCluster)},
+				ToJobOwnerReference(flinkCluster)},
 			Labels: labels,
 		},
 		Data: map[string]string{
@@ -807,6 +807,19 @@ func ToOwnerReference(
 		UID:                flinkCluster.UID,
 		Controller:         &[]bool{true}[0],
 		BlockOwnerDeletion: &[]bool{false}[0],
+	}
+}
+
+// Converts the FlinkCluster as owner reference for its child resources.
+func ToJobOwnerReference(
+	flinkCluster *v1beta1.FlinkCluster) metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         flinkCluster.APIVersion,
+		Kind:               flinkCluster.Kind,
+		Name:               flinkCluster.Name,
+		UID:                flinkCluster.UID,
+		Controller:         &[]bool{true}[0],
+		BlockOwnerDeletion: &[]bool{true}[0],
 	}
 }
 
