@@ -1,0 +1,125 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: flink
+  tag: 1.9.3
+
+# Prometheus reporter jar to be loaded by flink
+# PROPERTIES_VOLUME path for custom properties file of the job to be executed
+envVars:
+  - name: HADOOP_CLASSPATH
+    value: /opt/flink/opt/flink-metrics-prometheus-1.9.3.jar
+  - name: PROPERTIES_VOLUME
+    value: /tmp/properties/config.properties
+
+
+jobManager:
+  accessScope: Cluster
+  ports:
+    ui: 8081
+
+# enable metrics ports for jobManager  
+  metrics: 
+    enabled: true
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+
+  resources:
+    limits:
+      memory: 1024Mi
+      cpu: 200m
+
+taskManager:
+  replicas: 2
+  
+  # config.properties to be mounted into flink taskManager
+  config:
+    properties:
+      internal.broker.topic = example.properties.here
+
+  volumeMounts:
+    - name: config
+      mountPath: /tmp/properties/config.properties
+
+# enable metrics ports for taskManager
+  metrics:
+    enabled: true
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+        protocol: TCP
+
+  resources:
+    limits:
+      memory: 1024Mi
+      cpu: "200m"
+
+job:
+  # job will look for a JAR file at /JARFiles/<JAR_FILE> and execute it
+  # className has to be valid and used in the provided JAR File
+  jarFile: /JARfiles/JARfile.jar
+  className: org.apache.flink.streaming.examples.wordcount.WordCount
+  args: ["--input", "./README.txt"]
+  paralellism: 2
+  restartPolicy: Never
+  
+  # Mount an EmptyDir so the InitContainer can store its JarFile in the specific path for the job to execute
+  #volumes:
+  #  - name: properties
+  #    emptyDir: {}
+  #volumeMounts:
+  #  - name: config
+  #    mountPath: /tmp/properties/config.properties
+  #    subPath: config.properties
+
+  # Init Container starts a python script, to download the blob files from provided azure storage account container
+  # it is only needed if you have no other way to download your job files into the flink-job-cluster
+  initContainers:
+    enabled: false
+#    image: <registry>/python-flink
+#    tag: "1.0"
+#    command: ["/bin/sh","-c","--"]
+#    args: ["/app/exec-python.sh"]
+
+    # azureStorage:
+    # Provide the secret name, in which the azure storage account connection string is stored
+#    secretName: azure-storage-account-connectstr
+#    secretNameKey: connectstr
+    # Provide the container name, from which a blob should be downloaded by the InitContainer
+#    containerName: snapshot
+    # Provide blob name, which should be downloaded from the container 
+#   blobName: <path_to_blobName>
+
+flinkProperties:
+  taskmanager.numberOfTaskSlots: "1"
+
+  # metrics reporter "PrometheusReporter" 
+  # visit https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/metrics.html#prometheus-orgapacheflinkmetricsprometheusprometheusreporter
+  # for more information
+  metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+
+## Extra Annotations to be added to pod
+podAnnotations: 
+  fluentbit.io/parser: dummy
+
+## Enable podMonitor for metrics
+podMonitor:
+  enabled: true
+  podTargetLabels:
+    - cluster
+    - component
+
+  # include the podMonitorSelectorLabel which you have set in your prometheus-operator
+  # set podMonitorSelectorLabels {} if your prometheus-operator is set to collect all podMonitors
+  podMonitorSelectorLabels:
+    prometheus: cluster-metrics
+
+  selector:
+    matchLabels:
+      app: flink
+
+  podMetricsEndpoints:
+  - port: prom
+
