@@ -562,7 +562,7 @@ func getDesiredConfigMap(
 			Namespace: clusterNamespace,
 			Name:      configMapName,
 			OwnerReferences: []metav1.OwnerReference{
-				ToJobOwnerReference(flinkCluster)},
+				ToOwnerReference(flinkCluster)},
 			Labels: labels,
 		},
 		Data: map[string]string{
@@ -716,7 +716,7 @@ func getDesiredJob(
 			Namespace: clusterNamespace,
 			Name:      jobName,
 			OwnerReferences: []metav1.OwnerReference{
-				ToOwnerReference(flinkCluster)},
+				ToJobOwnerReference(flinkCluster)},
 			Labels: jobLabels,
 		},
 		Spec: batchv1.JobSpec{
