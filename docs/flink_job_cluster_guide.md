@@ -44,7 +44,7 @@ You can use the following [dashboard](https://grafana.com/grafana/dashboards/103
 ## Run Jobs with InitContainer
 
 You have the option to download blob containers, which would be your JAR files to execute as jobs, directly into the flink-job-cluster pods.
-For that, we have used a python library according to the following [documentation] (https://docs.microsoft.com/de-de/azure/storage/blobs/storage-quickstart-blobs-python)
+For that, we have used a python library according to the following [documentation](https://docs.microsoft.com/de-de/azure/storage/blobs/storage-quickstart-blobs-python)
 
 This way, you can directly download your jar files from a blob storage at Microsoft Azure.
 A basic script that is confirmed to work could look like this:
