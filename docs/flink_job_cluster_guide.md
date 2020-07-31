@@ -52,10 +52,6 @@ You can check the status of your deployment by using
 ```bash
 kubectl get deployments --namespace=<example-namespace>
 ```
-To check your running Flink job, use
-```bash
-kubectl get jobs --namespace=<example-namespace>
-```
 
 ## Flink Operator Releases
 
