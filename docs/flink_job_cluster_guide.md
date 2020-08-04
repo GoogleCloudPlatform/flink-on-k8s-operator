@@ -5,7 +5,7 @@
 This Helm Chart is an addition to the [existing](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/tree/master/config/samples) way of deploying Flink job clusters.
 
 ### Why use the Helm Chart?
-- Using this Chart enables you to easily configure many flink-job-clusters based on a single template
+- Using this Chart enables you to easily configure many Flink job clusters based on a single template
 - It enables you to use configuration manifests that belong to each other from a central place e.g. ```PodMonitor```
 - You can use helm operations such as ```helm --dry run``` to check for any errors before deployment
 - You can rollback to a previous functioning release with the ```--atomic``` flag
@@ -120,7 +120,7 @@ You can check running jobs by using the following command:
 ## Updating Job
 
 1. Build your new/updated JAR file which will be executed by the Flink job cluster
-2. Prepare a new custom Flink Image which has your JAR file included, for example at: /jobs/<your_jar_file>
+2. Prepare a new custom Flink Image which has your JAR file included, for example at: /JARFiles/<JAR_FILE>
 3. Upload your custom Flink Image to your registry
 4. Specify your custom Flink Image in the helm-chart ```values.yaml``` under the ```image``` section
 5. Navigate to ```/flink-on-k8s-operator/helm-chart``` and use the helm command to update your running Flink job cluster.
