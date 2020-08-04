@@ -74,15 +74,15 @@ spec:
       command: ["/bin/sh","-c","--"]
       args: ["/app/exec-python.sh"]
       env: 
-        - name: AZURE_STORAGE_CONNECTION_STRING
+        - name: STORAGE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.job.initContainers.azureStorage.secretName }}
-              key: {{ .Values.job.initContainers.azureStorage.secretNameKey }}
+              name: {{ .Values.job.initContainers.Storage.secretName }}
+              key: {{ .Values.job.initContainers.Storage.secretNameKey }}
         - name: CONTAINER_NAME
-          value: {{ .Values.job.initContainers.azureStorage.containerName }}
+          value: {{ .Values.job.initContainers.Storage.containerName }}
         - name: BLOB_NAME
-          value: {{ .Values.job.initContainers.azureStorage.blobName }}
+          value: {{ .Values.job.initContainers.Storage.blobName }}
     {{- end }} 
     podAnnotations:
 {{- with .Values.podAnnotations }}
