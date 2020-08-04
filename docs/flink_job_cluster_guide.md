@@ -77,7 +77,7 @@ After using the helm command, the following resources will be deployed
 
 You can check the status of your deployment by using
 ```bash
-kubectl get deployments --namespace=<example-namespace>
+kubectl get deployments --namespace=foo
 ```
 
 ## Flink Operator Releases
@@ -87,7 +87,7 @@ You can check which images of the Operator are available at [GoogleCloudPlatform
 ## Monitoring
 
 The Flink job cluster comes with a PodMonitor resource, which is the counter part to a ServiceMonitor.
-The PodMonitor will use pod labels and configure prometheus to scrape the Flink job cluster metrics. Reason for using the podMonitor is simple, the Flink job cluster does not deploy services.
+The PodMonitor will use pod labels and configure prometheus to scrape the Flink job cluster metrics. Reason for using the PodMonitor is simple, the Flink job cluster does not deploy services.
 
 You can use the following [dashboard](https://grafana.com/grafana/dashboards/10369) in your grafana to monitor the flink-job-cluster.
 
