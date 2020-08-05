@@ -46,9 +46,9 @@ taskManager:
       cpu: "200m"
 
 job:
-  # job will look for a JAR file at /JARFiles/<JAR_FILE> and execute it
+  # job will look for a JAR file at ./examples/streaming/WordCount.jar  and execute it
   # className has to be valid and used in the provided JAR File
-  jarFile: /JARfiles/JARfile.jar
+  jarFile: ./examples/streaming/WordCount.jar 
   className: org.apache.flink.streaming.examples.wordcount.WordCount
   args: ["--input", "./README.txt"]
   paralellism: 2

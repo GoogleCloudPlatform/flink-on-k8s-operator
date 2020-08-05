@@ -5,11 +5,13 @@
 This Helm Chart is an addition to the [existing](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/tree/master/config/samples) way of deploying Flink job clusters.
 
 ### Why use the Helm Chart?
-- Using this Chart enables you to easily configure many Flink job clusters based on a single template
-- It enables you to use configuration manifests that belong to each other from a central place e.g. ```PodMonitor```
+A typical Helm chart will usually include all of the manifests which you would manually apply with kubectl as templates, along with a ```values.yaml``` file for quick management of user preferences, so it becomes a one-step process to manage all of these resources as a single resource. Since Flink job clusters are currently deployed with just one YAML file, it might seem like the helm chart is unnecessary. However, the more components are added, such as a ```PodMonitor``` or ```Services``` in the future, the easier it will be to manage those manifests from a central ```values.yaml```. Helm also supports various deployment checks before and after deployment so it integrates well with CI/CD pipelines. Some of these benefits are listed below:
+
+- Easy configuration as you just have to configure or enable features in the ```values.yaml``` without much knowledge of the entire chart
 - You can use helm operations such as ```helm --dry run``` to check for any errors before deployment
-- You can rollback to a previous functioning release with the ```--atomic``` flag
-- Helm includes release versioning
+- Automated rollback to a previous functioning release with the ```--atomic``` flag
+- Manual rollbacks to previous revisions possible with ```helm rollback```
+- Helm includes release versioning which can be checked by using the ```helm list <namespace>``` command
 
 ## Prerequisites
 
@@ -19,7 +21,7 @@ This Helm Chart is an addition to the [existing](https://github.com/GoogleCloudP
 - [Helm](https://helm.sh/docs/helm/helm_install/) version 2.x or 3.x
 
 Optional:
-- [Prometheus-Operator](https://github.com/helm/charts/tree/master/stable/prometheus-operator) to use the custom resource ```PodMonitor``` in order to scrape flink-job-cluster metrics
+- [Prometheus-Operator](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/docs/user_guide.md#monitoring-with-prometheus) to use the custom resource ```PodMonitor``` in order to scrape flink-job-cluster metrics
 
 
 ## Installing the Chart
@@ -34,20 +36,20 @@ The instructions to install the Flink Job Cluster chart:
 
 3. Use the following command to dry-run the Flink job cluster chart:
   ```bash
-  helm install --dry-run --namespace=foo flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
+  helm install --dry-run --namespace=<namespace> flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
   ```
   The ```dry-run``` flag will render the templated yaml files. It is used to debug your chart. You'll be notified if there is any error in the chart configuration.
 
 4. Use the following command to install the Flink job cluster chart:
   ```bash
-  helm install --namespace=foo flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
+  helm install --namespace=<namespace> flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
   ```
 
   Afterwards, you should see the following output in your console:
   ```bash
   NAME: flink-job-cluster
   LAST DEPLOYED: Tue Aug  4 10:39:10 2020
-  NAMESPACE: foo
+  NAMESPACE: <namespace>
   STATUS: deployed
   REVISION: 1
   TEST SUITE: None
@@ -60,11 +62,11 @@ To uninstall your release:
 
 1. Use the following command to list the Flink job cluster release:
   ```bash
-  helm list --namespace=foo
+  helm list --namespace=<namespace>
   ```
 2. Find your release name and delete it:
   ```bash
-  helm delete <release_name> --namespace=foo
+  helm delete <release_name> --namespace=<namespace>
   ```
 
 ## Check the Flink job cluster
@@ -77,7 +79,7 @@ After using the helm command, the following resources will be deployed
 
 You can check the status of your deployment by using
 ```bash
-kubectl get deployments --namespace=foo
+kubectl get deployments --namespace=<namespace>
 ```
 
 ## Flink Operator Releases
@@ -106,26 +108,27 @@ image:
   tag: 1.9.3
 
 job:
-  # job will look for a JAR file at /JARFiles/<JAR_FILE> and execute it
+  # job will look for a JAR file at ./examples/streaming/WordCount.jar and execute it
   # className has to be valid and used in the provided JAR File
-  jarFile: /JARfiles/JARfile.jar
+  jarFile: ./examples/streaming/WordCount.jar
 ```
 
 ## Check Running Jobs
 
 You can check running jobs by using the following command:
 
-```kubectl get jobs -n [NAMESPACE]```
+```kubectl get jobs -n <namespace>```
 
 ## Updating Job
 
 1. Build your new/updated JAR file which will be executed by the Flink job cluster
 2. Prepare a new custom Flink Image which has your JAR file included, for example at: /JARFiles/<JAR_FILE>
+3. Adjust the path for the jar file in ```values.yaml``` at job.jarFile from "./examples/streaming/WordCount.jar" to "/JARFiles/<JAR_FILE>"
 3. Upload your custom Flink Image to your registry
 4. Specify your custom Flink Image in the helm-chart ```values.yaml``` under the ```image``` section
 5. Navigate to ```/flink-on-k8s-operator/helm-chart``` and use the helm command to update your running Flink job cluster.
   ```bash
-  helm upgrade --namespace=foo flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
+  helm upgrade --namespace=<namespace> flink-job-cluster ./flink-job-cluster -f ./flink-job-cluster/values.yaml
   ```
 
 ## Roadmap
