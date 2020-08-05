@@ -53,7 +53,7 @@ example job with the Flink Operator. You can write a script to automate the proc
 1. Create a Flink session cluster with Beam WorkerPool as sidecar containers of Flink TaskManager containers with:
 
   ```bash
-  kubectl apply -f examples/beam/with_job_server/beam_flink_cluster.yaml
+  kubectl apply -f examples/beam/without_job_server/beam_flink_cluster.yaml
   ```
 
 2. After the Flink cluster is up and running, submit the example job with:
