@@ -1,0 +1,93 @@
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata:
+  name: {{ template "flink-job-cluster.fullname" . }}
+  labels:
+    app: {{ template "flink-job-cluster.name" . }}
+    chart: {{ template "flink-job-cluster.chart" . }}
+    release: {{ .Release.Name }}
+spec:
+  image:
+    name: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+  envVars:
+{{ toYaml .Values.envVars | indent 4 }}    
+  jobManager:
+    accessScope: {{ .Values.jobManager.accessScope }}
+    ports:
+      ui: {{ .Values.jobManager.ports.ui }}
+{{- if .Values.jobManager.volumes }}
+    volumes:
+{{ toYaml .Values.jobManager.volumes | indent 6}}
+{{- end }}
+{{- if .Values.jobManager.volumeMounts }}
+    volumeMounts:
+{{ toYaml .Values.jobManager.volumeMounts | indent 6}}
+{{- end }}
+{{- if .Values.jobManager.metrics.enabled }}
+    extraPorts:
+{{ toYaml .Values.jobManager.metrics.extraPorts | indent 6 }}    
+{{- end }}    
+    resources:
+{{ toYaml .Values.jobManager.resources | indent 6 }}
+    podAnnotations:
+{{- with .Values.podAnnotations }}
+  {{- toYaml . | nindent 6 }}
+{{- end }}
+  taskManager:
+    replicas: {{ .Values.taskManager.replicas }}
+{{- if .Values.taskManager.volumes }}
+    volumes:
+{{ toYaml .Values.taskManager.volumes | indent 6}}
+{{- end }}
+{{- if .Values.taskManager.volumeMounts }}
+    volumeMounts:
+{{ toYaml .Values.taskManager.volumeMounts | indent 6}}
+{{- end }}
+{{- if .Values.taskManager.metrics.enabled }}
+    extraPorts:
+{{ toYaml .Values.taskManager.metrics.extraPorts | indent 6 }}    
+{{- end }}  
+    resources:
+{{ toYaml .Values.taskManager.resources | indent 6 }}
+    podAnnotations:
+{{- with .Values.podAnnotations }}
+  {{- toYaml . | nindent 6 }}
+{{- end }}
+  job:
+    jarFile: {{ .Values.job.jarFile }}
+    className: {{ .Values.job.className }}
+    args: ["--input", "./README.txt"]
+    parallelism: {{ .Values.job.parallelism }}
+    restartPolicy: {{ .Values.job.restartPolicy }}
+{{- if .Values.job.volumes }}
+    volumes:
+{{ toYaml .Values.job.volumes | indent 6}}
+{{- end }}
+{{- if .Values.job.volumeMounts }}
+    volumeMounts:
+{{ toYaml .Values.job.volumeMounts | indent 6}}
+{{- end }}
+    {{- if .Values.job.initContainers.enabled }}
+    initContainers:
+    - name: {{ .Chart.Name}}-python-blob-downloader
+      image: "{{ .Values.job.initContainers.image }}:{{ .Values.job.initContainers.tag }}"
+      command: ["/bin/sh","-c","--"]
+      args: ["/app/exec-python.sh"]
+      env: 
+        - name: STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.job.initContainers.Storage.secretName }}
+              key: {{ .Values.job.initContainers.Storage.secretNameKey }}
+        - name: CONTAINER_NAME
+          value: {{ .Values.job.initContainers.Storage.containerName }}
+        - name: BLOB_NAME
+          value: {{ .Values.job.initContainers.Storage.blobName }}
+    {{- end }} 
+    podAnnotations:
+{{- with .Values.podAnnotations }}
+  {{- toYaml . | nindent 6 }}
+{{- end }}
+  flinkProperties:
+{{ toYaml .Values.flinkProperties | indent 4}}
+

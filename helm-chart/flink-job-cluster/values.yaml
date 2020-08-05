@@ -1,0 +1,113 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: flink
+  tag: 1.9.3
+
+# Prometheus reporter jar to be loaded by flink
+envVars:
+  - name: HADOOP_CLASSPATH
+    value: /opt/flink/opt/flink-metrics-prometheus-1.9.3.jar
+
+jobManager:
+  accessScope: Cluster
+  ports:
+    ui: 8081
+
+# enable metrics ports for jobManager  
+  metrics: 
+    enabled: true
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+
+  resources:
+    limits:
+      memory: 1024Mi
+      cpu: 200m
+
+taskManager:
+  replicas: 2
+  
+  volumeMounts: {}
+
+# enable metrics ports for taskManager
+  metrics:
+    enabled: true
+    extraPorts:
+      - name: prom
+        containerPort: 9249
+        protocol: TCP
+
+  resources:
+    limits:
+      memory: 1024Mi
+      cpu: "200m"
+
+job:
+  # job will look for a JAR file at ./examples/streaming/WordCount.jar  and execute it
+  # className has to be valid and used in the provided JAR File
+  jarFile: ./examples/streaming/WordCount.jar 
+  className: org.apache.flink.streaming.examples.wordcount.WordCount
+  args: ["--input", "./README.txt"]
+  paralellism: 2
+  restartPolicy: Never
+  
+  # Mount an EmptyDir so the InitContainer can store its JarFile in the specific path for the job to execute, only needed when initContainer is enabled.
+  #volumes:
+  #  - name: properties
+  #    emptyDir: {}
+  volumeMounts: {}
+
+  # Init Container is used to download a remote job jar to your job pod.
+  # it is only needed if you have no other way to download your job files into the Flink job cluster. 
+  initContainers:
+    enabled: false
+#    image: <registry>/<container_name>
+#    tag: "1.0"
+#    command: ["/bin/sh","-c","--"]
+#    args: ["/app/exec-python.sh"]
+
+# You can use the following setup to download the remote jar from e.g. a blob-storage. The below fields then have to be adjusted according to your blob-storage.
+
+    # Storage:
+    # Provide the secret name, in which the storage connection-string is stored
+#    secretName: storage-connectstr
+#    secretNameKey: connectstr
+    # Provide the container name, from which a blob should be downloaded by the InitContainer
+#    containerName: snapshot
+    # Provide blob name, which should be downloaded from the container 
+#   blobName: <path_to_blobName>
+
+flinkProperties:
+  taskmanager.numberOfTaskSlots: "1"
+
+  # metrics reporter "PrometheusReporter" 
+  # visit https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/metrics.html#prometheus-orgapacheflinkmetricsprometheusprometheusreporter
+  # for more information
+  metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+
+## Extra Annotations to be added to pod
+podAnnotations: 
+  fluentbit.io/parser: foo 
+
+## Enable podMonitor for metrics - you need the Prometheus-Operator and its CRDs up and running in order to use PodMonitor. 
+podMonitor:
+  enabled: false
+  podTargetLabels:
+    - cluster
+    - component
+
+  # include the podMonitorSelectorLabel which you have set in your prometheus-operator
+  # set podMonitorSelectorLabels {} if your prometheus-operator is set to collect all podMonitors
+  podMonitorSelectorLabels:
+    prometheus: cluster-metrics
+
+  selector:
+    matchLabels:
+      app: flink
+
+  podMetricsEndpoints:
+  - port: prom
+

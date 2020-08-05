@@ -1,0 +1,19 @@
+{{- if .Values.podMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ template "flink-job-cluster.fullname" . }}
+{{- if .Values.podMonitor.podMonitorSelectorLabels }}
+  labels:
+{{ toYaml .Values.podMonitor.podMonitorSelectorLabels | indent 4 }}
+{{- end }}
+spec:
+  podTargetLabels:
+{{ toYaml .Values.podMonitor.podTargetLabels | indent 6 }}
+  selector:
+    matchLabels:
+      app: flink
+  podMetricsEndpoints:
+{{ toYaml .Values.podMonitor.podMetricsEndpoints | indent 4 }}
+{{- end -}}
+
