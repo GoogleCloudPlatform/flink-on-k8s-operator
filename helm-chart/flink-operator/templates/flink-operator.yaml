@@ -377,6 +377,10 @@ spec:
           name: cert
           readOnly: true
       terminationGracePeriodSeconds: 10
+      imagePullSecrets: []
+      nodeSelector: {}
+      affinity: {}
+      tolerations: []
       volumes:
       - name: cert
         secret:
