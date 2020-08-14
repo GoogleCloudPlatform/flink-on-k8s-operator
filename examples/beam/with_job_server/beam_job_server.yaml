@@ -14,11 +14,11 @@ spec:
     spec:
       containers:
         - name: beam-job-server
-          image: apachebeam/flink1.8_job_server:2.18.0
+          image: apache/beam_flink1.8_job_server:2.22.0
           imagePullPolicy: Always
           args:
             - "--flink-master=beam-flink-cluster-jobmanager:8081"
-            - "--artifacts-dir=ARTIFACTS_DIR"
+            - "--artifacts-dir=gs://tfx-ccy-test-1/flink-test"
 ---
 apiVersion: v1
 kind: Service

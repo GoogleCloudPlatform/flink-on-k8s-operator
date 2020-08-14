@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: beam-wordcount-py
+  name: beam-wordcount-py-4
 spec:
   template:
     metadata:
@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: beam-wordcount-py
-          image: apachebeam/python3.7_sdk:2.18.0
+          image: apache/beam_python3.7_sdk:2.22.0
           imagePullPolicy: Always
           command: ["python3"]
           args:
@@ -24,5 +24,5 @@ spec:
             - "--input"
             - "/etc/ucf.conf"
             - "--output"
-            - "/tmp/output"
+            - "gs://tfx-ccy-test-1/tmp/output2"
       restartPolicy: Never
