@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: beam-wordcount-java
+spec:
+  template:
+    metadata:
+      labels:
+        app: beam-wordcount-java
+    spec:
+      containers:
+        - name: beam-wordcount-java
+          image: apache/beam_java_sdk
+          command: ["/bin/bash"]
+          args:
+          - apt-get update && apt-get install -y maven
+          - mvn archetype:generate -DarchetypeGroupId=org.apache.beam -DarchetypeArtifactId=beam-sdks-java-maven-archetypes-examples -DarchetypeVersion=2.23.0 -DgroupId=org.example -DartifactId=word-count-beam -Dversion="0.1" -Dpackage=org.apache.beam.examples -DinteractiveMode=false
+          - cd word-count-beam
+          - mvn compile exec:java -Dexec.mainClass=org.apache.beam.examples.WordCount -Dexec.args="--inputFile=pom.xml --output=counts" -Pdirect-runner
+      restartPolicy: Never
