@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: beam-wordcount-java
-          image: apache/beam_java_sdk
+          image: apache/beam_java_sdk:2.23.0
           command: ["/bin/bash"]
           args:
           - apt-get update && apt-get install -y maven
