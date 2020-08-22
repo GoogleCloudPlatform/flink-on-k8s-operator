@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: beam-wordcount-py
-          image: apachebeam/python3.7_sdk:2.18.0
+          image: apache/beam_python3.7_sdk:2.22.0
           command: ["python3"]
           args:
             - "-m"

@@ -4,7 +4,7 @@ metadata:
   name: beam-flink-cluster
 spec:
   image:
-    name: flink:1.8.1
+    name: flink:1.10.1
   jobManager:
     resources:
       limits:
@@ -16,7 +16,7 @@ spec:
         memory: "2Gi"
     sidecars:
       - name: beam-worker-pool
-        image: apachebeam/python3.7_sdk:2.18.0
+        image: apache/beam_python3.7_sdk:2.22.0
         args: ["--worker_pool"]
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"
