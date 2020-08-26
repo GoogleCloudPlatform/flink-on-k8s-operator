@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: beam-wordcount-java
+spec:
+  template:
+    metadata:
+      labels:
+        app: beam-wordcount-java
+    spec:
+      containers:
+        - name: beam-wordcount-java
+          image: apache/beam_java_sdk:2.22.0
+          command: ["/bin/bash", "-c"]
+          args:
+          - |
+            apt-get update && apt-get install -y maven
+            mvn archetype:generate -DarchetypeGroupId=org.apache.beam -DarchetypeArtifactId=beam-sdks-java-maven-archetypes-examples -DarchetypeVersion=2.22.0 -DgroupId=org.example -DartifactId=word-count-beam -Dversion="0.1" -Dpackage=org.apache.beam.examples -DinteractiveMode=false
+            cd word-count-beam
+            mvn package -Pflink-runner
+            mvn exec:java -Dexec.mainClass=org.apache.beam.examples.WordCount \
+                -Pflink-runner \
+                -Dexec.args="--runner=FlinkRunner \
+                  --inputFile=/etc/ucf.conf \
+                  --output=/tmp/output \
+                  --flinkMaster=beam-flink-cluster-jobmanager:8081 \
+                  --filesToStage=target/word-count-beam-bundled-0.1.jar"
+      restartPolicy: Never

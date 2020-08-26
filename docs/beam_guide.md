@@ -61,6 +61,12 @@ example job with the Flink Operator. You can write a script to automate the proc
   ```bash
   kubectl apply -f examples/beam/without_job_server/beam_wordcount_py.yaml
   ```
+  
+  As for Java SDK, you can use the following file to submit the example job:
+  
+  ```bash
+  kubectl apply -f examples/beam/without_job_server/beam_wordcount_java.yaml
+  ```
 
 ## Known issues
 
