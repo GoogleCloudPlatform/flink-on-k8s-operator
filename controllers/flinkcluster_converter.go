@@ -98,6 +98,7 @@ func getDesiredJobManagerDeployment(
 	}
 	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
+	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
 	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
@@ -253,6 +254,7 @@ func getDesiredJobManagerService(
 		TargetPort: intstr.FromString("ui")}
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
+	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
 	var serviceLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var jobManagerService = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -388,6 +390,7 @@ func getDesiredTaskManagerDeployment(
 	}
 	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
+	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
 	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml
 	var volumes []corev1.Volume
@@ -598,6 +601,7 @@ func getDesiredJob(
 	var jobManagerAddress = fmt.Sprintf(
 		"%s:%d", jobManagerServiceName, *jobManagerSpec.Ports.UI)
 	var podLabels = getClusterLabels(*flinkCluster)
+	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
 	var jobLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var jobArgs = []string{"bash", "/opt/flink-operator/submit-job.sh"}
 	jobArgs = append(jobArgs, "--jobmanager", jobManagerAddress)

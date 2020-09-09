@@ -221,6 +221,9 @@ type JobManagerSpec struct {
 
 	// JobManager Deployment pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// JobManager Deployment pod template labels.
+	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
 
 // TaskManagerPorts defines ports of TaskManager.
@@ -288,6 +291,9 @@ type TaskManagerSpec struct {
 
 	// TaskManager Deployment pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// TaskManager Deployment pod template labels.
+	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
 
 // CleanupAction defines the action to take after job finishes.
@@ -381,6 +387,9 @@ type JobSpec struct {
 
 	// Job pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// Job pod template labels.
+	PodLabels map[string]string `json:"podLabels,omitempty"`
 
 	// Compute resources required by each Job container.
 	// If omitted, a default value will be used.
