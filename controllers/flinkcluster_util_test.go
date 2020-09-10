@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	"testing"
 	"time"
 
@@ -527,4 +528,28 @@ func TestHasTimeElapsed(t *testing.T) {
 
 	elapsed = hasTimeElapsed(timeToCheckStr, timeToCompare, 30)
 	assert.Equal(t, elapsed, false)
+}
+
+func TestGetFlinkAPIBaseURL(t *testing.T) {
+	var uiPort int32 = 8004
+	var cluster = v1beta1.FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: v1beta1.FlinkClusterSpec{
+			JobManager: v1beta1.JobManagerSpec{
+				Ports: v1beta1.JobManagerPorts{
+					UI: &uiPort,
+				},
+			},
+		},
+	}
+
+	var apiBaseURL = getFlinkAPIBaseURL(&cluster)
+	assert.Equal(t, apiBaseURL, "http://mycluster-jobmanager.default.svc.cluster.local:8004")
+
+	os.Setenv("CLUSTER_DOMAIN", "my.domain")
+	apiBaseURL = getFlinkAPIBaseURL(&cluster)
+	assert.Equal(t, apiBaseURL, "http://mycluster-jobmanager.default.svc.my.domain:8004")
 }
