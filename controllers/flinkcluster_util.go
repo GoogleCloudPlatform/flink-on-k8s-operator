@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -67,10 +68,16 @@ type objectMetaForPatch struct {
 }
 
 func getFlinkAPIBaseURL(cluster *v1beta1.FlinkCluster) string {
+	clusterDomain := os.Getenv("CLUSTER_DOMAIN")
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
+	}
+
 	return fmt.Sprintf(
-		"http://%s.%s.svc.cluster.local:%d",
+		"http://%s.%s.svc.%s:%d",
 		getJobManagerServiceName(cluster.ObjectMeta.Name),
 		cluster.ObjectMeta.Namespace,
+		clusterDomain,
 		*cluster.Spec.JobManager.Ports.UI)
 }
 

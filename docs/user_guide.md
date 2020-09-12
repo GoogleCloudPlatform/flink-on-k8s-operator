@@ -77,6 +77,8 @@ following 2 ways:
   Follow the [Helm Chart Installation Guide](../helm-chart/flink-operator/README.md) to
   install the operator through Helm Chart.
 
+Note, for kubernetes cluster with private cluster domain, you should add a CLUSTER\_DOMAIN environment to the operator deployment.
+
 ## Verify the deployment
 
 After deploying the operator, you can verify CRD `flinkclusters.flinkoperator.k8s.io`
