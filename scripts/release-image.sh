@@ -21,8 +21,8 @@ function main() {
   local -r commit="$2"
   local -r image="gcr.io/flink-operator/flink-operator:$version"
 
-  local -r existing_commit="$(git rev-parse ${version} || true)"
-  if [[ -n "${existing_commit}" && "${existing_commit}" != "${commit}" ]]; then
+  local existing_commit="$(git rev-parse ${version} 2>/dev/null || true)"
+  if [[ -n "${existing_commit}" && "${existing_commit}" != "${commit}" && "${existing_commit}" != "${version}" ]]; then
     echo "The version tag ${version} already exists for commit ${existing_commit}"
     exit 2
   fi
