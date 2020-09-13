@@ -723,6 +723,10 @@ spec:
                   additionalProperties:
                     type: string
                   type: object
+                podLabels:
+                  additionalProperties:
+                    type: string
+                  type: object
                 resources:
                   properties:
                     limits:
@@ -1953,6 +1957,10 @@ spec:
                     type: string
                   type: object
                 podAnnotations:
+                  additionalProperties:
+                    type: string
+                  type: object
+                podLabels:
                   additionalProperties:
                     type: string
                   type: object
@@ -3740,6 +3748,10 @@ spec:
                     type: string
                   type: object
                 podAnnotations:
+                  additionalProperties:
+                    type: string
+                  type: object
+                podLabels:
                   additionalProperties:
                     type: string
                   type: object
