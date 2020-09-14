@@ -222,6 +222,9 @@ type JobManagerSpec struct {
 	// JobManager Deployment pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 
+	// SecurityContext of the JM pod.
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
+
 	// JobManager Deployment pod template labels.
 	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
@@ -291,6 +294,9 @@ type TaskManagerSpec struct {
 
 	// TaskManager Deployment pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// SecurityContext of the TM pod.
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// TaskManager Deployment pod template labels.
 	PodLabels map[string]string `json:"podLabels,omitempty"`
@@ -396,6 +402,8 @@ type JobSpec struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 }
 
 // FlinkClusterSpec defines the desired state of FlinkCluster

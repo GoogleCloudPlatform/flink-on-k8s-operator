@@ -100,6 +100,7 @@ func getDesiredJobManagerDeployment(
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
 	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -201,8 +202,8 @@ func getDesiredJobManagerDeployment(
 		NodeSelector:     jobManagerSpec.NodeSelector,
 		Tolerations:      jobManagerSpec.Tolerations,
 		ImagePullSecrets: imageSpec.PullSecrets,
+		SecurityContext:  securityContext,
 	}
-
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
@@ -392,6 +393,9 @@ func getDesiredTaskManagerDeployment(
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
 	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
 	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+
+	var securityContext = taskManagerSpec.SecurityContext
+
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -492,6 +496,7 @@ func getDesiredTaskManagerDeployment(
 		NodeSelector:     taskManagerSpec.NodeSelector,
 		Tolerations:      taskManagerSpec.Tolerations,
 		ImagePullSecrets: imageSpec.PullSecrets,
+		SecurityContext:  securityContext,
 	}
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -628,6 +633,8 @@ func getDesiredJob(
 	}
 	jobArgs = append(jobArgs, "--detached")
 
+	var securityContext = jobSpec.SecurityContext
+
 	var envVars = []corev1.EnvVar{}
 
 	// If the JAR file is remote, put the URI in the env variable
@@ -700,6 +707,7 @@ func getDesiredJob(
 		RestartPolicy:    corev1.RestartPolicyNever,
 		Volumes:          volumes,
 		ImagePullSecrets: imageSpec.PullSecrets,
+		SecurityContext:  securityContext,
 	}
 
 	// Disable the retry mechanism of k8s Job, all retires should be initiated

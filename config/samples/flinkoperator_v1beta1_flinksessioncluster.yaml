@@ -22,6 +22,9 @@ spec:
     pullPolicy: Always
   jobManager:
     accessScope: Cluster
+    securityContext:
+      runAsUser: 9999
+      runAsGroup: 9999
     ports:
       ui: 8081
     resources:
@@ -30,6 +33,9 @@ spec:
         cpu: "200m"
   taskManager:
     replicas: 1
+    securityContext:
+      runAsUser: 9999
+      runAsGroup: 9999
     resources:
       limits:
         memory: "1024Mi"
