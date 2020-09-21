@@ -81,6 +81,7 @@ func TestSetDefault(t *testing.T) {
 				MemoryOffHeapMin:   defaultMemoryOffHeapMin,
 				Volumes:            nil,
 				VolumeMounts:       nil,
+				SecurityContext:    nil,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -93,6 +94,7 @@ func TestSetDefault(t *testing.T) {
 				MemoryOffHeapRatio: &defaultMemoryOffHeapRatio,
 				MemoryOffHeapMin:   defaultMemoryOffHeapMin,
 				Volumes:            nil,
+				SecurityContext:    nil,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &defaultJobAllowNonRestoredState,
@@ -104,6 +106,7 @@ func TestSetDefault(t *testing.T) {
 					AfterJobFails:     "KeepCluster",
 					AfterJobCancelled: "DeleteCluster",
 				},
+				SecurityContext: nil,
 			},
 			FlinkProperties: nil,
 			HadoopConfig: &HadoopConfig{
@@ -138,6 +141,11 @@ func TestSetNonDefault(t *testing.T) {
 	var jobManagerIngressTLSUse = true
 	var memoryOffHeapRatio = int32(50)
 	var memoryOffHeapMin = resource.MustParse("600M")
+	var securityContextUserGroup = int64(9999)
+	var securityContext = corev1.PodSecurityContext{
+		RunAsUser:  &securityContextUserGroup,
+		RunAsGroup: &securityContextUserGroup,
+	}
 	var cluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -164,6 +172,7 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 				VolumeMounts:       nil,
+				SecurityContext:    &securityContext,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -176,12 +185,14 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
+				SecurityContext:    &securityContext,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
+				SecurityContext:       &securityContext,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteTaskManagers",
 					AfterJobFails:     "DeleteCluster",
@@ -225,6 +236,7 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
 				VolumeMounts:       nil,
+				SecurityContext:    &securityContext,
 			},
 			TaskManager: TaskManagerSpec{
 				Replicas: 0,
@@ -237,12 +249,14 @@ func TestSetNonDefault(t *testing.T) {
 				MemoryOffHeapRatio: &memoryOffHeapRatio,
 				MemoryOffHeapMin:   memoryOffHeapMin,
 				Volumes:            nil,
+				SecurityContext:    &securityContext,
 			},
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
+				SecurityContext:       &securityContext,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteTaskManagers",
 					AfterJobFails:     "DeleteCluster",

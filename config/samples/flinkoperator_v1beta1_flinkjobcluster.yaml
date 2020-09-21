@@ -37,8 +37,5 @@ spec:
     className: org.apache.flink.streaming.examples.wordcount.WordCount
     args: ["--input", "./README.txt"]
     parallelism: 2
-    securityContext:
-      runAsUser: 9999
-      runAsGroup: 9999
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"

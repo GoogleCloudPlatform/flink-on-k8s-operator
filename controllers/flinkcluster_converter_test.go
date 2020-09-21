@@ -114,6 +114,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Value:             "toleration-value2",
 		},
 	}
+	var userAndGroupId int64 = 9999
+	var securityContext = corev1.PodSecurityContext{
+		RunAsUser:  &userAndGroupId,
+		RunAsGroup: &userAndGroupId,
+	}
 
 	// Setup.
 	var cluster = &v1beta1.FlinkCluster{
@@ -167,6 +172,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
+				SecurityContext: &securityContext,
 			},
 			JobManager: v1beta1.JobManagerSpec{
 				AccessScope: v1beta1.AccessScopeVPC,
@@ -201,6 +207,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
+				SecurityContext: &securityContext,
 			},
 			TaskManager: v1beta1.TaskManagerSpec{
 				Replicas: 42,
@@ -237,13 +244,14 @@ func TestGetDesiredClusterState(t *testing.T) {
 				PodAnnotations: map[string]string{
 					"example.com": "example",
 				},
+				SecurityContext: &securityContext,
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
-			EnvFrom:        []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+			EnvFrom: []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: "FOOMAP",
-			}}}},
+				}}}},
 			HadoopConfig: &v1beta1.HadoopConfig{
 				ConfigMapName: "hadoop-configmap",
 				MountPath:     "/etc/hadoop/conf",
@@ -395,6 +403,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 					Tolerations: tolerations,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  &userAndGroupId,
+						RunAsGroup: &userAndGroupId,
+					},
 					Volumes: []corev1.Volume{
 						{
 							Name: "flink-config-volume",
@@ -693,6 +705,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 					Tolerations: tolerations,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  &userAndGroupId,
+						RunAsGroup: &userAndGroupId,
+					},
 				},
 			},
 		},
@@ -851,6 +867,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsUser:  &userAndGroupId,
+						RunAsGroup: &userAndGroupId,
+					},
 				},
 			},
 			BackoffLimit: &jobBackoffLimit,
@@ -905,6 +925,98 @@ taskmanager.rpc.port: 6122
 		t,
 		*desiredState.ConfigMap,
 		expectedConfigMap)
+}
+
+func TestSecurityContext(t *testing.T) {
+	var jmRPCPort int32 = 6123
+	var jmBlobPort int32 = 6124
+	var jmQueryPort int32 = 6125
+	var jmUIPort int32 = 8081
+	var tmDataPort int32 = 6121
+	var tmRPCPort int32 = 6122
+	var tmQueryPort int32 = 6125
+
+	var userAndGroupId int64 = 9999
+	var securityContext = corev1.PodSecurityContext{
+		RunAsUser:  &userAndGroupId,
+		RunAsGroup: &userAndGroupId,
+	}
+
+	// Provided security context
+	var cluster = &v1beta1.FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "flinkjobcluster-sample",
+			Namespace: "default",
+		},
+		Spec: v1beta1.FlinkClusterSpec{
+			Job: &v1beta1.JobSpec{
+				SecurityContext: &securityContext,
+			},
+			JobManager: v1beta1.JobManagerSpec{
+				AccessScope: v1beta1.AccessScopeVPC,
+				Ports: v1beta1.JobManagerPorts{
+					RPC:   &jmRPCPort,
+					Blob:  &jmBlobPort,
+					Query: &jmQueryPort,
+					UI:    &jmUIPort,
+				},
+				SecurityContext: &securityContext,
+			},
+			TaskManager: v1beta1.TaskManagerSpec{
+				Ports: v1beta1.TaskManagerPorts{
+					Data:  &tmDataPort,
+					RPC:   &tmRPCPort,
+					Query: &tmQueryPort,
+				},
+				SecurityContext: &securityContext,
+			},
+		},
+		Status: v1beta1.FlinkClusterStatus{
+			NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+		},
+	}
+
+	var desired = getDesiredClusterState(cluster, time.Now())
+
+	assert.DeepEqual(t, desired.Job.Spec.Template.Spec.SecurityContext, &securityContext)
+	assert.DeepEqual(t, desired.JmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
+	assert.DeepEqual(t, desired.TmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
+
+	// No security context
+	var cluster2 = &v1beta1.FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "flinkjobcluster-sample",
+			Namespace: "default",
+		},
+		Spec: v1beta1.FlinkClusterSpec{
+			Job: &v1beta1.JobSpec{},
+			JobManager: v1beta1.JobManagerSpec{
+				AccessScope: v1beta1.AccessScopeVPC,
+				Ports: v1beta1.JobManagerPorts{
+					RPC:   &jmRPCPort,
+					Blob:  &jmBlobPort,
+					Query: &jmQueryPort,
+					UI:    &jmUIPort,
+				},
+			},
+			TaskManager: v1beta1.TaskManagerSpec{
+				Ports: v1beta1.TaskManagerPorts{
+					Data:  &tmDataPort,
+					RPC:   &tmRPCPort,
+					Query: &tmQueryPort,
+				},
+			},
+		},
+		Status: v1beta1.FlinkClusterStatus{
+			NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+		},
+	}
+
+	var desired2 = getDesiredClusterState(cluster2, time.Now())
+
+	assert.Assert(t, desired2.Job.Spec.Template.Spec.SecurityContext == nil)
+	assert.Assert(t, desired2.JmDeployment.Spec.Template.Spec.SecurityContext == nil)
+	assert.Assert(t, desired2.TmDeployment.Spec.Template.Spec.SecurityContext == nil)
 }
 
 func TestCalFlinkHeapSize(t *testing.T) {
@@ -1029,12 +1141,12 @@ func Test_getLogConf(t *testing.T) {
 			name: "extra keys preserved",
 			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
 				"log4j-console.properties": "abc",
-				"file.txt":      						"def",
+				"file.txt":                 "def",
 			}}},
 			want: map[string]string{
 				"log4j-console.properties": "abc",
-				"logback-console.xml": 			DefaultLogbackConfig,
-				"file.txt":      						"def",
+				"logback-console.xml":      DefaultLogbackConfig,
+				"file.txt":                 "def",
 			},
 		},
 	}

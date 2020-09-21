@@ -40,6 +40,7 @@ FlinkCluster
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ taskManager
         |__ replicas
         |__ ports
@@ -58,6 +59,7 @@ FlinkCluster
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ job
         |__ jarFile
         |__ className
@@ -80,6 +82,7 @@ FlinkCluster
         |__ cancelRequested
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ envVars
     |__ envFrom
     |__ flinkProperties
