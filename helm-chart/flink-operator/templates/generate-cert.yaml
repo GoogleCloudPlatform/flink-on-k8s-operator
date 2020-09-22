@@ -115,6 +115,33 @@ data:
         resources:
         - flinkclusters
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flink-operator-cert-generator
+  namespace: {{ .Values.flinkOperatorNamespace }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flink-operator-cert-generator
+  namespace: {{ .Values.flinkOperatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-operator-cert-generator
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ .Values.flinkOperatorNamespace }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
