@@ -466,3 +466,22 @@ The default Flink docker entrypoint expects this directory to contain two files:
 
 An example of using this parameter to make logs visible in both the Flink UI and on stdout 
 [can be found here](../examples/log_config.yaml).
+
+### Control Security and Permissions in Pods
+You can set various security-related attributes of the JobManager, TaskManager, and Job Pods using a 
+[PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core)
+object. It is possible to run the entrypoint of the container process as a different user or group,
+and to modify ownership of mounted volumes. 
+
+You can set the SecurityContext in the FlinkCluster spec, within the JobManager, TaskManager, and Job fields, like this: 
+```yaml
+taskManager:
+  ...
+  securityContext:
+    runAsUser: 9999
+    runAsGroup: 1000
+    fsGroup: 2000
+```
+You can set different SecurityContexts for the TaskManager, JobManager deployments and the Job, but all TaskManager pods
+will share the same one.
+Examples and explanations of the available options can be found [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
