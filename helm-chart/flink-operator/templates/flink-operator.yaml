@@ -360,6 +360,7 @@ spec:
         command:
         - /flink-operator
         image: {{ .Values.operatorImage.name }}
+        imagePullPolicy: {{ .Values.operatorImage.pullPolicy }}
         name: flink-operator
         ports:
         - containerPort: 443
