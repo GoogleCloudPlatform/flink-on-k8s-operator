@@ -22,6 +22,9 @@ spec:
     pullPolicy: Always
   jobManager:
     accessScope: Cluster
+    securityContext:
+      runAsUser: 9999
+      runAsGroup: 9999
     ports:
       ui: 8081
     resources:

@@ -40,6 +40,7 @@ FlinkCluster
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ taskManager
         |__ replicas
         |__ ports
@@ -58,6 +59,7 @@ FlinkCluster
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ job
         |__ jarFile
         |__ className
@@ -80,6 +82,7 @@ FlinkCluster
         |__ cancelRequested
         |__ podAnnotations
         |__ podLabels
+        |__ securityContext
     |__ envVars
     |__ envFrom
     |__ flinkProperties
@@ -195,6 +198,8 @@ FlinkCluster
       * **podAnnotations** (optional): Pod template annotations for the JobManager deployment.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
       * **podLabels** (optional): Pod template labels for the JobManager deployment.
+      * **securityContext** (optional): PodSecurityContext for the JobManager pod. 
+      See [more info](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
     * **taskManager** (required): TaskManager spec.
       * **replicas** (required): The number of TaskManager replicas.
       * **ports** (optional): Ports that TaskManager listening on.
@@ -232,6 +237,8 @@ FlinkCluster
       * **podAnnotations** (optional): Pod template annotations for the TaskManager deployment.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
       * **podLabels** (optional): Pod template labels for the TaskManager deployment.
+      * **securityContext** (optional): PodSecurityContext for the TaskManager pods. 
+        See [more info](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
       session cluster.
       * **jarFile** (required): JAR file of the job. It could be a local file or remote URI, depending on which
@@ -273,6 +280,8 @@ FlinkCluster
       * **podAnnotations** (optional): Pod template annotations for the job.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
       * **podLabels** (optional): Pod template labels for the job.
+      * **securityContext** (optional): PodSecurityContext for the Job pod. 
+            See [more info](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
     * **envVars** (optional): Environment variables shared by all JobManager, TaskManager and job containers.
     * **envFrom** (optional): Environment variables from ConfigMaps or Secrets shared by all JobManager, TaskManager and job containers.
     * **flinkProperties** (optional): Flink properties which are appened to flink-conf.yaml.
