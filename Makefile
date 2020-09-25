@@ -40,6 +40,12 @@ run: generate fmt vet
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./api/v1beta1/..." output:crd:artifacts:config=config/crd/bases
 	go mod tidy
+	yq w -i config/crd/bases/*.yaml 'spec.validation.openAPIV3Schema.properties.spec.properties.jobManager.properties.initContainers.items.properties.ports.items.required[+]' protocol
+	yq w -i config/crd/bases/*.yaml 'spec.validation.openAPIV3Schema.properties.spec.properties.jobManager.properties.sidecars.items.properties.ports.items.required[+]' protocol
+	yq w -i config/crd/bases/*.yaml 'spec.validation.openAPIV3Schema.properties.spec.properties.job.properties.initContainers.items.properties.ports.items.required[+]' protocol
+	yq w -i config/crd/bases/*.yaml 'spec.validation.openAPIV3Schema.properties.spec.properties.taskManager.properties.initContainers.items.properties.ports.items.required[+]' protocol
+	yq w -i config/crd/bases/*.yaml 'spec.validation.openAPIV3Schema.properties.spec.properties.taskManager.properties.sidecars.items.properties.ports.items.required[+]' protocol
+
 
 # Run go fmt against code
 fmt:
