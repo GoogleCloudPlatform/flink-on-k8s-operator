@@ -36,6 +36,8 @@ a Kubernetes cluster and running a sample Flink job.
   own image from the source code and push the image to a registry where your
   Kubernetes cluster can access.
 
+* Install yq [here](https://github.com/mikefarah/yq#install)
+
 ## Deploy the operator to a Kubernetes cluster
 
 You can deploy the Flink Operator to the Kubernetes cluster through one of the
@@ -44,11 +46,11 @@ following 2 ways:
 * **Option 1: Make deploy**
 
   Simply run
-  
+
   ```base
   make deploy
   ```
-  
+
   from the source repo to deploy the operator. There are some flags which you
   can use to configure the deployment:
 
@@ -67,7 +69,7 @@ following 2 ways:
     The default value is `flink-operator-`.
   * `WATCH_NAMESPACE`: the namespace of the `FlinkCluster` CRs which the operator
     watches. The default value is empty string which means all namespaces.
-  
+
   **Note:** It is highly recommended to just use the default values unless you want to
   deploy multiple instances of the operator in a cluster, see more details in the
   How-to section of this doc.
@@ -408,7 +410,7 @@ See this [doc](./savepoints_guide.md) on how to manage savepoints with the opera
 ### Update Flink clusters and jobs
 
 To update a running Flink job's program or execution settings, you can create new savepoint, terminate the job,
-and create a new FlinkCluster with the new program, settings, and savepoint. 
+and create a new FlinkCluster with the new program, settings, and savepoint.
 However, in some cases, you may want to update the Flink job while maintaining the logical continuity
 of the Flink job with the FlinkCluster custom resource. In this case, you can continuously update
 the FlinkCluster custom resource, and the Flink operator takes care of the process required to update
@@ -451,29 +453,29 @@ kubectl get controllerrevision <REVISION-NAME> -o yaml
 ### Control Logging Behavior
 
 The default logging configuration provided by the operator sends logs from JobManager and TaskManager to `stdout`. This
-has the effect of making it so that logging from Flink workloads running on Kubernetes behaves like every other 
-Kubernetes pod. Your Flink logs should be stored wherever you generally expect to see your container logs in your 
+has the effect of making it so that logging from Flink workloads running on Kubernetes behaves like every other
+Kubernetes pod. Your Flink logs should be stored wherever you generally expect to see your container logs in your
 environment.
 
-Sometimes, however, this is not a good fit. An example of when you might want to customize logging behavior is to 
-restore the visibility of logs in the Flink JobManager web interface. Or you might want to ship logs directly to a 
-different sink, or using a different formatter. 
+Sometimes, however, this is not a good fit. An example of when you might want to customize logging behavior is to
+restore the visibility of logs in the Flink JobManager web interface. Or you might want to ship logs directly to a
+different sink, or using a different formatter.
 
 You can use the `spec.logConfig` field to fully control the log4j and logback configuration. It is a string-to-string map,
-whose keys and values become filenames and contents (respectively) in the folder `/opt/flink/conf` in each container. 
-The default Flink docker entrypoint expects this directory to contain two files: `log4j-console.properties` and 
+whose keys and values become filenames and contents (respectively) in the folder `/opt/flink/conf` in each container.
+The default Flink docker entrypoint expects this directory to contain two files: `log4j-console.properties` and
 `logback-console.xml`.
 
-An example of using this parameter to make logs visible in both the Flink UI and on stdout 
+An example of using this parameter to make logs visible in both the Flink UI and on stdout
 [can be found here](../examples/log_config.yaml).
 
 ### Control Security and Permissions in Pods
-You can set various security-related attributes of the JobManager, TaskManager, and Job Pods using a 
+You can set various security-related attributes of the JobManager, TaskManager, and Job Pods using a
 [PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core)
 object. It is possible to run the entrypoint of the container process as a different user or group,
-and to modify ownership of mounted volumes. 
+and to modify ownership of mounted volumes.
 
-You can set the SecurityContext in the FlinkCluster spec, within the JobManager, TaskManager, and Job fields, like this: 
+You can set the SecurityContext in the FlinkCluster spec, within the JobManager, TaskManager, and Job fields, like this:
 ```yaml
 taskManager:
   ...
