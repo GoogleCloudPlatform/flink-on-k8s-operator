@@ -303,7 +303,7 @@ flinkcluster.flinkoperator.k8s.io "flinksessioncluster-sample" deleted
 ```
 
 
-### 3.4 job session cluster
+### 3.4 job cluster
 
 ```
 cat <<EOF | kubectl apply --filename -
@@ -368,7 +368,55 @@ delete the job session
 kubectl delete flinkcluster flinkjobcluster-sample
 ```
 
-### 3.5 Testing the Flink Operator with Apache Kafka in flink's native cluster
+### 3.5 job cluster with initContainer
+
+```
+cat <<EOF | kubectl apply --filename -
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata:
+  name: flinkjobcluster-sample
+spec:
+  image:
+    name: flink:1.10.0
+  jobManager:
+    ports:
+      ui: 8081
+    resources:
+      limits:
+        memory: "1024Mi"
+        cpu: "200m"
+  taskManager:
+    replicas: 2
+    resources:
+      limits:
+        memory: "2024Mi"
+        cpu: "200m"
+  job:
+    jarFile: /cache/WordCount.jar
+    className: org.apache.flink.streaming.examples.wordcount.WordCount
+    args: ["--input", "/opt/flink/README.txt"]
+    parallelism: 2
+    volumes:
+      - name: cache-volume
+        emptyDir: {}
+    volumeMounts:
+      - mountPath: /cache
+        name: cache-volume
+    initContainers:
+      - name: tke-downloader
+        image: centos
+        command: ["curl"]
+        args:
+          - "https://flinkoperator-1251707795.cos.ap-guangzhou.myqcloud.com/WordCount.jar"
+          - "-o"
+          - "/cache/WordCount.jar"
+  flinkProperties:
+    taskmanager.numberOfTaskSlots: "1"
+EOF
+```
+
+### 3.6 Testing the Flink Operator with Apache Kafka in flink's native cluster
 
 command in the container
 ```
