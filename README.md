@@ -478,7 +478,42 @@ spec:
 EOF
 ```
 
-### 3.7 Testing the Flink Operator with Apache Kafka in flink's native cluster
+### 3.7
+
+```
+cat <<EOF | kubectl apply --filename -
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata:
+  name: flinkjobcluster-sample
+spec:
+  image:
+    name: flink:1.10.0
+  jobManager:
+    ports:
+      ui: 8081
+    resources:
+      limits:
+        memory: "1024Mi"
+        cpu: "200m"
+  taskManager:
+    replicas: 2
+    resources:
+      limits:
+        memory: "2024Mi"
+        cpu: "200m"
+  job:
+    autoSavepointSeconds: 30
+    savepointsDir: hdfs://hdfshostname:9000/user/flink
+    jarFile: /opt/flink/examples/streaming/StateMachineExample.jar
+    className: org.apache.flink.streaming.examples.statemachine.StateMachineExample
+    parallelism: 2
+  flinkProperties:
+    taskmanager.numberOfTaskSlots: "1"
+EOF
+```
+
+### 3.8 Testing the Flink Operator with Apache Kafka in flink's native cluster
 
 command in the container
 ```
