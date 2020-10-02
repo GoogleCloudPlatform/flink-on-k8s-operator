@@ -44,7 +44,7 @@ clusters and jobs.
 * Init containers and sidecar containers
 * Remote job jar
 * Configurable namespace to run the operator in
-* Configurable namepsace to watch custom resources in
+* Configurable namespace to watch custom resources in
 * Configurable access scope for JobManager service
 * Taking savepoints periodically
 * Taking savepoints on demand
