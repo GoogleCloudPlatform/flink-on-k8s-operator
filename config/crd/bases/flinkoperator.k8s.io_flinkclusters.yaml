@@ -30,6 +30,8 @@ spec:
           properties:
             batchSchedulerName:
               type: string
+            serviceAccountName:
+              type: string
             envFrom:
               items:
                 properties:

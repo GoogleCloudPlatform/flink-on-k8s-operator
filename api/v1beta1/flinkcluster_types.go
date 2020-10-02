@@ -411,6 +411,10 @@ type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
 	Image ImageSpec `json:"image"`
 
+	// Specifies serviceAccount name assigned to pods
+	// if empty, will use default one in namespace
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	// BatchSchedulerName specifies the batch scheduler name for JobManager, TaskManager.
 	// If empty, no batch scheduling is enabled.
 	BatchSchedulerName *string `json:"batchSchedulerName,omitempty"`
