@@ -50,6 +50,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var tolerationSeconds int64 = 30
 	var restartPolicy = v1beta1.JobRestartPolicyFromSavepointOnFailure
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
+	var serviceAccount = "default"
 	var hostFormat = "{{$clusterName}}.example.com"
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
@@ -131,7 +132,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: v1beta1.FlinkClusterSpec{
-			Image: v1beta1.ImageSpec{Name: "flink:1.8.1"},
+			Image:              v1beta1.ImageSpec{Name: "flink:1.8.1"},
+			ServiceAccountName: &serviceAccount,
 			Job: &v1beta1.JobSpec{
 				Args:        []string{"--input", "./README.txt"},
 				ClassName:   &className,
@@ -407,6 +409,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,
 					},
+					ServiceAccountName: serviceAccount,
 					Volumes: []corev1.Volume{
 						{
 							Name: "flink-config-volume",
@@ -709,6 +712,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,
 					},
+					ServiceAccountName: serviceAccount,
 				},
 			},
 		},
@@ -871,6 +875,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,
 					},
+					ServiceAccountName: serviceAccount,
 				},
 			},
 			BackoffLimit: &jobBackoffLimit,

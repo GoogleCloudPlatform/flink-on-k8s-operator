@@ -87,7 +87,7 @@ func getDesiredJobManagerDeployment(
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var clusterSpec = flinkCluster.Spec
 	var imageSpec = clusterSpec.Image
-	var serviceAccountSpec = clusterSpec.ServiceAccountName
+	var serviceAccount = clusterSpec.ServiceAccountName
 	var jobManagerSpec = clusterSpec.JobManager
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *jobManagerSpec.Ports.RPC}
 	var blobPort = corev1.ContainerPort{Name: "blob", ContainerPort: *jobManagerSpec.Ports.Blob}
@@ -204,7 +204,7 @@ func getDesiredJobManagerDeployment(
 		Tolerations:        jobManagerSpec.Tolerations,
 		ImagePullSecrets:   imageSpec.PullSecrets,
 		SecurityContext:    securityContext,
-		ServiceAccountName: serviceAccountSpec,
+		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
 	var jobManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -383,7 +383,7 @@ func getDesiredTaskManagerDeployment(
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var clusterSpec = flinkCluster.Spec
 	var imageSpec = flinkCluster.Spec.Image
-	var serviceAccountSpec = clusterSpec.ServiceAccountName
+	var serviceAccount = clusterSpec.ServiceAccountName
 	var taskManagerSpec = flinkCluster.Spec.TaskManager
 	var dataPort = corev1.ContainerPort{Name: "data", ContainerPort: *taskManagerSpec.Ports.Data}
 	var rpcPort = corev1.ContainerPort{Name: "rpc", ContainerPort: *taskManagerSpec.Ports.RPC}
@@ -500,7 +500,7 @@ func getDesiredTaskManagerDeployment(
 		Tolerations:        taskManagerSpec.Tolerations,
 		ImagePullSecrets:   imageSpec.PullSecrets,
 		SecurityContext:    securityContext,
-		ServiceAccountName: serviceAccountSpec,
+		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
 	var taskManagerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -602,7 +602,7 @@ func getDesiredJob(
 
 	var clusterSpec = flinkCluster.Spec
 	var imageSpec = clusterSpec.Image
-	var serviceAccountSpec = clusterSpec.ServiceAccountName
+	var serviceAccount = clusterSpec.ServiceAccountName
 	var jobManagerSpec = clusterSpec.JobManager
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
@@ -713,7 +713,7 @@ func getDesiredJob(
 		Volumes:            volumes,
 		ImagePullSecrets:   imageSpec.PullSecrets,
 		SecurityContext:    securityContext,
-		ServiceAccountName: serviceAccountSpec,
+		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
 
 	// Disable the retry mechanism of k8s Job, all retires should be initiated
@@ -1039,6 +1039,14 @@ func getClusterLabels(cluster v1beta1.FlinkCluster) map[string]string {
 		"cluster": cluster.Name,
 		"app":     "flink",
 	}
+}
+
+func getServiceAccountName(serviceAccount *string) string {
+	if serviceAccount != nil {
+		return *serviceAccount
+	}
+
+	return ""
 }
 
 func getComponentLabels(cluster v1beta1.FlinkCluster, component string) map[string]string {
