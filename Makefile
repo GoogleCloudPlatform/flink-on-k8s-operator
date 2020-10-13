@@ -121,7 +121,7 @@ template: build-overlay
 
 # Deploy the operator in the configured Kubernetes cluster in ~/.kube/config
 deploy: install webhook-cert config/default/manager_image_patch.yaml build-overlay
-	sed -e 's#image: .*#image: '"$(IMG)"'#' ./config/default/manager_image_patch.template >./config/default/manager_image_patch.yaml
+	sed -e 's#image: .*#image: '"$(IMG)"'#' ./config/deploy/manager_image_patch.template >./config/deploy/manager_image_patch.yaml
 	@echo "Getting webhook server certificate"
 	$(eval CA_BUNDLE := $(shell kubectl get secrets/webhook-server-cert -n $(FLINK_OPERATOR_NAMESPACE) -o jsonpath="{.data.tls\.crt}"))
 	kubectl kustomize config/deploy \
