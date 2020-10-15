@@ -1,10 +1,12 @@
 {{- if .Values.rbac.create }}
+{{- if .Values.flinkOperatorNamespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-  name: {{ .Values.flinkOperatorNamespace }}
+  name: {{ .Values.flinkOperatorNamespace.name }}
+{{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -16,7 +18,7 @@ webhooks:
     caBundle: Cg==
     service:
       name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace }}
+      namespace: {{ .Values.flinkOperatorNamespace.name }}
       path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: mflinkcluster.flinkoperator.k8s.io
@@ -35,7 +37,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: flink-operator-leader-election-role
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 rules:
 - apiGroups:
   - ""
@@ -256,7 +258,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: flink-operator-leader-election-rolebinding
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -264,7 +266,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -277,7 +279,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -290,7 +292,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 ---
 apiVersion: v1
 kind: Service
@@ -302,7 +304,7 @@ metadata:
   labels:
     control-plane: controller-manager
   name: flink-operator-controller-manager-metrics-service
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 spec:
   ports:
   - name: https
@@ -315,7 +317,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: flink-operator-webhook-service
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 spec:
   ports:
   - port: 443
@@ -330,7 +332,7 @@ metadata:
     app: flink-operator
     control-plane: controller-manager
   name: flink-operator-controller-manager
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 spec:
   replicas: {{ .Values.replicas }}
   selector:
@@ -359,7 +361,7 @@ spec:
         - --watch-namespace=
         command:
         - /flink-operator
-        image: {{ .Values.operatorImage.name }}
+        image: {{ .Values.operatorImage.name.name }}
         imagePullPolicy: {{ .Values.operatorImage.pullPolicy }}
         name: flink-operator
         ports:
@@ -394,7 +396,7 @@ webhooks:
     caBundle: Cg==
     service:
       name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace }}
+      namespace: {{ .Values.flinkOperatorNamespace.name }}
       path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: vflinkcluster.flinkoperator.k8s.io

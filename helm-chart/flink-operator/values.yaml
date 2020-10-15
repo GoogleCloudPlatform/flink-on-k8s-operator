@@ -1,5 +1,7 @@
 # K8s namespace where Flink operator to be deployed
-flinkOperatorNamespace: "flink-operator-system"
+flinkOperatorNamespace: 
+  name: "flink-operator-system"
+  create: true
 
 # Watch custom resources in the namespace, ignore other namespaces. If empty, all namespaces will be watched.
 watchNamespace:

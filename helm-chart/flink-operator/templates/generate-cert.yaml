@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: cert-configmap
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
   labels:
     app.kubernetes.io/name: flink-operator
     app.kubernetes.io/component: cert-configmap
@@ -13,7 +13,7 @@ data:
     set -euxo pipefail
     service="flink-operator-webhook-service"
     secret="webhook-server-cert"
-    namespace={{ .Values.flinkOperatorNamespace }}
+    namespace={{ .Values.flinkOperatorNamespace.name }}
     csrName="${service}.${namespace}"
     tmpdir="$(mktemp -d)"
     echo "Creating certs in tmpdir ${tmpdir} "
@@ -59,7 +59,7 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: webhook-configmap
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
   labels:
     app.kubernetes.io/name: flink-operator
     app.kubernetes.io/component: webhook-configmap
@@ -75,7 +75,7 @@ data:
         caBundle: $CA_PEM_B64
         service:
           name: flink-operator-webhook-service
-          namespace: {{ .Values.flinkOperatorNamespace }}
+          namespace: {{ .Values.flinkOperatorNamespace.name }}
           path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
       failurePolicy: Fail
       name: mflinkcluster.flinkoperator.k8s.io
@@ -100,7 +100,7 @@ data:
         caBundle: $CA_PEM_B64
         service:
           name: flink-operator-webhook-service
-          namespace: {{ .Values.flinkOperatorNamespace }}
+          namespace: {{ .Values.flinkOperatorNamespace.name }}
           path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
       failurePolicy: Fail
       name: vflinkcluster.flinkoperator.k8s.io
@@ -120,7 +120,7 @@ kind: Job
 metadata:
   annotations:
   name: cert-job
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
   labels:
     app.kubernetes.io/name: flink-operator
     app.kubernetes.io/component: cert-job
