@@ -209,7 +209,7 @@ if the request is accept, it will return a trigger request ID which can be used 
 curl http://localhost:8081/jobs/[JOB_ID]/savepoints/[TRIGGER_ID]
 ```
 
-## Automatically restarting job from the lastest savepoint
+## Automatically restarting job from the latest savepoint
 
 Long-running jobs may fail for various reasons, in such cases, if you have enabled auto savepoints or manually took
 savepoints, you might want to check the latest savepoint location in the job status, then use it as `fromSavepoint` to
@@ -224,7 +224,7 @@ metadata:
 spec:
   ...
   job:
-    autoSavePointSeconds: 300
+    autoSavepointSeconds: 300
     savepointsDir: gs://my-bucket/savepoints/
     restartPolicy: FromSavepointOnFailure
     ...
