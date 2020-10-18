@@ -9,6 +9,9 @@ The instructions to install the Flink operator chart:
 1. Prepare a Flink operator image. You can either use a released image e.g., `gcr.io/flink-operator/flink-operator:latest` or follow the instructions [here](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/docs/developer_guide.md#build-and-push-docker-image) to build and push an image from the source code.
 
 2. Run the bash script `update_template.sh` to update the manifest files in templates from the Flink operator source repo (This step is only required if you want to install from the local chart repo).  
+    You can set the following env vars to customize the script's behaviour -
+    * `export IMG=<image-name>` - Operator image, defaults to `flink-operator:latest`
+    * `export NS=<namespace-name>` - Namespace to install the operator in, defaults to `flink-operator-system`
 
 3. Register CRD - Don't manually register CRD unless helm install below fails (You can skip this step if your helm version is v3). 
     
