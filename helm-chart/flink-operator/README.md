@@ -32,7 +32,7 @@ If you're installing the operator into a preexisting namespace, make sure to cha
     If you're installing the chart into a preexisting namespace, make sure to set the namespace name and instruct the chart not create one like so:  
 
     ```bash
-    helm install --name [RELEASE_NAME] . --set operatorImage.name=[IMAGE_NAME],flinkOperatorNamespace.name=[NAMESPACE_NAME],flinkOperatorNamespace.name=false
+    helm install --name [RELEASE_NAME] . --set operatorImage.name=[IMAGE_NAME],flinkOperatorNamespace.name=[NAMESPACE_NAME],flinkOperatorNamespace.create=false
     ```
 ## Uninstalling the Chart
 
