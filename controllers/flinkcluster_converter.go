@@ -505,7 +505,6 @@ func getDesiredTaskManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	//var claims = []
 	var taskManagerDeployment = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
