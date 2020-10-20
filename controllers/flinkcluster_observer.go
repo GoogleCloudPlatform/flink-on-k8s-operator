@@ -51,10 +51,10 @@ type ObservedClusterState struct {
 	cluster            *v1beta1.FlinkCluster
 	revisions          []*appsv1.ControllerRevision
 	configMap          *corev1.ConfigMap
-	jmDeployment       *appsv1.Deployment
+	jmDeployment       *appsv1.StatefulSet
 	jmService          *corev1.Service
 	jmIngress          *extensionsv1beta1.Ingress
-	tmDeployment       *appsv1.Deployment
+	tmDeployment       *appsv1.StatefulSet
 	job                *batchv1.Job
 	flinkJobList       *flinkclient.JobStatusList
 	flinkRunningJobIDs []string
@@ -121,7 +121,7 @@ func (observer *ClusterStateObserver) observe(
 	}
 
 	// JobManager deployment.
-	var observedJmDeployment = new(appsv1.Deployment)
+	var observedJmDeployment = new(appsv1.StatefulSet)
 	err = observer.observeJobManagerDeployment(observedJmDeployment)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -166,7 +166,7 @@ func (observer *ClusterStateObserver) observe(
 	}
 
 	// TaskManager deployment.
-	var observedTmDeployment = new(appsv1.Deployment)
+	var observedTmDeployment = new(appsv1.StatefulSet)
 	err = observer.observeTaskManagerDeployment(observedTmDeployment)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -361,7 +361,7 @@ func (observer *ClusterStateObserver) observeConfigMap(
 }
 
 func (observer *ClusterStateObserver) observeJobManagerDeployment(
-	observedDeployment *appsv1.Deployment) error {
+	observedDeployment *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var jmDeploymentName = getJobManagerDeploymentName(clusterName)
@@ -370,7 +370,7 @@ func (observer *ClusterStateObserver) observeJobManagerDeployment(
 }
 
 func (observer *ClusterStateObserver) observeTaskManagerDeployment(
-	observedDeployment *appsv1.Deployment) error {
+	observedDeployment *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var tmDeploymentName = getTaskManagerDeploymentName(clusterName)
@@ -382,7 +382,7 @@ func (observer *ClusterStateObserver) observeDeployment(
 	namespace string,
 	name string,
 	component string,
-	observedDeployment *appsv1.Deployment) error {
+	observedDeployment *appsv1.StatefulSet) error {
 	var log = observer.log.WithValues("component", component)
 	var err = observer.k8sClient.Get(
 		observer.context,

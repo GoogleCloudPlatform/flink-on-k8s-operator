@@ -892,8 +892,8 @@ func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1
 	return nil
 }
 
-func getDeploymentState(deployment *appsv1.Deployment) string {
-	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
+func getDeploymentState(deployment *appsv1.StatefulSet) string {
+	if deployment.Status.ReadyReplicas >= *deployment.Spec.Replicas {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady

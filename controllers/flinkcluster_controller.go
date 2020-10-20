@@ -88,6 +88,7 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
 		Complete(reconciler)

@@ -431,6 +431,10 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 		if o == nil {
 			return false
 		}
+	case *appsv1.StatefulSet:
+		if o == nil {
+			return false
+		}
 	case *corev1.ConfigMap:
 		if o == nil {
 			return false

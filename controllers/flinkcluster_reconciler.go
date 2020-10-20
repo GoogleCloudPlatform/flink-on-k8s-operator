@@ -129,8 +129,8 @@ func (reconciler *ClusterReconciler) reconcileTaskManagerDeployment() error {
 
 func (reconciler *ClusterReconciler) reconcileDeployment(
 	component string,
-	desiredDeployment *appsv1.Deployment,
-	observedDeployment *appsv1.Deployment) error {
+	desiredDeployment *appsv1.StatefulSet,
+	observedDeployment *appsv1.StatefulSet) error {
 	var log = reconciler.log.WithValues("component", component)
 
 	if desiredDeployment != nil && observedDeployment == nil {
@@ -158,7 +158,7 @@ func (reconciler *ClusterReconciler) reconcileDeployment(
 }
 
 func (reconciler *ClusterReconciler) createDeployment(
-	deployment *appsv1.Deployment, component string) error {
+	deployment *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient
@@ -193,7 +193,7 @@ func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, 
 }
 
 func (reconciler *ClusterReconciler) updateDeployment(
-	deployment *appsv1.Deployment, component string) error {
+	deployment *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient
@@ -209,7 +209,7 @@ func (reconciler *ClusterReconciler) updateDeployment(
 }
 
 func (reconciler *ClusterReconciler) deleteDeployment(
-	deployment *appsv1.Deployment, component string) error {
+	deployment *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient

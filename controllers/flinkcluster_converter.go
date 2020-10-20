@@ -77,7 +77,7 @@ func getDesiredClusterState(
 
 // Gets the desired JobManager deployment spec from the FlinkCluster spec.
 func getDesiredJobManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
 	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
 		return nil
@@ -206,16 +206,19 @@ func getDesiredJobManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var jobManagerDeployment = &appsv1.Deployment{
+
+	var jobManagerDeployment = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
 			Name:            jobManagerDeploymentName,
 			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
 			Labels:          deploymentLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: jobManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: jobManagerDeploymentName,
+			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -373,7 +376,7 @@ func getDesiredJobManagerIngress(
 
 // Gets the desired TaskManager deployment spec from a cluster spec.
 func getDesiredTaskManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
 	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
 		return nil
@@ -502,7 +505,8 @@ func getDesiredTaskManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var taskManagerDeployment = &appsv1.Deployment{
+	//var claims = []
+	var taskManagerDeployment = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
 			Name:      taskManagerDeploymentName,
@@ -510,9 +514,12 @@ func getDesiredTaskManagerDeployment(
 				ToOwnerReference(flinkCluster)},
 			Labels: deploymentLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: &taskManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: taskManagerDeploymentName,
+			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
+			PodManagementPolicy: "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,

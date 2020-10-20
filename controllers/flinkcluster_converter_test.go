@@ -282,7 +282,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	// Verify.
 
 	// JmDeployment
-	var expectedDesiredJmDeployment = appsv1.Deployment{
+	var expectedDesiredJmDeployment = appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "flinkjobcluster-sample-jobmanager",
 			Namespace: "default",
@@ -302,7 +302,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app":       "flink",
@@ -310,6 +310,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					"component": "jobmanager",
 				},
 			},
+			ServiceName: "flinkjobcluster-sample-jobmanager",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -550,7 +551,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 		expectedDesiredJmIngress)
 
 	// TmDeployment
-	var expectedDesiredTmDeployment = appsv1.Deployment{
+	var expectedDesiredTmDeployment = appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "flinkjobcluster-sample-taskmanager",
 			Namespace: "default",
@@ -570,8 +571,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
+			ServiceName: "flinkjobcluster-sample-taskmanager",
+			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app":       "flink",

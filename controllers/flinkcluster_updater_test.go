@@ -27,9 +27,9 @@ import (
 
 func TestGetDeploymentStateNotReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.Deployment{
-		Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
-		Status: appsv1.DeploymentStatus{AvailableReplicas: 2},
+	var deployment = appsv1.StatefulSet{
+		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
+		Status: appsv1.StatefulSetStatus{ReadyReplicas: 2},
 	}
 	var state = getDeploymentState(&deployment)
 	assert.Assert(
@@ -38,9 +38,9 @@ func TestGetDeploymentStateNotReady(t *testing.T) {
 
 func TestGetDeploymentStateReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.Deployment{
-		Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
-		Status: appsv1.DeploymentStatus{AvailableReplicas: 3},
+	var deployment = appsv1.StatefulSet{
+		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
+		Status: appsv1.StatefulSetStatus{ReadyReplicas: 3},
 	}
 	var state = getDeploymentState(&deployment)
 	assert.Assert(t, state == v1beta1.ComponentStateReady)
