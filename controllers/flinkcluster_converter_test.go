@@ -240,10 +240,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
 			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
-			EnvFrom:        []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+			EnvFrom: []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: "FOOMAP",
-			}}}},
+				}}}},
 			HadoopConfig: &v1beta1.HadoopConfig{
 				ConfigMapName: "hadoop-configmap",
 				MountPath:     "/etc/hadoop/conf",
@@ -1029,12 +1029,12 @@ func Test_getLogConf(t *testing.T) {
 			name: "extra keys preserved",
 			args: args{v1beta1.FlinkClusterSpec{LogConfig: map[string]string{
 				"log4j-console.properties": "abc",
-				"file.txt":      						"def",
+				"file.txt":                 "def",
 			}}},
 			want: map[string]string{
 				"log4j-console.properties": "abc",
-				"logback-console.xml": 			DefaultLogbackConfig,
-				"file.txt":      						"def",
+				"logback-console.xml":      DefaultLogbackConfig,
+				"file.txt":                 "def",
 			},
 		},
 	}
