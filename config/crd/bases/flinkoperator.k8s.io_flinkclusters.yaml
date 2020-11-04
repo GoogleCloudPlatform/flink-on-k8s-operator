@@ -3279,6 +3279,8 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            recreateOnUpdate:
+              type: boolean
             revisionHistoryLimit:
               format: int32
               type: integer

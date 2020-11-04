@@ -140,7 +140,12 @@ func (reconciler *ClusterReconciler) reconcileStatefulSet(
 	if desiredStatefulSet != nil && observedStatefulSet != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
 			updateComponent := fmt.Sprintf("%v StatefulSet", component)
-			err := reconciler.deleteOldComponent(desiredStatefulSet, observedStatefulSet, updateComponent)
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredStatefulSet, observedStatefulSet, updateComponent)
+			} else {
+				err = reconciler.updateComponent(desiredStatefulSet, updateComponent)
+			}
 			if err != nil {
 				return err
 			}
@@ -192,6 +197,21 @@ func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, 
 	return nil
 }
 
+func (reconciler *ClusterReconciler) updateComponent(desired runtime.Object, component string) error {
+	var log = reconciler.log.WithValues("component", component)
+	var context = reconciler.context
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Update component", "component", desired)
+	err := k8sClient.Update(context, desired)
+	if err != nil {
+		log.Error(err, "Failed to update component for update")
+		return err
+	}
+	log.Info("Component update successfully")
+	return nil
+}
+
 func (reconciler *ClusterReconciler) updateStatefulSet(
 	statefulSet *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
@@ -238,7 +258,12 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 			// v1.Service API does not handle update correctly when below values are empty.
 			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
 			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
-			err := reconciler.deleteOldComponent(desiredJmService, observedJmService, "JobManager service")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredJmService, observedJmService, "JobManager service")
+			} else {
+				err = reconciler.updateComponent(desiredJmService, "JobManager service")
+			}
 			if err != nil {
 				return err
 			}
@@ -298,7 +323,12 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
-			err := reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			} else {
+				err = reconciler.updateComponent(desiredJmIngress, "JobManager ingress")
+			}
 			if err != nil {
 				return err
 			}
@@ -358,7 +388,12 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
-			err := reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			} else {
+				err = reconciler.updateComponent(desiredConfigMap, "ConfigMap")
+			}
 			if err != nil {
 				return err
 			}
