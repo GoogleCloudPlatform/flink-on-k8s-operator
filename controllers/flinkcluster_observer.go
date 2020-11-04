@@ -552,15 +552,11 @@ func (observer *ClusterStateObserver) truncateHistory(observed *ObservedClusterS
 		historyLimit = 10
 	}
 
-	history := make([]*appsv1.ControllerRevision, 0, len(revisions))
-	historyLen := len(history)
-	if historyLen <= historyLimit {
-		return nil
-	}
+	nonLiveHistory := getNonLiveHistory(revisions, historyLimit)
+
 	// delete any non-live history to maintain the revision limit.
-	history = history[:(historyLen - historyLimit)]
-	for i := 0; i < len(history); i++ {
-		if err := observer.history.DeleteControllerRevision(history[i]); err != nil {
+	for i := 0; i < len(nonLiveHistory); i++ {
+		if err := observer.history.DeleteControllerRevision(nonLiveHistory[i]); err != nil {
 			return err
 		}
 	}
