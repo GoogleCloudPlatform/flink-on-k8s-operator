@@ -553,3 +553,18 @@ func TestGetFlinkAPIBaseURL(t *testing.T) {
 	apiBaseURL = getFlinkAPIBaseURL(&cluster)
 	assert.Equal(t, apiBaseURL, "http://mycluster-jobmanager.default.svc.my.domain:8004")
 }
+
+func TestGetNonLiveHistory(t *testing.T) {
+	revison0 := appsv1.ControllerRevision{Revision: int64(0)}
+	revison1 := appsv1.ControllerRevision{Revision: int64(1)}
+	revisions := []*appsv1.ControllerRevision{&revison0, &revison1}
+
+	historyLimit := 1
+	nonLiveHistory := getNonLiveHistory(revisions, historyLimit)
+	assert.Equal(t, len(nonLiveHistory), 1)
+	assert.Equal(t, nonLiveHistory[0].Revision, int64(0))
+
+	historyLimit = 3
+	nonLiveHistory = getNonLiveHistory(revisions, historyLimit)
+	assert.Equal(t, len(nonLiveHistory), 0)
+}

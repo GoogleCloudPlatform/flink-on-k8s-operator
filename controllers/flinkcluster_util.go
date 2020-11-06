@@ -519,3 +519,17 @@ func getUpdateState(observed ObservedClusterState) UpdateState {
 	}
 	return UpdateStateUpdating
 }
+
+func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int) []*appsv1.ControllerRevision {
+
+	history := append([]*appsv1.ControllerRevision{}, revisions...)
+	nonLiveHistory := make([]*appsv1.ControllerRevision, 0)
+
+	historyLen := len(history)
+	if historyLen <= historyLimit {
+		return nonLiveHistory
+	}
+
+	nonLiveHistory = append(nonLiveHistory, history[:(historyLen-historyLimit)]...)
+	return nonLiveHistory
+}
