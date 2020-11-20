@@ -50,7 +50,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	var tolerationSeconds int64 = 30
 	var restartPolicy = v1beta1.JobRestartPolicyFromSavepointOnFailure
 	var className = "org.apache.flink.examples.java.wordcount.WordCount"
-	var serviceAccount = "default"
+	var serviceAccount = "serviceAccountTest"
 	var hostFormat = "{{$clusterName}}.example.com"
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
