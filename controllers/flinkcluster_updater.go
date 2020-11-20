@@ -388,67 +388,15 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 
 	// (Optional) Job.
 	var jobStopped = false
-	var jobSucceeded = false
-	var jobFailed = false
-	var jobCancelled = false
-	var observedJob = observed.job
-	var recordedJobStatus = recorded.Components.Job
-	var jobStatus *v1beta1.JobStatus
-	if !isComponentUpdated(observedJob, *observed.cluster) && observed.job == nil {
-		jobStatus = &v1beta1.JobStatus{}
-		if recorded.Components.Job != nil {
-			recorded.Components.Job.DeepCopyInto(jobStatus)
-		}
-		jobStatus.State = v1beta1.JobStateUpdating
-	} else if observedJob != nil {
-		jobStatus = &v1beta1.JobStatus{}
-		if recordedJobStatus != nil {
-			recordedJobStatus.DeepCopyInto(jobStatus)
-		}
-		jobStatus.Name = observedJob.ObjectMeta.Name
-		jobStatus.FromSavepoint = getFromSavepoint(observedJob.Spec)
-		var flinkJobID = updater.getFlinkJobID()
-		if flinkJobID != nil {
-			jobStatus.ID = *flinkJobID
-		}
-		if observedJob.Status.Failed > 0 {
-			jobStatus.State = v1beta1.JobStateFailed
-			jobStopped = true
-			jobFailed = true
-		} else if observedJob.Status.Succeeded > 0 {
-			jobStatus.State = v1beta1.JobStateSucceeded
-			jobStopped = true
-			jobSucceeded = true
-		} else {
-			// When job status is Active, it is possible that the pod is still
-			// Pending (for scheduling), so we use Flink job ID to determine
-			// the actual state.
-			if flinkJobID == nil {
-				jobStatus.State = v1beta1.JobStatePending
-			} else {
-				jobStatus.State = v1beta1.JobStateRunning
-			}
-			if recordedJobStatus != nil &&
-				(recordedJobStatus.State == v1beta1.JobStateFailed ||
-					recordedJobStatus.State == v1beta1.JobStateCancelled) {
-				jobStatus.RestartCount++
-			}
-		}
-	} else if recordedJobStatus != nil {
-		jobStopped = true
-		jobStatus = recordedJobStatus.DeepCopy()
-		if isJobCancelRequested(*observed.cluster) || jobStatus.State == v1beta1.JobStateCancelled {
-			jobStatus.State = v1beta1.JobStateCancelled
-			jobCancelled = true
-		}
-	}
-	if jobStatus != nil && observed.savepoint != nil && observed.savepoint.IsSuccessful() {
-		jobStatus.SavepointGeneration++
-		jobStatus.LastSavepointTriggerID = observed.savepoint.TriggerID
-		jobStatus.SavepointLocation = observed.savepoint.Location
-		setTimestamp(&jobStatus.LastSavepointTime)
-	}
+	var jobStatus = updater.getFlinkJobStatus()
 	status.Components.Job = jobStatus
+	if jobStatus != nil &&
+		(jobStatus.State == v1beta1.JobStateSucceeded ||
+			jobStatus.State == v1beta1.JobStateFailed ||
+			jobStatus.State == v1beta1.JobStateCancelled ||
+			jobStatus.State == v1beta1.JobStateSuspended) {
+		jobStopped = true
+	}
 
 	// Derive the new cluster state.
 	switch recorded.State {
@@ -476,13 +424,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			status.State = v1beta1.ClusterStateUpdating
 		} else if jobStopped {
 			var policy = observed.cluster.Spec.Job.CleanupPolicy
-			if jobSucceeded &&
+			if jobStatus.State == v1beta1.JobStateSucceeded &&
 				policy.AfterJobSucceeds != v1beta1.CleanupActionKeepCluster {
 				status.State = v1beta1.ClusterStateStopping
-			} else if jobFailed &&
+			} else if jobStatus.State == v1beta1.JobStateFailed &&
 				policy.AfterJobFails != v1beta1.CleanupActionKeepCluster {
 				status.State = v1beta1.ClusterStateStopping
-			} else if jobCancelled &&
+			} else if jobStatus.State == v1beta1.JobStateCancelled &&
 				policy.AfterJobCancelled != v1beta1.CleanupActionKeepCluster {
 				status.State = v1beta1.ClusterStateStopping
 			} else {
@@ -713,9 +661,9 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 // to transient error or being skiped as an optimization.
 func (updater *ClusterStatusUpdater) getFlinkJobID() *string {
 	// Observed.
-	var observedID = updater.observed.flinkJobID
-	if observedID != nil && len(*observedID) > 0 {
-		return observedID
+	var observedFlinkJob = updater.observed.flinkJob
+	if observedFlinkJob != nil && len(observedFlinkJob.ID) > 0 {
+		return &observedFlinkJob.ID
 	}
 
 	// Recorded.
@@ -725,6 +673,63 @@ func (updater *ClusterStatusUpdater) getFlinkJobID() *string {
 	}
 
 	return nil
+}
+
+func (updater *ClusterStatusUpdater) getFlinkJobStatus() *v1beta1.JobStatus {
+	var observed = updater.observed
+	var observedFlinkJob = updater.observed.flinkJob
+	var observedJob = updater.observed.job
+	var observedCluster = updater.observed.cluster
+	var observedSavepoint = updater.observed.savepoint
+	var recordedJobStatus = updater.observed.cluster.Status.Components.Job
+	var newJobStatus *v1beta1.JobStatus
+
+	if recordedJobStatus == nil {
+		return nil
+	}
+	newJobStatus = recordedJobStatus.DeepCopy()
+
+	// Determine job state
+	var jobState string
+	switch {
+	// Updating state
+	case !isClusterUpdated(observed) && observedFlinkJob == nil:
+		jobState = v1beta1.JobStateUpdating
+	// Terminated state
+	case isJobTerminated(observedCluster.Spec.Job.RestartPolicy, recordedJobStatus):
+		jobState = recordedJobStatus.State
+	// Active state
+	case observedFlinkJob != nil:
+		jobState = getFlinkJobDeploymentState(observedFlinkJob.Status)
+	// When Flink job not found
+	case isFlinkAPIReady(observed):
+		switch recordedJobStatus.State {
+		case v1beta1.JobStateRunning:
+			jobState = v1beta1.JobStateLost
+		case v1beta1.JobStatePending:
+			if observedJob != nil && observedJob.Status.Failed > 0 {
+				jobState = v1beta1.JobStateFailed
+			} else {
+				jobState = v1beta1.JobStatePending
+			}
+		default:
+			jobState = recordedJobStatus.State
+		}
+	// When Flink API not ready
+	default:
+		jobState = recordedJobStatus.State
+	}
+	newJobStatus.State = jobState
+
+	// Savepoint
+	if newJobStatus != nil && observedSavepoint != nil && observedSavepoint.IsSuccessful() {
+		newJobStatus.SavepointGeneration++
+		newJobStatus.LastSavepointTriggerID = observedSavepoint.TriggerID
+		newJobStatus.SavepointLocation = observedSavepoint.Location
+		setTimestamp(&newJobStatus.LastSavepointTime)
+	}
+
+	return newJobStatus
 }
 
 func (updater *ClusterStatusUpdater) isStatusChanged(

@@ -31,78 +31,82 @@ var submitJobScript = `
 
 set -euo pipefail
 
-JOB_MANAGER="$2"
+function check_job_not_submitted() {
+  local -r MAX_RETRY=2
+  for ((i = 1; i <= MAX_RETRY; i++)); do
+    echo -e "curl -sS http://${FLINK_JM_ADDR}/jobs"
+    if curl -sS "http://${FLINK_JM_ADDR}/jobs" >job_check_log; then
+      if grep -e "\"id\":\"${FLINK_JOB_ID}\"" <job_check_log; then
+        echo -e "\nFound the job. Job is already submitted with provided ID."
+        return 1
+      else
+        cat job_check_log
+        echo -e "\n\nNot found the job. The job is not submitted yet."
+        return 0
+      fi
+    else
+      echo -e "\nFailed to get the job status. The job status is unknown."
+    fi
+    if ((i < MAX_RETRY)); then
+      echo -e "Will retry $((i))/$((MAX_RETRY - 1)) in 5 seconds."
+      sleep 2
+    fi
+  done
 
-function list_jobs() {
-	for i in {1..10}; do
-		if /opt/flink/bin/flink list -a --jobmanager "${JOB_MANAGER}" 2>&1; then
-			return 0
-		else
-			sleep 5
-		fi
-	done
-
-	echo "Failed to list jobs." >&2
-	return 1
+  return 1
 }
 
-function check_existing_jobs() {
-	echo "Checking existing jobs..."
-	list_jobs
-	if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" -e "(FINISHED)" -e "(FAILED)" -e "(CANCELED)" \
-		-e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
-		echo "Found an existing job, skip resubmitting..."
-		return 0
-	fi
-	return 1
+function upload_jar() {
+  echo "curl -sS -X POST -H \"Expect:\" -F \"jarfile=@${FLINK_JOB_JAR_PATH}\" http://${FLINK_JM_ADDR}/jars/upload"
+  if curl -sS -X POST -H "Expect:" -F "jarfile=@${FLINK_JOB_JAR_PATH}" "http://${FLINK_JM_ADDR}/jars/upload" >upload_log; then
+    if jar_id=$(grep -Po 'flink-web-upload\/(.*?).jar' <upload_log | cut -d "/" -f 2); then
+      cat upload_log
+      echo -e "\n\nSucceed to upload the jar.\n"
+      return 0
+    else
+      cat upload_log
+      echo -e "\n\nFailed to upload the jar."
+    fi
+  else
+    echo -e "\nFailed request to upload."
+  fi
+
+  return 1
 }
 
 function submit_job() {
-	echo -e "\nSubmitting job..."
-	echo "/opt/flink/bin/flink run $@"
-	/opt/flink/bin/flink run "$@"
-}
+  echo "curl -sS -d \"{\"jobId\":\"${FLINK_JOB_ID}\"}\" -H \"Content-Type: application/json\" -X POST http://${FLINK_JM_ADDR}/jars/${jar_id}/run"
+  if curl -sS -d "{\"jobId\":\"${FLINK_JOB_ID}\"}" \
+    -H "Content-Type: application/json" \
+    -X POST "http://${FLINK_JM_ADDR}/jars/${jar_id}/run" >job_submit_log; then
+    if grep -e "\"jobid\":\"${FLINK_JOB_ID}\"" <job_submit_log; then
+      echo -e "\nSucceed to submit job."
+      return 0
+    else
+      cat job_submit_log
+      echo -e "\n\nFailed to submit job."
+    fi
+  else
+    echo -e "\nFailed request to submit job."
+  fi
 
-function wait_for_job() {
-	while true; do
-		echo -e "\nWaiting for job to finish..."
-		list_jobs
-
-		# Find active job first.
-		# If the current job is restarted by the operator, there will be records of past stopped jobs.
-		# TODO: It needs to be improved to determine the job state with the submitted job id.
-		if list_jobs | grep -e "(SCHEDULED)" -e "(CREATED)" -e "(SUSPENDED)" \
-			-e "(RUNNING)" -e "(RESTARTING)" -e "(CANCELLING)" -e "(FAILING)" -e "(RECONCILING)"; then
-			echo -e "\nFound an active job."
-		else
-			if list_jobs | grep "(FINISHED)"; then
-				echo -e "\nJob has completed successfully, exiting 0"
-				return 0
-			fi
-			if list_jobs | grep "(FAILED)"; then
-				echo -e "\nJob failed, exiting 1"
-				return 1
-			fi
-			if list_jobs | grep "(CANCELED)"; then
-				echo -e "\nJob has been cancelled, exiting 2"
-				return 2
-			fi
-			if list_jobs | grep "No running jobs" && list_jobs | grep "No scheduled jobs"; then
-				echo -e "\nNo running and scheduled jobs, exiting 3"
-				return 3
-			fi
-			echo -e "\nUnknown job state, check it again in the next iteration."
-		fi
-		sleep 30
-	done
+  return 1
 }
 
 function main() {
-	if ! check_existing_jobs "$@"; then
-		submit_job "$@"
-	fi
+  local jar_id
 
-	wait_for_job "$@"
+  echo -e "* Checking if the job has already been submitted...\n"
+  if ! { \
+    check_job_not_submitted \
+    && upload_jar \
+    && submit_job; \
+  }; then
+    echo -e "\nStop submitting the job."
+    return 1
+  fi
+
+  echo -e "\n* Finished to submit job."
 }
 
 main "$@"

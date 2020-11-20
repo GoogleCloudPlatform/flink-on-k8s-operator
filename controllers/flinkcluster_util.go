@@ -44,6 +44,7 @@ const (
 	SavepointTimeoutSec = 60
 
 	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
+	FlinkJobIDLabel   = "flinkoperator.k8s.io/flink-job-id"
 
 	// TODO: need to be user configurable
 	SavepointAgeForJobUpdateSec      = 300
@@ -160,12 +161,11 @@ func shouldRestartJob(
 
 func shouldUpdateJob(observed ObservedClusterState) bool {
 	var jobStatus = observed.cluster.Status.Components.Job
-	return isUpdateTriggered(observed.cluster.Status) &&
-		(jobStatus == nil ||
-			isJobStopped(jobStatus) ||
-			isSavepointUpToDate(observed.observeTime, *jobStatus))
+	var readyToUpdate = jobStatus == nil || isJobStopped(jobStatus) || isSavepointUpToDate(observed.observeTime, *jobStatus)
+	return isUpdateTriggered(observed.cluster.Status) && readyToUpdate
 }
 
+// TODO
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
 	var jobArgs = jobSpec.Template.Spec.Containers[0].Args
 	for i, arg := range jobArgs {
@@ -374,7 +374,9 @@ func isJobStopped(status *v1beta1.JobStatus) bool {
 	return status != nil &&
 		(status.State == v1beta1.JobStateSucceeded ||
 			status.State == v1beta1.JobStateFailed ||
-			status.State == v1beta1.JobStateCancelled)
+			status.State == v1beta1.JobStateCancelled ||
+			status.State == v1beta1.JobStateSuspended ||
+			status.State == v1beta1.JobStateLost)
 }
 
 func isJobCancelRequested(cluster v1beta1.FlinkCluster) bool {
@@ -511,10 +513,9 @@ func getUpdateState(observed ObservedClusterState) UpdateState {
 		return ""
 	}
 	switch {
-	case observed.job != nil &&
-		observed.job.Labels[RevisionNameLabel] != getNextRevisionName(observed.cluster.Status):
+	case observed.flinkJob != nil:
 		return UpdateStateStoppingJob
-	case isUpdatedAll(observed):
+	case isClusterUpdated(observed):
 		return UpdateStateFinished
 	}
 	return UpdateStateUpdating
@@ -532,4 +533,21 @@ func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int)
 
 	nonLiveHistory = append(nonLiveHistory, history[:(historyLen-historyLimit)]...)
 	return nonLiveHistory
+}
+
+func getFlinkJobDeploymentState(flinkJobState string) string {
+	switch flinkJobState {
+	case "INITIALIZING", "CREATED", "RUNNING", "FAILING", "CANCELLING", "RESTARTING", "RECONCILING":
+		return v1beta1.JobStateRunning
+	case "FINISHED":
+		return v1beta1.JobStateSucceeded
+	case "CANCELED":
+		return v1beta1.JobStateCancelled
+	case "FAILED":
+		return v1beta1.JobStateFailed
+	case "SUSPENDED":
+		return v1beta1.JobStateSuspended
+	default:
+		return v1beta1.JobStateUnknown
+	}
 }

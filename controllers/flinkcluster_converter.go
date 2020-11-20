@@ -592,10 +592,12 @@ func getDesiredJob(
 		return nil
 	}
 
+	// When update not triggered and job should be terminated
 	if !isUpdateTriggered(flinkCluster.Status) {
-		// We need to watch whether job is cancelled already if jobSpec.CancelRequested is deprecated
-		var jobStatus = flinkCluster.Status.Components.Job
-		if isJobCancelRequested(*flinkCluster) || (jobStatus != nil && jobStatus.State == v1beta1.JobStateCancelled) {
+		var recordedJobStatus = flinkCluster.Status.Components.Job
+		var shouldBeTerminated = isJobCancelRequested(*flinkCluster) ||
+			(recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateCancelled)
+		if shouldBeTerminated {
 			return nil
 		}
 	}
@@ -640,7 +642,7 @@ func getDesiredJob(
 
 	var securityContext = jobSpec.SecurityContext
 
-	var envVars = []corev1.EnvVar{}
+	var envVars []corev1.EnvVar
 
 	// If the JAR file is remote, put the URI in the env variable
 	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
@@ -654,6 +656,22 @@ func getDesiredJob(
 			Value: jobSpec.JarFile,
 		})
 	}
+	envVars = append(envVars,
+		corev1.EnvVar{
+			Name: "FLINK_JOB_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: fmt.Sprintf("metadata.labels['%s']", FlinkJobIDLabel)}},
+		},
+		corev1.EnvVar{
+			Name:  "FLINK_JOB_JAR_PATH",
+			Value: jarPath,
+		},
+		corev1.EnvVar{
+			Name:  "FLINK_JM_ADDR",
+			Value: jobManagerAddress,
+		})
+
 	jobArgs = append(jobArgs, jarPath)
 	jobArgs = append(jobArgs, jobSpec.Args...)
 

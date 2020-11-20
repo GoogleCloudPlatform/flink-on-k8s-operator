@@ -41,7 +41,7 @@ const (
 	ComponentStateDeleted  = "Deleted"
 )
 
-// JobState defines states for a Flink job.
+// JobState defines states for a Flink job deployment.
 const (
 	JobStatePending   = "Pending"
 	JobStateRunning   = "Running"
@@ -49,7 +49,9 @@ const (
 	JobStateSucceeded = "Succeeded"
 	JobStateFailed    = "Failed"
 	JobStateCancelled = "Cancelled"
+	JobStateSuspended = "Suspended"
 	JobStateUnknown   = "Unknown"
+	JobStateLost      = "Lost"
 )
 
 // AccessScope defines the access scope of JobManager service.
