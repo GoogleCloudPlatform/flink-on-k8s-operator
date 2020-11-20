@@ -53,9 +53,9 @@ const (
 type UpdateState string
 
 const (
-	UpdateStateStoppingJob UpdateState = "StoppingJob"
-	UpdateStateUpdating    UpdateState = "Updating"
-	UpdateStateFinished    UpdateState = "Finished"
+	UpdateStatePreparing  UpdateState = "Preparing"
+	UpdateStateInProgress UpdateState = "InProgress"
+	UpdateStateFinished   UpdateState = "Finished"
 )
 
 type objectForPatch struct {
@@ -160,10 +160,8 @@ func shouldRestartJob(
 
 func shouldUpdateJob(observed ObservedClusterState) bool {
 	var jobStatus = observed.cluster.Status.Components.Job
-	return isUpdateTriggered(observed.cluster.Status) &&
-		(jobStatus == nil ||
-			isJobStopped(jobStatus) ||
-			isSavepointUpToDate(observed.observeTime, *jobStatus))
+	var readyToUpdate = jobStatus == nil || isJobStopped(jobStatus) || isSavepointUpToDate(observed.observeTime, *jobStatus)
+	return isUpdateTriggered(observed.cluster.Status) && readyToUpdate
 }
 
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
@@ -370,11 +368,18 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	return
 }
 
+func isJobActive(status *v1beta1.JobStatus) bool {
+	return status != nil &&
+		(status.State == v1beta1.JobStateRunning || status.State == v1beta1.JobStatePending)
+}
+
 func isJobStopped(status *v1beta1.JobStatus) bool {
 	return status != nil &&
 		(status.State == v1beta1.JobStateSucceeded ||
 			status.State == v1beta1.JobStateFailed ||
-			status.State == v1beta1.JobStateCancelled)
+			status.State == v1beta1.JobStateCancelled ||
+			status.State == v1beta1.JobStateSuspended ||
+			status.State == v1beta1.JobStateLost)
 }
 
 func isJobCancelRequested(cluster v1beta1.FlinkCluster) bool {
@@ -384,12 +389,12 @@ func isJobCancelRequested(cluster v1beta1.FlinkCluster) bool {
 		(cancelRequested != nil && *cancelRequested)
 }
 
-func isUpdateTriggered(status v1beta1.FlinkClusterStatus) bool {
-	return status.CurrentRevision != status.NextRevision
-}
-
 func isJobTerminated(restartPolicy *v1beta1.JobRestartPolicy, jobStatus *v1beta1.JobStatus) bool {
 	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
+}
+
+func isUpdateTriggered(status v1beta1.FlinkClusterStatus) bool {
+	return status.CurrentRevision != status.NextRevision
 }
 
 func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
@@ -498,26 +503,25 @@ func isClusterUpdated(observed ObservedClusterState) bool {
 }
 
 // isFlinkAPIReady checks whether cluster is ready to submit job.
-// It checks if cluster components is updated with desired revision and Flink API server is ready.
 func isFlinkAPIReady(observed ObservedClusterState) bool {
 	// If the observed Flink job status list is not nil (e.g., emtpy list),
 	// it means Flink REST API server is up and running. It is the source of
 	// truth of whether we can submit a job.
-	return isClusterUpdated(observed) && observed.flinkJobList != nil
+	return observed.flinkJobStatus.flinkJobList != nil
 }
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
+	var recordedJobStatus = observed.cluster.Status.Components.Job
 	if !isUpdateTriggered(observed.cluster.Status) {
 		return ""
 	}
-	switch {
-	case observed.job != nil &&
-		observed.job.Labels[RevisionNameLabel] != getNextRevisionName(observed.cluster.Status):
-		return UpdateStateStoppingJob
-	case isUpdatedAll(observed):
+	if isJobActive(recordedJobStatus) {
+		return UpdateStatePreparing
+	}
+	if isClusterUpdated(observed) {
 		return UpdateStateFinished
 	}
-	return UpdateStateUpdating
+	return UpdateStateInProgress
 }
 
 func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int) []*appsv1.ControllerRevision {
@@ -532,4 +536,21 @@ func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int)
 
 	nonLiveHistory = append(nonLiveHistory, history[:(historyLen-historyLimit)]...)
 	return nonLiveHistory
+}
+
+func getFlinkJobDeploymentState(flinkJobState string) string {
+	switch flinkJobState {
+	case "INITIALIZING", "CREATED", "RUNNING", "FAILING", "CANCELLING", "RESTARTING", "RECONCILING":
+		return v1beta1.JobStateRunning
+	case "FINISHED":
+		return v1beta1.JobStateSucceeded
+	case "CANCELED":
+		return v1beta1.JobStateCancelled
+	case "FAILED":
+		return v1beta1.JobStateFailed
+	case "SUSPENDED":
+		return v1beta1.JobStateSuspended
+	default:
+		return v1beta1.JobStateUnknown
+	}
 }

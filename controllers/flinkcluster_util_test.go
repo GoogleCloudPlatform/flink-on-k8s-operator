@@ -407,11 +407,11 @@ func TestIsFlinkAPIReady(t *testing.T) {
 			},
 			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmDeployment: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		flinkJobList: &flinkclient.JobStatusList{},
+		configMap:      &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmDeployment:   &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmDeployment:   &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:      &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		flinkJobStatus: FlinkJobStatus{flinkJobList: &flinkclient.JobStatusList{}},
 	}
 	var ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, true)
@@ -483,7 +483,7 @@ func TestGetUpdateState(t *testing.T) {
 		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	var state = getUpdateState(observed)
-	assert.Equal(t, state, UpdateStateStoppingJob)
+	assert.Equal(t, state, UpdateStatePreparing)
 
 	observed = ObservedClusterState{
 		cluster: &v1beta1.FlinkCluster{
@@ -498,7 +498,7 @@ func TestGetUpdateState(t *testing.T) {
 		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	state = getUpdateState(observed)
-	assert.Equal(t, state, UpdateStateUpdating)
+	assert.Equal(t, state, UpdateStateInProgress)
 
 	observed = ObservedClusterState{
 		cluster: &v1beta1.FlinkCluster{
