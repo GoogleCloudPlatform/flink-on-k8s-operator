@@ -5167,7 +5167,7 @@ spec:
                   - name
                   - state
                   type: object
-                jobManagerDeployment:
+                jobManagerStatefulSet:
                   properties:
                     name:
                       type: string
@@ -5204,7 +5204,7 @@ spec:
                   - name
                   - state
                   type: object
-                taskManagerDeployment:
+                taskManagerStatefulSet:
                   properties:
                     name:
                       type: string
@@ -5216,9 +5216,9 @@ spec:
                   type: object
               required:
               - configMap
-              - jobManagerDeployment
+              - jobManagerStatefulSet
               - jobManagerService
-              - taskManagerDeployment
+              - taskManagerStatefulSet
               type: object
             control:
               properties:

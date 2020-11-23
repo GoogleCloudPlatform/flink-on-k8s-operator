@@ -86,8 +86,8 @@ func getConfigMapName(clusterName string) string {
 	return clusterName + "-configmap"
 }
 
-// Gets JobManager deployment name
-func getJobManagerDeploymentName(clusterName string) string {
+// Gets JobManager StatefulSet name
+func getJobManagerStatefulSetName(clusterName string) string {
 	return clusterName + "-jobmanager"
 }
 
@@ -102,7 +102,7 @@ func getJobManagerIngressName(clusterName string) string {
 }
 
 // Gets TaskManager name
-func getTaskManagerDeploymentName(clusterName string) string {
+func getTaskManagerStatefulSetName(clusterName string) string {
 	return clusterName + "-taskmanager"
 }
 
@@ -479,8 +479,8 @@ func areComponentsUpdated(components []runtime.Object, cluster v1beta1.FlinkClus
 func isUpdatedAll(observed ObservedClusterState) bool {
 	components := []runtime.Object{
 		observed.configMap,
-		observed.jmDeployment,
-		observed.tmDeployment,
+		observed.jmStatefulSet,
+		observed.tmStatefulSet,
 		observed.jmService,
 		observed.jmIngress,
 		observed.job,
@@ -494,8 +494,8 @@ func isClusterUpdated(observed ObservedClusterState) bool {
 	}
 	components := []runtime.Object{
 		observed.configMap,
-		observed.jmDeployment,
-		observed.tmDeployment,
+		observed.jmStatefulSet,
+		observed.tmStatefulSet,
 		observed.jmService,
 	}
 	return areComponentsUpdated(components, *observed.cluster)

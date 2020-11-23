@@ -56,11 +56,11 @@ func TestIsStatusChangedFalse(t *testing.T) {
 func TestIsStatusChangedTrue(t *testing.T) {
 	var oldStatus = v1beta1.FlinkClusterStatus{
 		Components: v1beta1.FlinkClusterComponentsStatus{
-			JobManagerDeployment: v1beta1.FlinkClusterComponentState{
+			JobManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-jobmanager",
 				State: "NotReady",
 			},
-			TaskManagerDeployment: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-taskmanager",
 				State: "NotReady",
 			},
@@ -80,11 +80,11 @@ func TestIsStatusChangedTrue(t *testing.T) {
 		State: "Creating"}
 	var newStatus = v1beta1.FlinkClusterStatus{
 		Components: v1beta1.FlinkClusterComponentsStatus{
-			JobManagerDeployment: v1beta1.FlinkClusterComponentState{
+			JobManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-jobmanager",
 				State: "Ready",
 			},
-			TaskManagerDeployment: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-taskmanager",
 				State: "Ready",
 			},

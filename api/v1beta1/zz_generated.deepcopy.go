@@ -86,14 +86,14 @@ func (in *FlinkClusterComponentState) DeepCopy() *FlinkClusterComponentState {
 func (in *FlinkClusterComponentsStatus) DeepCopyInto(out *FlinkClusterComponentsStatus) {
 	*out = *in
 	out.ConfigMap = in.ConfigMap
-	out.JobManagerDeployment = in.JobManagerDeployment
+	out.JobManagerStatefulSet = in.JobManagerStatefulSet
 	out.JobManagerService = in.JobManagerService
 	if in.JobManagerIngress != nil {
 		in, out := &in.JobManagerIngress, &out.JobManagerIngress
 		*out = new(JobManagerIngressStatus)
 		(*in).DeepCopyInto(*out)
 	}
-	out.TaskManagerDeployment = in.TaskManagerDeployment
+	out.TaskManagerStatefulSet = in.TaskManagerStatefulSet
 	if in.Job != nil {
 		in, out := &in.Job, &out.Job
 		*out = new(JobStatus)

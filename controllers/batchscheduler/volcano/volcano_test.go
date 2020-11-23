@@ -32,7 +32,7 @@ func TestGetClusterResource(t *testing.T) {
 	jmRep := int32(1)
 	replicas := int32(4)
 	desiredState := &model.DesiredClusterState{
-		JmDeployment: &appsv1.StatefulSet{
+		JmStatefulSet: &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "flinkjobcluster-sample-jobmanager",
 				Namespace: "default",
@@ -162,7 +162,7 @@ func TestGetClusterResource(t *testing.T) {
 				},
 			},
 		},
-		TmDeployment: &appsv1.StatefulSet{
+		TmStatefulSet: &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "flinkjobcluster-sample-taskmanager",
 				Namespace: "default",

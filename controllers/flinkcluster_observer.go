@@ -51,10 +51,10 @@ type ObservedClusterState struct {
 	cluster            *v1beta1.FlinkCluster
 	revisions          []*appsv1.ControllerRevision
 	configMap          *corev1.ConfigMap
-	jmDeployment       *appsv1.StatefulSet
+	jmStatefulSet       *appsv1.StatefulSet
 	jmService          *corev1.Service
 	jmIngress          *extensionsv1beta1.Ingress
-	tmDeployment       *appsv1.StatefulSet
+	tmStatefulSet       *appsv1.StatefulSet
 	job                *batchv1.Job
 	flinkJobList       *flinkclient.JobStatusList
 	flinkRunningJobIDs []string
@@ -120,19 +120,19 @@ func (observer *ClusterStateObserver) observe(
 		observed.configMap = observedConfigMap
 	}
 
-	// JobManager deployment.
-	var observedJmDeployment = new(appsv1.StatefulSet)
-	err = observer.observeJobManagerDeployment(observedJmDeployment)
+	// JobManager StatefulSet.
+	var observedJmStatefulSet = new(appsv1.StatefulSet)
+	err = observer.observeJobManagerStatefulSet(observedJmStatefulSet)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get JobManager deployment")
+			log.Error(err, "Failed to get JobManager StatefulSet")
 			return err
 		}
-		log.Info("Observed JobManager deployment", "state", "nil")
-		observedJmDeployment = nil
+		log.Info("Observed JobManager StatefulSet", "state", "nil")
+		observedJmStatefulSet = nil
 	} else {
-		log.Info("Observed JobManager deployment", "state", *observedJmDeployment)
-		observed.jmDeployment = observedJmDeployment
+		log.Info("Observed JobManager StatefulSet", "state", *observedJmStatefulSet)
+		observed.jmStatefulSet = observedJmStatefulSet
 	}
 
 	// JobManager service.
@@ -165,19 +165,19 @@ func (observer *ClusterStateObserver) observe(
 		observed.jmIngress = observedJmIngress
 	}
 
-	// TaskManager deployment.
-	var observedTmDeployment = new(appsv1.StatefulSet)
-	err = observer.observeTaskManagerDeployment(observedTmDeployment)
+	// TaskManager StatefulSet.
+	var observedTmStatefulSet = new(appsv1.StatefulSet)
+	err = observer.observeTaskManagerStatefulSet(observedTmStatefulSet)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get TaskManager deployment")
+			log.Error(err, "Failed to get TaskManager StatefulSet")
 			return err
 		}
-		log.Info("Observed TaskManager deployment", "state", "nil")
-		observedTmDeployment = nil
+		log.Info("Observed TaskManager StatefulSet", "state", "nil")
+		observedTmStatefulSet = nil
 	} else {
-		log.Info("Observed TaskManager deployment", "state", *observedTmDeployment)
-		observed.tmDeployment = observedTmDeployment
+		log.Info("Observed TaskManager StatefulSet", "state", *observedTmStatefulSet)
+		observed.tmStatefulSet = observedTmStatefulSet
 	}
 
 	// (Optional) Savepoint.
@@ -360,22 +360,22 @@ func (observer *ClusterStateObserver) observeConfigMap(
 		observedConfigMap)
 }
 
-func (observer *ClusterStateObserver) observeJobManagerDeployment(
+func (observer *ClusterStateObserver) observeJobManagerStatefulSet(
 	observedDeployment *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
-	var jmDeploymentName = getJobManagerDeploymentName(clusterName)
+	var jmStatefulSetName = getJobManagerStatefulSetName(clusterName)
 	return observer.observeDeployment(
-		clusterNamespace, jmDeploymentName, "JobManager", observedDeployment)
+		clusterNamespace, jmStatefulSetName, "JobManager", observedDeployment)
 }
 
-func (observer *ClusterStateObserver) observeTaskManagerDeployment(
+func (observer *ClusterStateObserver) observeTaskManagerStatefulSet(
 	observedDeployment *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
-	var tmDeploymentName = getTaskManagerDeploymentName(clusterName)
+	var tmStatefulSetName = getTaskManagerStatefulSetName(clusterName)
 	return observer.observeDeployment(
-		clusterNamespace, tmDeploymentName, "TaskManager", observedDeployment)
+		clusterNamespace, tmStatefulSetName, "TaskManager", observedDeployment)
 }
 
 func (observer *ClusterStateObserver) observeDeployment(
@@ -393,7 +393,7 @@ func (observer *ClusterStateObserver) observeDeployment(
 		observedDeployment)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get deployment")
+			log.Error(err, "Failed to get StatefulSet")
 		} else {
 			log.Info("Deployment not found")
 		}
