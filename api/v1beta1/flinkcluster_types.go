@@ -221,13 +221,13 @@ type JobManagerSpec struct {
 	// pod.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 
-	// JobManager Deployment pod template annotations.
+	// JobManager StatefulSet pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 
 	// SecurityContext of the JM pod.
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
-	// JobManager Deployment pod template labels.
+	// JobManager StatefulSet pod template labels.
 	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
 
@@ -296,13 +296,13 @@ type TaskManagerSpec struct {
 	// pod.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 
-	// TaskManager Deployment pod template annotations.
+	// TaskManager StatefulSet pod template annotations.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 
 	// SecurityContext of the TM pod.
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
-	// TaskManager Deployment pod template labels.
+	// TaskManager StatefulSet pod template labels.
 	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
 

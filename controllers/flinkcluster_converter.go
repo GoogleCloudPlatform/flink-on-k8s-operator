@@ -100,7 +100,7 @@ func getDesiredJobManagerStatefulSet(
 	var jobManagerStatefulSetName = getJobManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
@@ -212,7 +212,7 @@ func getDesiredJobManagerStatefulSet(
 			Namespace:       clusterNamespace,
 			Name:            jobManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
-			Labels:          deploymentLabels,
+			Labels:          statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: jobManagerSpec.Replicas,
@@ -398,7 +398,7 @@ func getDesiredTaskManagerStatefulSet(
 	var taskManagerStatefulSetName = getTaskManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
 	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 
 	var securityContext = taskManagerSpec.SecurityContext
 
@@ -511,7 +511,7 @@ func getDesiredTaskManagerStatefulSet(
 			Name:      taskManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{
 				ToOwnerReference(flinkCluster)},
-			Labels: deploymentLabels,
+			Labels: statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &taskManagerSpec.Replicas,

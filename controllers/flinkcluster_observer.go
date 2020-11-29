@@ -361,28 +361,28 @@ func (observer *ClusterStateObserver) observeConfigMap(
 }
 
 func (observer *ClusterStateObserver) observeJobManagerStatefulSet(
-	observedDeployment *appsv1.StatefulSet) error {
+	observedStatefulSet *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var jmStatefulSetName = getJobManagerStatefulSetName(clusterName)
-	return observer.observeDeployment(
-		clusterNamespace, jmStatefulSetName, "JobManager", observedDeployment)
+	return observer.observeStatefulSet(
+		clusterNamespace, jmStatefulSetName, "JobManager", observedStatefulSet)
 }
 
 func (observer *ClusterStateObserver) observeTaskManagerStatefulSet(
-	observedDeployment *appsv1.StatefulSet) error {
+	observedStatefulSet *appsv1.StatefulSet) error {
 	var clusterNamespace = observer.request.Namespace
 	var clusterName = observer.request.Name
 	var tmStatefulSetName = getTaskManagerStatefulSetName(clusterName)
-	return observer.observeDeployment(
-		clusterNamespace, tmStatefulSetName, "TaskManager", observedDeployment)
+	return observer.observeStatefulSet(
+		clusterNamespace, tmStatefulSetName, "TaskManager", observedStatefulSet)
 }
 
-func (observer *ClusterStateObserver) observeDeployment(
+func (observer *ClusterStateObserver) observeStatefulSet(
 	namespace string,
 	name string,
 	component string,
-	observedDeployment *appsv1.StatefulSet) error {
+	observedStatefulSet *appsv1.StatefulSet) error {
 	var log = observer.log.WithValues("component", component)
 	var err = observer.k8sClient.Get(
 		observer.context,
@@ -390,7 +390,7 @@ func (observer *ClusterStateObserver) observeDeployment(
 			Namespace: namespace,
 			Name:      name,
 		},
-		observedDeployment)
+		observedStatefulSet)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			log.Error(err, "Failed to get StatefulSet")

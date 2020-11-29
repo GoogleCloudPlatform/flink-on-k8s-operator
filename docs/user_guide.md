@@ -482,6 +482,6 @@ taskManager:
     runAsGroup: 1000
     fsGroup: 2000
 ```
-You can set different SecurityContexts for the TaskManager, JobManager deployments and the Job, but all TaskManager pods
+You can set different SecurityContexts for the TaskManager, JobManager StatefulSets and the Job, but all TaskManager pods
 will share the same one.
 Examples and explanations of the available options can be found [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).

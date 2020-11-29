@@ -25,24 +25,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestGetDeploymentStateNotReady(t *testing.T) {
+func TestGetStatefulSetStateNotReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.StatefulSet{
+	var statefulSet = appsv1.StatefulSet{
 		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
 		Status: appsv1.StatefulSetStatus{ReadyReplicas: 2},
 	}
-	var state = getDeploymentState(&deployment)
+	var state = getStatefulSetState(&statefulSet)
 	assert.Assert(
 		t, state == v1beta1.ComponentStateNotReady)
 }
 
-func TestGetDeploymentStateReady(t *testing.T) {
+func TestGetStatefulSetStateReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.StatefulSet{
+	var statefulSet = appsv1.StatefulSet{
 		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
 		Status: appsv1.StatefulSetStatus{ReadyReplicas: 3},
 	}
-	var state = getDeploymentState(&deployment)
+	var state = getStatefulSetState(&statefulSet)
 	assert.Assert(t, state == v1beta1.ComponentStateReady)
 }
 

@@ -198,9 +198,9 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
       * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
-      * **podAnnotations** (optional): Pod template annotations for the JobManager deployment.
+      * **podAnnotations** (optional): Pod template annotations for the JobManager StatefulSet.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
-      * **podLabels** (optional): Pod template labels for the JobManager deployment.
+      * **podLabels** (optional): Pod template labels for the JobManager StatefulSet.
       * **securityContext** (optional): PodSecurityContext for the JobManager pod. 
       See [more info](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
     * **taskManager** (required): TaskManager spec.
@@ -237,9 +237,9 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
-      * **podAnnotations** (optional): Pod template annotations for the TaskManager deployment.
+      * **podAnnotations** (optional): Pod template annotations for the TaskManager StatefulSet.
         See [more info](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) about annotations.
-      * **podLabels** (optional): Pod template labels for the TaskManager deployment.
+      * **podLabels** (optional): Pod template labels for the TaskManager StatefulSet.
       * **securityContext** (optional): PodSecurityContext for the TaskManager pods. 
         See [more info](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
     * **job** (optional): Job spec. If specified, the cluster is a Flink job cluster; otherwise, it is a Flink
@@ -309,9 +309,9 @@ FlinkCluster
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.
     * **components**: The status of the components.
-      * **jobManagerStatefulSet**: The status of the JobManager deployment.
-        * **name**: The resource name of the JobManager deployment.
-        * **state**: The state of the JobManager deployment.
+      * **jobManagerStatefulSet**: The status of the JobManager StatefulSet.
+        * **name**: The resource name of the JobManager StatefulSet.
+        * **state**: The state of the JobManager StatefulSet.
       * **jobManagerService**: The status of the JobManager service.
         * **name**: The resource name of the JobManager service.
         * **state**: The state of the JobManager service.
@@ -320,9 +320,9 @@ FlinkCluster
         * **name**: The resource name of the JobManager ingress.
         * **state**: The state of the JobManager ingress.
         * **urls**: The generated URLs for JobManager.
-      * **taskManagerStatefulSet**: The status of the TaskManager deployment.
-        * **name**: The resource name of the TaskManager deployment.
-        * **state**: The state of the TaskManager deployment.
+      * **taskManagerStatefulSet**: The status of the TaskManager StatefulSet.
+        * **name**: The resource name of the TaskManager StatefulSet.
+        * **state**: The state of the TaskManager StatefulSet.
       * **job**: The status of the job.
         * **name**: The resource name of the job.
         * **id**: The ID of the Flink job.

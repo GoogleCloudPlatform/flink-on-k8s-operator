@@ -218,7 +218,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.JobManagerStatefulSet.State = v1beta1.ComponentStateUpdating
 	} else if observedJmStatefulSet != nil {
 		status.Components.JobManagerStatefulSet.Name = observedJmStatefulSet.ObjectMeta.Name
-		status.Components.JobManagerStatefulSet.State = getDeploymentState(observedJmStatefulSet)
+		status.Components.JobManagerStatefulSet.State = getStatefulSetState(observedJmStatefulSet)
 		if status.Components.JobManagerStatefulSet.State == v1beta1.ComponentStateReady {
 			runningComponents++
 		}
@@ -373,7 +373,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		status.Components.TaskManagerStatefulSet.Name =
 			observedTmStatefulSet.ObjectMeta.Name
 		status.Components.TaskManagerStatefulSet.State =
-			getDeploymentState(observedTmStatefulSet)
+			getStatefulSetState(observedTmStatefulSet)
 		if status.Components.TaskManagerStatefulSet.State ==
 			v1beta1.ComponentStateReady {
 			runningComponents++
@@ -892,8 +892,8 @@ func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1
 	return nil
 }
 
-func getDeploymentState(deployment *appsv1.StatefulSet) string {
-	if deployment.Status.ReadyReplicas >= *deployment.Spec.Replicas {
+func getStatefulSetState(statefulSet *appsv1.StatefulSet) string {
+	if statefulSet.Status.ReadyReplicas >= *statefulSet.Spec.Replicas {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady
