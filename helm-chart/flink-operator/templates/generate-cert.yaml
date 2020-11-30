@@ -119,7 +119,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: flink-operator-cert-generator
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 rules:
 - apiGroups:
   - ""
@@ -132,7 +132,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: flink-operator-cert-generator
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -140,7 +140,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace }}
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 ---
 apiVersion: batch/v1
 kind: Job
