@@ -77,7 +77,7 @@ FlinkCluster
 |__ status
     |__ state
     |__ components
-        |__ jobManagerStatefulSet
+        |__ jobManagerDeployment
             |__ name
             |__ state
         |__ jobManagerService
@@ -87,7 +87,7 @@ FlinkCluster
             |__ name
             |__ state
             |__ urls
-        |__ taskManagerStatefulSet
+        |__ taskManagerDeployment
             |__ name
             |__ state
         |__ job
@@ -213,9 +213,9 @@ FlinkCluster
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.
     * **components**: The status of the components.
-      * **jobManagerStatefulSet**: The status of the JobManager StatefulSet.
-        * **name**: The resource name of the JobManager StatefulSet.
-        * **state**: The state of the JobManager StatefulSet.
+      * **jobManagerDeployment**: The status of the JobManager Deployment.
+        * **name**: The resource name of the JobManager Deployment.
+        * **state**: The state of the JobManager Deployment.
       * **jobManagerService**: The status of the JobManager service.
         * **name**: The resource name of the JobManager service.
         * **state**: The state of the JobManager service.
@@ -223,9 +223,9 @@ FlinkCluster
         * **name**: The resource name of the JobManager ingress.
         * **state**: The state of the JobManager ingress.
         * **urls**: The generated URLs for JobManager.
-      * **taskManagerStatefulSet**: The status of the TaskManager StatefulSet.
-        * **name**: The resource name of the TaskManager StatefulSet.
-        * **state**: The state of the TaskManager StatefulSet.
+      * **taskManagerDeployment**: The status of the TaskManager Deployment.
+        * **name**: The resource name of the TaskManager Deployment.
+        * **state**: The state of the TaskManager Deployment.
       * **job**: The status of the job.
         * **name**: The resource name of the job.
         * **id**: The ID of the Flink job.

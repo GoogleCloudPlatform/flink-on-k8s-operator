@@ -147,8 +147,6 @@ type JobManagerSpec struct {
 	// Volume mounts in the JobManager container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
-	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
-
 	// Selector which must match a node's labels for the JobManager pod to be
 	// scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
@@ -198,8 +196,6 @@ type TaskManagerSpec struct {
 	// Volume mounts in the TaskManager containers.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes/
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
-
-	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 
 	// Selector which must match a node's labels for the TaskManager pod to be
 	// scheduled on that node.
@@ -376,8 +372,8 @@ type FlinkClusterComponentsStatus struct {
 	// The state of configMap.
 	ConfigMap FlinkClusterComponentState `json:"configMap"`
 
-	// The state of JobManager StatefulSet.
-	JobManagerStatefulSet FlinkClusterComponentState `json:"jobManagerStatefulSet"`
+	// The state of JobManager Deployment.
+	JobManagerDeployment FlinkClusterComponentState `json:"jobManagerDeployment"`
 
 	// The state of JobManager service.
 	JobManagerService FlinkClusterComponentState `json:"jobManagerService"`
@@ -385,8 +381,8 @@ type FlinkClusterComponentsStatus struct {
 	// The state of JobManager ingress.
 	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
 
-	// The state of TaskManager StatefulSet.
-	TaskManagerStatefulSet FlinkClusterComponentState `json:"taskManagerStatefulSet"`
+	// The state of TaskManager Deployment.
+	TaskManagerDeployment FlinkClusterComponentState `json:"taskManagerDeployment"`
 
 	// The status of the job, available only when JobSpec is provided.
 	Job *JobStatus `json:"job,omitempty"`
