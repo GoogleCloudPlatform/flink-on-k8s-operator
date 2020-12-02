@@ -38,17 +38,10 @@ securityContext: {}
 resources:
   limits:
     cpu: 100m
-    memory: 30Mi
+    memory: 128Mi
   requests:
     cpu: 100m
-    memory: 20Mi
-
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+    memory: 128Mi
 
 # Annotations to be added to pods
 podAnnotations: {}
