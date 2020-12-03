@@ -35,6 +35,7 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
+        |__ volumeClaimTemplates
         |__ initContainers
         |__ nodeSelector
         |__ tolerations
@@ -54,6 +55,7 @@ FlinkCluster
         |__ memoryOffHeapMin
         |__ volumes
         |__ volumeMounts
+        |__ volumeClaimTemplates
         |__ initContainers
         |__ nodeSelector
         |__ tolerations
@@ -188,6 +190,8 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the JobManager container.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) volume mounts.
+      * **volumeClaimTemplates** (optional): A template for persistent volume claim each requested and mounted to JobManager pod,  
+        This can be used to mount an external volume with a specific storageClass or larger captivity (for larger/faster state backend)
       * **initContainers** (optional): Init containers of the JobManager pod.
         See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
       * **nodeSelector** (optional): Selector which must match a node's labels for the JobManager pod
@@ -227,6 +231,9 @@ FlinkCluster
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the TaskManager containers.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volume mounts.
+      * **volumeClaimTemplates** (optional): A template for persistent volume claim each requested and mounted to each TaskManager pod,  
+        This can be used to mount an external volume with a specific storageClass or larger captivity (for larger/faster state backend)
+        See [more info](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) about VolumeClaimTemplates in StatefulSet.
       * **initContainers** (optional): Init containers of the TaskManager pod.
         See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
       * **nodeSelector** (optional): Selector which must match a node's labels for the TaskManager pod to
