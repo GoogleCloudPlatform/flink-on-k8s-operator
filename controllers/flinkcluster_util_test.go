@@ -474,7 +474,9 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+			Status: v1beta1.FlinkClusterStatus{
+				Components:      v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{State: v1beta1.JobStateRunning}},
+				CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
 		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
@@ -567,4 +569,35 @@ func TestGetNonLiveHistory(t *testing.T) {
 	historyLimit = 3
 	nonLiveHistory = getNonLiveHistory(revisions, historyLimit)
 	assert.Equal(t, len(nonLiveHistory), 0)
+}
+
+func TestGetFlinkJobDeploymentState(t *testing.T) {
+	// success
+	termMsg := `
+jobID: ec74209eb4e3db8ae72db00bd7a830aa
+message: |
+  Successfully Flink job submitted!
+  /opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
+  Starting execution of program
+  Printing result to stdout. Use --output to specify output path.
+  Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
+`
+	expected := FlinkJobSubmit{
+		JobID: "ec74209eb4e3db8ae72db00bd7a830aa",
+		Message: `Successfully Flink job submitted!
+/opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
+Starting execution of program
+Printing result to stdout. Use --output to specify output path.
+Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
+`,
+	}
+	pod := corev1.Pod{
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: termMsg,
+					}}}}}}
+	submit, _ := getFlinkJobSubmit(&pod)
+	assert.DeepEqual(t, *submit, expected)
 }

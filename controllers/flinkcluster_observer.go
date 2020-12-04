@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	"github.com/googlecloudplatform/flink-operator/controllers/history"
-	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -255,7 +254,7 @@ func (observer *ClusterStateObserver) observeJob(
 		}
 		observed.jobPod = observedJobPod
 		// Extract submit result.
-		observedFlinkJobSubmit, err = observer.getFlinkJobSubmit(observedJobPod)
+		observedFlinkJobSubmit, err = getFlinkJobSubmit(observedJobPod)
 		if err != nil {
 			log.Error(err, "Failed to extract job submit result")
 		}
@@ -641,26 +640,4 @@ func (observer *ClusterStateObserver) truncateHistory(observed *ObservedClusterS
 		}
 	}
 	return nil
-}
-
-// getJobSubmitResult extract submit result from the pod termination log.
-func (observer *ClusterStateObserver) getFlinkJobSubmit(observedPod *corev1.Pod) (*FlinkJobSubmit, error) {
-	if observedPod == nil {
-		return nil, nil
-	}
-	var containerStatuses = observedPod.Status.ContainerStatuses
-	if len(containerStatuses) == 0 ||
-		containerStatuses[0].State.Terminated == nil ||
-		containerStatuses[0].State.Terminated.Message == "" {
-		return nil, nil
-	}
-
-	var rawJobSubmitResult = containerStatuses[0].State.Terminated.Message
-	var result = new(FlinkJobSubmit)
-	var err = yaml.Unmarshal([]byte(rawJobSubmitResult), result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }

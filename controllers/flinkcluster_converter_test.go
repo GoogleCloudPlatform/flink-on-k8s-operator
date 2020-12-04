@@ -790,6 +790,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"./README.txt",
 							},
 							Env: []v1.EnvVar{
+								{Name: "FLINK_JM_ADDR", Value: "flinkjobcluster-sample-jobmanager:8081"},
 								{Name: "HADOOP_CONF_DIR", Value: "/etc/hadoop/conf"},
 								{
 									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
