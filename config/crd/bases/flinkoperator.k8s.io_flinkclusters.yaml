@@ -30,6 +30,8 @@ spec:
           properties:
             batchSchedulerName:
               type: string
+            serviceAccountName:
+              type: string
             envFrom:
               items:
                 properties:
@@ -3282,8 +3284,6 @@ spec:
             revisionHistoryLimit:
               format: int32
               type: integer
-            serviceAccountName:
-              type: string
             taskManager:
               properties:
                 extraPorts:
@@ -5163,6 +5163,7 @@ spec:
                     state:
                       type: string
                   required:
+                  - id
                   - name
                   - state
                   type: object

@@ -675,9 +675,9 @@ func (updater *ClusterStatusUpdater) getFlinkJobID() *string {
 	}
 
 	// Observed from job submitter (when job manager is not ready yet)
-	var observedJobSubmit = updater.observed.flinkJobSubmit
-	if observedJobSubmit != nil && observedJobSubmit.JobID != "" {
-		return &observedJobSubmit.JobID
+	var observedJobSubmitLog = updater.observed.flinkJobSubmitLog
+	if observedJobSubmitLog != nil && observedJobSubmitLog.JobID != "" {
+		return &observedJobSubmitLog.JobID
 	}
 
 	// Recorded.
@@ -723,12 +723,12 @@ func (updater *ClusterStatusUpdater) getJobStatus() *v1beta1.JobStatus {
 			jobState = v1beta1.JobStateLost
 		case v1beta1.JobStatePending:
 			// Flink job is submitted but not confirmed via job manager yet
-			var jobSubmitComplete = updater.getFlinkJobID() != nil
+			var jobSubmitSucceeded = updater.getFlinkJobID() != nil
 			// Flink job submit is in progress
 			var jobSubmitInProgress = observedJob != nil &&
 				observedJob.Status.Succeeded == 0 &&
 				observedJob.Status.Failed == 0
-			if jobSubmitComplete || jobSubmitInProgress {
+			if jobSubmitSucceeded || jobSubmitInProgress {
 				jobState = v1beta1.JobStatePending
 				break
 			}
@@ -738,6 +738,13 @@ func (updater *ClusterStatusUpdater) getJobStatus() *v1beta1.JobStatus {
 		}
 	// When Flink API unavailable
 	default:
+		if recordedJobStatus.State == v1beta1.JobStatePending {
+			var jobSubmitFailed = observedJob != nil && observedJob.Status.Failed > 0
+			if jobSubmitFailed {
+				jobState = v1beta1.JobStateFailed
+				break
+			}
+		}
 		jobState = recordedJobStatus.State
 	}
 

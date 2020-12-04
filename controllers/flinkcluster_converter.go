@@ -594,12 +594,21 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 		return nil
 	}
 
-	// When update not triggered and job should be terminated
+	// Terminated job remains in that state, if no update is triggered.
 	if !isUpdateTriggered(flinkCluster.Status) {
+		// Job cancelled case
 		var recordedJobStatus = flinkCluster.Status.Components.Job
 		var shouldBeTerminated = isJobCancelRequested(*flinkCluster) ||
 			(recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateCancelled)
 		if shouldBeTerminated {
+			return nil
+		}
+
+		// Job failed and no restart case
+		var restartPolicy = jobSpec.RestartPolicy
+		var noRestartFromFailure = recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateFailed &&
+			(restartPolicy == nil || *restartPolicy == v1beta1.JobRestartPolicyNever)
+		if noRestartFromFailure {
 			return nil
 		}
 	}

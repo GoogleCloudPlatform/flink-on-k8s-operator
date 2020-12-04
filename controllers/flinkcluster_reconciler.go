@@ -438,14 +438,8 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 	// Create Flink job submitter
 	if desiredJob != nil && !activeFlinkJob {
+		// Wait until all Flink cluster components are replaced to new revision.
 		if !isClusterUpdated(observed) {
-			return requeueResult, nil
-		}
-
-		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
-		var noRestartFromFailure = recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateFailed &&
-			(restartPolicy == nil || *restartPolicy == v1beta1.JobRestartPolicyNever)
-		if noRestartFromFailure {
 			return requeueResult, nil
 		}
 

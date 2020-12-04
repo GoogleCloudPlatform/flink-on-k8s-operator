@@ -572,32 +572,52 @@ func TestGetNonLiveHistory(t *testing.T) {
 }
 
 func TestGetFlinkJobDeploymentState(t *testing.T) {
+	var pod corev1.Pod
+	var submit, expected *FlinkJobSubmitLog
+	var err error
+	var termMsg string
+
 	// success
-	termMsg := `
+	termMsg = `
 jobID: ec74209eb4e3db8ae72db00bd7a830aa
 message: |
-  Successfully Flink job submitted!
+  Successfully submitted!
   /opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
   Starting execution of program
   Printing result to stdout. Use --output to specify output path.
   Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
 `
-	expected := FlinkJobSubmit{
+	expected = &FlinkJobSubmitLog{
 		JobID: "ec74209eb4e3db8ae72db00bd7a830aa",
-		Message: `Successfully Flink job submitted!
+		Message: `Successfully submitted!
 /opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
 Starting execution of program
 Printing result to stdout. Use --output to specify output path.
 Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
 `,
 	}
-	pod := corev1.Pod{
+	pod = corev1.Pod{
 		Status: corev1.PodStatus{
 			ContainerStatuses: []corev1.ContainerStatus{{
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						Message: termMsg,
 					}}}}}}
-	submit, _ := getFlinkJobSubmit(&pod)
-	assert.DeepEqual(t, *submit, expected)
+	submit, _ = getFlinkJobSubmitLog(&pod)
+	assert.DeepEqual(t, *submit, *expected)
+
+	// failed: pod not found
+	submit, err = getFlinkJobSubmitLog(nil)
+	assert.Error(t, err, "no job pod found, even though submission completed")
+
+	// failed: message not found
+	pod = corev1.Pod{
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: "",
+					}}}}}}
+	submit, err = getFlinkJobSubmitLog(&pod)
+	assert.Error(t, err, "job pod found, but no termination log found even though submission completed")
 }

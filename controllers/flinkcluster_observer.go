@@ -48,21 +48,21 @@ type ClusterStateObserver struct {
 
 // ObservedClusterState holds observed state of a cluster.
 type ObservedClusterState struct {
-	cluster        *v1beta1.FlinkCluster
-	revisions      []*appsv1.ControllerRevision
-	configMap      *corev1.ConfigMap
-	jmDeployment   *appsv1.Deployment
-	jmService      *corev1.Service
-	jmIngress      *extensionsv1beta1.Ingress
-	tmDeployment   *appsv1.Deployment
-	job            *batchv1.Job
-	jobPod         *corev1.Pod
-	flinkJobStatus FlinkJobStatus
-	flinkJobSubmit *FlinkJobSubmit
-	savepoint      *flinkclient.SavepointStatus
-	revisionStatus *RevisionStatus
-	savepointErr   error
-	observeTime    time.Time
+	cluster           *v1beta1.FlinkCluster
+	revisions         []*appsv1.ControllerRevision
+	configMap         *corev1.ConfigMap
+	jmDeployment      *appsv1.Deployment
+	jmService         *corev1.Service
+	jmIngress         *extensionsv1beta1.Ingress
+	tmDeployment      *appsv1.Deployment
+	job               *batchv1.Job
+	jobPod            *corev1.Pod
+	flinkJobStatus    FlinkJobStatus
+	flinkJobSubmitLog *FlinkJobSubmitLog
+	savepoint         *flinkclient.SavepointStatus
+	revisionStatus    *RevisionStatus
+	savepointErr      error
+	observeTime       time.Time
 }
 
 type FlinkJobStatus struct {
@@ -71,7 +71,7 @@ type FlinkJobStatus struct {
 	flinkJobsUnexpected []string
 }
 
-type FlinkJobSubmit struct {
+type FlinkJobSubmitLog struct {
 	JobID   string `yaml:"jobID,omitempty"`
 	Message string `yaml:"message"`
 }
@@ -212,7 +212,7 @@ func (observer *ClusterStateObserver) observeJob(
 	// Observe following
 	var observedJob *batchv1.Job
 	var observedFlinkJobStatus FlinkJobStatus
-	var observedFlinkJobSubmit *FlinkJobSubmit
+	var observedFlinkJobSubmitLog *FlinkJobSubmitLog
 
 	var recordedJobStatus = observed.cluster.Status.Components.Job
 	var err error
@@ -240,10 +240,10 @@ func (observer *ClusterStateObserver) observeJob(
 
 	// Get Flink job ID.
 	// While job state is pending and job submitter is completed, extract the job ID from the pod termination log.
-	var jobSubmitted = observedJob != nil && (observedJob.Status.Succeeded > 0 || observedJob.Status.Failed > 0)
+	var jobSubmitCompleted = observedJob != nil && (observedJob.Status.Succeeded > 0 || observedJob.Status.Failed > 0)
 	var jobInPendingState = recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStatePending
 	var flinkJobID string
-	if jobSubmitted && jobInPendingState {
+	if jobSubmitCompleted && jobInPendingState {
 		var observedJobPod *corev1.Pod
 
 		// Get job submitter pod resource.
@@ -253,15 +253,16 @@ func (observer *ClusterStateObserver) observeJob(
 			log.Error(err, "Failed to get job pod")
 		}
 		observed.jobPod = observedJobPod
+
 		// Extract submit result.
-		observedFlinkJobSubmit, err = getFlinkJobSubmit(observedJobPod)
+		observedFlinkJobSubmitLog, err = getFlinkJobSubmitLog(observedJobPod)
 		if err != nil {
 			log.Error(err, "Failed to extract job submit result")
 		}
-		if observedFlinkJobSubmit != nil && observedFlinkJobSubmit.JobID != "" {
-			flinkJobID = observedFlinkJobSubmit.JobID
+		if observedFlinkJobSubmitLog != nil && observedFlinkJobSubmitLog.JobID != "" {
+			flinkJobID = observedFlinkJobSubmitLog.JobID
 		}
-		observed.flinkJobSubmit = observedFlinkJobSubmit
+		observed.flinkJobSubmitLog = observedFlinkJobSubmitLog
 	}
 	// Or get the job ID from the recorded job status which is written previous iteration.
 	if flinkJobID == "" && recordedJobStatus != nil {
@@ -492,7 +493,7 @@ func (observer *ClusterStateObserver) observeJobResource(
 		observedJob)
 }
 
-// observeJobPod observes job submitter pod to extract job ID and job submit log from pod termination log.
+// observeJobPod observes job submitter pod.
 func (observer *ClusterStateObserver) observeJobPod(
 	observedPod *corev1.Pod) error {
 	var log = observer.log

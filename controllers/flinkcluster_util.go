@@ -490,6 +490,7 @@ func isUpdatedAll(observed ObservedClusterState) bool {
 	return areComponentsUpdated(components, *observed.cluster)
 }
 
+// isClusterUpdated checks whether all cluster components are replaced to next revision.
 func isClusterUpdated(observed ObservedClusterState) bool {
 	if !isUpdateTriggered(observed.cluster.Status) {
 		return true
@@ -556,20 +557,20 @@ func getFlinkJobDeploymentState(flinkJobState string) string {
 	}
 }
 
-// getFlinkJobSubmit extract submit result from the pod termination log.
-func getFlinkJobSubmit(observedPod *corev1.Pod) (*FlinkJobSubmit, error) {
+// getFlinkJobSubmitLog extract submit result from the pod termination log.
+func getFlinkJobSubmitLog(observedPod *corev1.Pod) (*FlinkJobSubmitLog, error) {
 	if observedPod == nil {
-		return nil, nil
+		return nil, fmt.Errorf("no job pod found, even though submission completed")
 	}
 	var containerStatuses = observedPod.Status.ContainerStatuses
 	if len(containerStatuses) == 0 ||
 		containerStatuses[0].State.Terminated == nil ||
 		containerStatuses[0].State.Terminated.Message == "" {
-		return nil, nil
+		return nil, fmt.Errorf("job pod found, but no termination log found even though submission completed")
 	}
 
 	var rawJobSubmitResult = containerStatuses[0].State.Terminated.Message
-	var result = new(FlinkJobSubmit)
+	var result = new(FlinkJobSubmitLog)
 	var err = yaml.Unmarshal([]byte(rawJobSubmitResult), result)
 	if err != nil {
 		return nil, err
