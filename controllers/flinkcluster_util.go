@@ -569,6 +569,11 @@ func getFlinkJobSubmitLog(observedPod *corev1.Pod) (*FlinkJobSubmitLog, error) {
 		return nil, fmt.Errorf("job pod found, but no termination log found even though submission completed")
 	}
 
+	// The job submission script writes the submission log to the pod termination log at the end of execution.
+	// If the job submission is successful, the extracted job ID is also included.
+	// The job submit script writes the submission result in YAML format,
+	// so parse it here to get the ID - if available - and log.
+	// Note: https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/
 	var rawJobSubmitResult = containerStatuses[0].State.Terminated.Message
 	var result = new(FlinkJobSubmitLog)
 	var err = yaml.Unmarshal([]byte(rawJobSubmitResult), result)
