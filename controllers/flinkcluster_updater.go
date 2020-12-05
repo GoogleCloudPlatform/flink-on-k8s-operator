@@ -192,7 +192,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	// jmDeployment, jmService, tmDeployment.
 	var totalComponents = 3
 	var updateState = getUpdateState(*observed)
-	var isClusterUpdating = !isClusterUpdated(*observed) && updateState == UpdateStateInProgress
+	var isClusterUpdating = !isClusterUpdateToDate(*observed) && updateState == UpdateStateInProgress
 	var isJobUpdating = recorded.Components.Job != nil && recorded.Components.Job.State == v1beta1.JobStateUpdating
 
 	// ConfigMap.

@@ -438,8 +438,8 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 	// Create Flink job submitter
 	if desiredJob != nil && !activeFlinkJob {
-		// Wait until all Flink cluster components are replaced to new revision.
-		if !isClusterUpdated(observed) {
+		// If update triggered, wait until all Flink cluster components are replaced with next revision.
+		if !isClusterUpdateToDate(observed) {
 			return requeueResult, nil
 		}
 

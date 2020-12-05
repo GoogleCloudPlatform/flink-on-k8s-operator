@@ -490,8 +490,8 @@ func isUpdatedAll(observed ObservedClusterState) bool {
 	return areComponentsUpdated(components, *observed.cluster)
 }
 
-// isClusterUpdated checks whether all cluster components are replaced to next revision.
-func isClusterUpdated(observed ObservedClusterState) bool {
+// isClusterUpdateToDate checks whether all cluster components are replaced to next revision.
+func isClusterUpdateToDate(observed ObservedClusterState) bool {
 	if !isUpdateTriggered(observed.cluster.Status) {
 		return true
 	}
@@ -520,7 +520,7 @@ func getUpdateState(observed ObservedClusterState) UpdateState {
 	if isJobActive(recordedJobStatus) {
 		return UpdateStatePreparing
 	}
-	if isClusterUpdated(observed) {
+	if isClusterUpdateToDate(observed) {
 		return UpdateStateFinished
 	}
 	return UpdateStateInProgress

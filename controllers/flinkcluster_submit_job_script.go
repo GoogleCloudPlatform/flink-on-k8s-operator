@@ -79,13 +79,13 @@ function check_jm_ready() {
     echo_log "\nReached max retry count(${MAX_RETRY}) to check job manager status." "job_check_log"
     echo_log "Aborted to submit job." "job_check_log"
 
-    write_term_log "Aborted submit because JobManager is unavailable." "job_check_log"
+    format_log_message "Aborted submit because JobManager is unavailable." "job_check_log" >>"${TERM_LOG}"
 
     return 1
 }
 
 function submit_job() {
-    local job_id
+    local job_id=""
 
     # Submit job and extract the job ID
     echo "/opt/flink/bin/flink run $*" | tee -a submit_log
@@ -96,14 +96,14 @@ function submit_job() {
 
     # Write result as YAML format to pod termination-log.
     # On failure, write log only.
-    if [[ -z ${job_id+x} ]]; then
-        write_term_log "Failed to submit." "submit_log"
+    if [[ -z ${job_id} ]]; then
+        format_log_message "Failed to submit." "submit_log" >>"${TERM_LOG}"
         return 1
     fi
 
     # On success, write job ID and log.
     echo "jobID: ${job_id}" >"${TERM_LOG}"
-    write_term_log "Successfully submitted!" "submit_log"
+    format_log_message "Successfully submitted!" "submit_log" >>"${TERM_LOG}"
 
     return 0
 }
@@ -114,14 +114,14 @@ function echo_log() {
     echo -e "${msg}" | tee -a "${log_file}"
 }
 
-# Write submit result to pod termination log file as YAML format.
-function write_term_log() {
+# Format log as YAML format.
+function format_log_message() {
     local result_msg="$1"
     local log_file="$2"
 
     # Write result message.
-    echo "message: |" >>"${TERM_LOG}"
-    echo "  ${result_msg}" >>"${TERM_LOG}"
+    echo "message: |"
+    echo "  ${result_msg}"
 
     # Append submit log to message.
     # Two space indentation is required to write strings in the form of YAML literal block scalar.
@@ -138,7 +138,7 @@ function write_term_log() {
         fi
 
         # Insert indentation before printing line.
-        printf "  %s\n" "${line}" >>"${TERM_LOG}"
+        printf "  %s\n" "${line}"
     done <"${log_file}"
 }
 
