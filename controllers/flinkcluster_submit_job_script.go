@@ -53,11 +53,9 @@ function check_jm_ready() {
     local -r MAX_RETRY=60
     local -r RETRY_INTERVAL=5s
     local -r REQUIRED_SUCCESS_NUMBER=2
-    local -r CHECK_START_DELAY=5s
     local success_count=0
 
-    echo_log "Checking job manager to be ready. Will check success of ${REQUIRED_SUCCESS_NUMBER} API calls for stable job submission. Start to check in ${CHECK_START_DELAY}. " "job_check_log"
-    sleep "${CHECK_START_DELAY}"
+    echo_log "Checking job manager to be ready. Will check success of ${REQUIRED_SUCCESS_NUMBER} API calls for stable job submission." "job_check_log"
     for ((i = 1; i <= MAX_RETRY; i++)); do
         echo_log "curl -sS \"http://${FLINK_JM_ADDR}/jobs\"" "job_check_log"
         if curl -sS "http://${FLINK_JM_ADDR}/jobs" 2>&1 | tee -a job_check_log; then
