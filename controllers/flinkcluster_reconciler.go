@@ -413,7 +413,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var desiredJob = reconciler.desired.Job
 	var observed = reconciler.observed
 	var observedJob = observed.job
-	var recordedJobStatus = observed.cluster.Status.Components.Job
+	var observedJobStatus = observed.cluster.Status.Components.Job
 	var activeFlinkJob bool
 	var err error
 
@@ -430,7 +430,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	}
 
 	// Check if Flink job is active
-	if isJobActive(recordedJobStatus) {
+	if isJobActive(observedJobStatus) {
 		activeFlinkJob = true
 	} else {
 		activeFlinkJob = false
@@ -493,14 +493,8 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			}
 		}
 
-		var jobStatus = reconciler.observed.cluster.Status.Components.Job
-		if !isJobStopped(jobStatus) {
-			log.Info("Job is not finished yet, no action", "jobID", jobID)
-			return requeueResult, nil
-		}
-
-		log.Info("Job has finished, no action")
-		return ctrl.Result{}, nil
+		log.Info("Job is not finished yet, no action", "jobID", jobID)
+		return requeueResult, nil
 	}
 
 	// Stop Flink job
@@ -531,6 +525,11 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 
 		return ctrl.Result{}, err
 	}
+
+	if isJobStopped(observedJobStatus) {
+		log.Info("Job has finished, no action")
+	}
+
 	return ctrl.Result{}, nil
 }
 

@@ -147,15 +147,14 @@ func canTakeSavepoint(cluster v1beta1.FlinkCluster) bool {
 		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
 }
 
-// shouldRestartJob returns true if the controller should restart the failed
-// job.
+// shouldRestartJob returns true if the controller should restart failed or lost job.
 func shouldRestartJob(
 	restartPolicy *v1beta1.JobRestartPolicy,
 	jobStatus *v1beta1.JobStatus) bool {
 	return restartPolicy != nil &&
 		*restartPolicy == v1beta1.JobRestartPolicyFromSavepointOnFailure &&
 		jobStatus != nil &&
-		jobStatus.State == v1beta1.JobStateFailed &&
+		(jobStatus.State == v1beta1.JobStateFailed || jobStatus.State == v1beta1.JobStateLost) &&
 		len(jobStatus.SavepointLocation) > 0
 }
 
@@ -513,11 +512,11 @@ func isFlinkAPIReady(observed ObservedClusterState) bool {
 }
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
-	var recordedJobStatus = observed.cluster.Status.Components.Job
+	var observedJobStatus = observed.cluster.Status.Components.Job
 	if !isUpdateTriggered(observed.cluster.Status) {
 		return ""
 	}
-	if isJobActive(recordedJobStatus) {
+	if isJobActive(observedJobStatus) {
 		return UpdateStatePreparing
 	}
 	if isClusterUpdateToDate(observed) {
@@ -553,7 +552,7 @@ func getFlinkJobDeploymentState(flinkJobState string) string {
 	case "SUSPENDED":
 		return v1beta1.JobStateSuspended
 	default:
-		return v1beta1.JobStateUnknown
+		return ""
 	}
 }
 

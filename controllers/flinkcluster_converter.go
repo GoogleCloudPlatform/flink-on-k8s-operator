@@ -589,26 +589,16 @@ func getDesiredConfigMap(
 func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 	var flinkCluster = observed.cluster
 	var jobSpec = flinkCluster.Spec.Job
+	var jobStatus = flinkCluster.Status.Components.Job
 
 	if jobSpec == nil {
 		return nil
 	}
 
-	// Terminated job remains in that state, if no update is triggered.
-	if !isUpdateTriggered(flinkCluster.Status) {
-		// Job cancelled case
-		var recordedJobStatus = flinkCluster.Status.Components.Job
-		var shouldBeTerminated = isJobCancelRequested(*flinkCluster) ||
-			(recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateCancelled)
-		if shouldBeTerminated {
-			return nil
-		}
-
-		// Job failed and no restart case
-		var restartPolicy = jobSpec.RestartPolicy
-		var noRestartFromFailure = recordedJobStatus != nil && recordedJobStatus.State == v1beta1.JobStateFailed &&
-			(restartPolicy == nil || *restartPolicy == v1beta1.JobRestartPolicyNever)
-		if noRestartFromFailure {
+	// Unless update has been triggered or the job needs to be restarted, keep the job to be stopped in that state.
+	if !(isUpdateTriggered(flinkCluster.Status) || shouldRestartJob(jobSpec.RestartPolicy, jobStatus)) {
+		// Job cancel requested or stopped already
+		if isJobCancelRequested(*flinkCluster) || isJobStopped(jobStatus) {
 			return nil
 		}
 	}

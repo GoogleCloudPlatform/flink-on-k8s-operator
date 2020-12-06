@@ -22,6 +22,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
@@ -716,6 +717,10 @@ func (updater *ClusterStatusUpdater) getJobStatus() *v1beta1.JobStatus {
 	// Derive state from the observed Flink job
 	case observedFlinkJob != nil:
 		jobState = getFlinkJobDeploymentState(observedFlinkJob.Status)
+		if jobState == "" {
+			updater.log.Error(errors.New("failed to determine Flink job deployment state"), "observed flink job status", observedFlinkJob.Status)
+			jobState = recordedJobStatus.State
+		}
 	// When Flink job not found
 	case isFlinkAPIReady(observed):
 		switch recordedJobStatus.State {
