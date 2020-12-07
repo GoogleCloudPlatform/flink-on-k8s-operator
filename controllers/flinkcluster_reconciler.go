@@ -413,7 +413,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var desiredJob = reconciler.desired.Job
 	var observed = reconciler.observed
 	var observedJob = observed.job
-	var observedJobStatus = observed.cluster.Status.Components.Job
+	var recordedJobStatus = observed.cluster.Status.Components.Job
 	var activeFlinkJob bool
 	var err error
 
@@ -430,7 +430,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	}
 
 	// Check if Flink job is active
-	if isJobActive(observedJobStatus) {
+	if isJobActive(recordedJobStatus) {
 		activeFlinkJob = true
 	} else {
 		activeFlinkJob = false
@@ -467,14 +467,14 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	if desiredJob != nil && activeFlinkJob {
 		var jobID = reconciler.getFlinkJobID()
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
-		var observedJobStatus = observed.cluster.Status.Components.Job
+		var recordedJobStatus = observed.cluster.Status.Components.Job
 
 		// Update or recover Flink job by restart.
 		var restartJob bool
 		if shouldUpdateJob(observed) {
 			log.Info("Job is about to be restarted to update")
 			restartJob = true
-		} else if shouldRestartJob(restartPolicy, observedJobStatus) {
+		} else if shouldRestartJob(restartPolicy, recordedJobStatus) {
 			log.Info("Job is about to be restarted to recover failure")
 			restartJob = true
 		}
@@ -526,7 +526,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	if isJobStopped(observedJobStatus) {
+	if isJobStopped(recordedJobStatus) {
 		log.Info("Job has finished, no action")
 	}
 

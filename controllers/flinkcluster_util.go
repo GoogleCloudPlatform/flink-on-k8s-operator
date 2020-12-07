@@ -512,11 +512,11 @@ func isFlinkAPIReady(observed ObservedClusterState) bool {
 }
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
-	var observedJobStatus = observed.cluster.Status.Components.Job
+	var recordedJobStatus = observed.cluster.Status.Components.Job
 	if !isUpdateTriggered(observed.cluster.Status) {
 		return ""
 	}
-	if isJobActive(observedJobStatus) {
+	if isJobActive(recordedJobStatus) {
 		return UpdateStatePreparing
 	}
 	if isClusterUpdateToDate(observed) {

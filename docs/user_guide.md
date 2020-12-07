@@ -260,8 +260,10 @@ kubectl describe flinkclusters <CLUSTER-NAME>
 
 In a job cluster, the job is automatically submitted by the operator.
 The operator creates a submitter for a Flink job.
-When the job submitter starts, it first checks the status of the Flink job manager,
-then submits the job when it is confirmed that it is ready and ends.
+The job submitter itself is created as a Kubernetes job.
+
+When the job submitter starts, it first checks the status of Flink job manager.
+And it submits a Flink job when confirmed that Flink job manager is ready and then terminates.
 
 You can check the Flink job submission status and logs with
 

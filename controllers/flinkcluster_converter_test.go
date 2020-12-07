@@ -730,7 +730,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	// Job
 	var expectedDesiredJob = batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "flinkjobcluster-sample-job",
+			Name:      "flinkjobcluster-sample-job-submitter",
 			Namespace: "default",
 			Labels: map[string]string{
 				"app":             "flink",
