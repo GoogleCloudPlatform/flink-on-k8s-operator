@@ -109,7 +109,7 @@ func getTaskManagerDeploymentName(clusterName string) string {
 
 // Gets Job name
 func getJobName(clusterName string) string {
-	return clusterName + "-job"
+	return clusterName + "-job-submitter"
 }
 
 // TimeConverter converts between time.Time and string.
