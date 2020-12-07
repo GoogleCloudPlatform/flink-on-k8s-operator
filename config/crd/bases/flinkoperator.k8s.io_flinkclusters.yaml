@@ -5163,7 +5163,6 @@ spec:
                     state:
                       type: string
                   required:
-                  - name
                   - state
                   type: object
                 jobManagerDeployment:

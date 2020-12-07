@@ -942,7 +942,6 @@ func (reconciler *ClusterReconciler) updateStatusForNewJob() error {
 		clusterClone.Status.Components.Job = newJobStatus
 	}
 	var fromSavepoint = getFromSavepoint(desiredJob.Spec)
-	newJobStatus.Name = getJobName(clusterClone.Name)
 	newJobStatus.State = v1beta1.JobStatePending
 	newJobStatus.FromSavepoint = fromSavepoint
 	if newJobStatus.SavepointLocation != "" {
