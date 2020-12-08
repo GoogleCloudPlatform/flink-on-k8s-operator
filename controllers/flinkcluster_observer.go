@@ -293,7 +293,7 @@ func (observer *ClusterStateObserver) observeFlinkJobStatus(
 	var flinkJobsUnexpected []string
 
 	// Wait until the job manager is ready.
-	var jmReady = observed.jmDeployment != nil && getDeploymentState(observed.jmDeployment) == v1beta1.ComponentStateReady
+	var jmReady = observed.jmStatefulSet != nil && getStatefulSetState(observed.jmStatefulSet) == v1beta1.ComponentStateReady
 	if !jmReady {
 		log.Info(
 			"Skip getting Flink job status.",
