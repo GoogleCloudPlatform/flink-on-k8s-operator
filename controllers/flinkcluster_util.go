@@ -87,8 +87,8 @@ func getConfigMapName(clusterName string) string {
 	return clusterName + "-configmap"
 }
 
-// Gets JobManager deployment name
-func getJobManagerDeploymentName(clusterName string) string {
+// Gets JobManager StatefulSet name
+func getJobManagerStatefulSetName(clusterName string) string {
 	return clusterName + "-jobmanager"
 }
 
@@ -103,7 +103,7 @@ func getJobManagerIngressName(clusterName string) string {
 }
 
 // Gets TaskManager name
-func getTaskManagerDeploymentName(clusterName string) string {
+func getTaskManagerStatefulSetName(clusterName string) string {
 	return clusterName + "-taskmanager"
 }
 
@@ -436,6 +436,10 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 		if o == nil {
 			return false
 		}
+	case *appsv1.StatefulSet:
+		if o == nil {
+			return false
+		}
 	case *corev1.ConfigMap:
 		if o == nil {
 			return false
@@ -480,8 +484,8 @@ func areComponentsUpdated(components []runtime.Object, cluster v1beta1.FlinkClus
 func isUpdatedAll(observed ObservedClusterState) bool {
 	components := []runtime.Object{
 		observed.configMap,
-		observed.jmDeployment,
-		observed.tmDeployment,
+		observed.jmStatefulSet,
+		observed.tmStatefulSet,
 		observed.jmService,
 		observed.jmIngress,
 		observed.job,
@@ -496,8 +500,8 @@ func isClusterUpdateToDate(observed ObservedClusterState) bool {
 	}
 	components := []runtime.Object{
 		observed.configMap,
-		observed.jmDeployment,
-		observed.tmDeployment,
+		observed.jmStatefulSet,
+		observed.tmStatefulSet,
 		observed.jmService,
 	}
 	return areComponentsUpdated(components, *observed.cluster)

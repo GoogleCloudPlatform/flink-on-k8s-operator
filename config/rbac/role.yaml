@@ -30,6 +30,7 @@ rules:
   - apps
   resources:
   - deployments
+  - statefulsets
   verbs:
   - get
   - list
@@ -42,6 +43,7 @@ rules:
   - apps
   resources:
   - deployments/status
+  - statefulsets/status
   verbs:
   - get
 - apiGroups:

@@ -88,7 +88,7 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	err = reconciler.reconcileJobManagerDeployment()
+	err = reconciler.reconcileJobManagerStatefulSet()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -103,7 +103,7 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	err = reconciler.reconcileTaskManagerDeployment()
+	err = reconciler.reconcileTaskManagerStatefulSet()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -113,62 +113,62 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	return result, nil
 }
 
-func (reconciler *ClusterReconciler) reconcileJobManagerDeployment() error {
-	return reconciler.reconcileDeployment(
+func (reconciler *ClusterReconciler) reconcileJobManagerStatefulSet() error {
+	return reconciler.reconcileStatefulSet(
 		"JobManager",
-		reconciler.desired.JmDeployment,
-		reconciler.observed.jmDeployment)
+		reconciler.desired.JmStatefulSet,
+		reconciler.observed.jmStatefulSet)
 }
 
-func (reconciler *ClusterReconciler) reconcileTaskManagerDeployment() error {
-	return reconciler.reconcileDeployment(
+func (reconciler *ClusterReconciler) reconcileTaskManagerStatefulSet() error {
+	return reconciler.reconcileStatefulSet(
 		"TaskManager",
-		reconciler.desired.TmDeployment,
-		reconciler.observed.tmDeployment)
+		reconciler.desired.TmStatefulSet,
+		reconciler.observed.tmStatefulSet)
 }
 
-func (reconciler *ClusterReconciler) reconcileDeployment(
+func (reconciler *ClusterReconciler) reconcileStatefulSet(
 	component string,
-	desiredDeployment *appsv1.Deployment,
-	observedDeployment *appsv1.Deployment) error {
+	desiredStatefulSet *appsv1.StatefulSet,
+	observedStatefulSet *appsv1.StatefulSet) error {
 	var log = reconciler.log.WithValues("component", component)
 
-	if desiredDeployment != nil && observedDeployment == nil {
-		return reconciler.createDeployment(desiredDeployment, component)
+	if desiredStatefulSet != nil && observedStatefulSet == nil {
+		return reconciler.createStatefulSet(desiredStatefulSet, component)
 	}
 
-	if desiredDeployment != nil && observedDeployment != nil {
+	if desiredStatefulSet != nil && observedStatefulSet != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
-			updateComponent := fmt.Sprintf("%v deployment", component)
-			err := reconciler.deleteOldComponent(desiredDeployment, observedDeployment, updateComponent)
+			updateComponent := fmt.Sprintf("%v StatefulSet", component)
+			err := reconciler.deleteOldComponent(desiredStatefulSet, observedStatefulSet, updateComponent)
 			if err != nil {
 				return err
 			}
 			return nil
 		}
-		log.Info("Deployment already exists, no action")
+		log.Info("Statefulset already exists, no action")
 		return nil
 	}
 
-	if desiredDeployment == nil && observedDeployment != nil {
-		return reconciler.deleteDeployment(observedDeployment, component)
+	if desiredStatefulSet == nil && observedStatefulSet != nil {
+		return reconciler.deleteStatefulSet(observedStatefulSet, component)
 	}
 
 	return nil
 }
 
-func (reconciler *ClusterReconciler) createDeployment(
-	deployment *appsv1.Deployment, component string) error {
+func (reconciler *ClusterReconciler) createStatefulSet(
+	statefulSet *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient
 
-	log.Info("Creating deployment", "deployment", *deployment)
-	var err = k8sClient.Create(context, deployment)
+	log.Info("Creating StatefulSet", "StatefulSet", *statefulSet)
+	var err = k8sClient.Create(context, statefulSet)
 	if err != nil {
-		log.Error(err, "Failed to create deployment")
+		log.Error(err, "Failed to create StatefulSet")
 	} else {
-		log.Info("Deployment created")
+		log.Info("StatefulSet created")
 	}
 	return err
 }
@@ -192,35 +192,35 @@ func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, 
 	return nil
 }
 
-func (reconciler *ClusterReconciler) updateDeployment(
-	deployment *appsv1.Deployment, component string) error {
+func (reconciler *ClusterReconciler) updateStatefulSet(
+	statefulSet *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient
 
-	log.Info("Updating deployment", "deployment", deployment)
-	var err = k8sClient.Update(context, deployment)
+	log.Info("Updating StatefulSet", "StatefulSet", statefulSet)
+	var err = k8sClient.Update(context, statefulSet)
 	if err != nil {
-		log.Error(err, "Failed to update deployment")
+		log.Error(err, "Failed to update StatefulSet")
 	} else {
-		log.Info("Deployment updated")
+		log.Info("StatefulSet updated")
 	}
 	return err
 }
 
-func (reconciler *ClusterReconciler) deleteDeployment(
-	deployment *appsv1.Deployment, component string) error {
+func (reconciler *ClusterReconciler) deleteStatefulSet(
+	statefulSet *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
 	var log = reconciler.log.WithValues("component", component)
 	var k8sClient = reconciler.k8sClient
 
-	log.Info("Deleting deployment", "deployment", deployment)
-	var err = k8sClient.Delete(context, deployment)
+	log.Info("Deleting StatefulSet", "StatefulSet", statefulSet)
+	var err = k8sClient.Delete(context, statefulSet)
 	err = client.IgnoreNotFound(err)
 	if err != nil {
-		log.Error(err, "Failed to delete deployment")
+		log.Error(err, "Failed to delete StatefulSet")
 	} else {
-		log.Info("Deployment deleted")
+		log.Info("StatefulSet deleted")
 	}
 	return err
 }

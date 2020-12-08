@@ -69,19 +69,19 @@ func getDesiredClusterState(
 	}
 	return model.DesiredClusterState{
 		ConfigMap:    getDesiredConfigMap(cluster),
-		JmDeployment: getDesiredJobManagerDeployment(cluster),
+		JmStatefulSet: getDesiredJobManagerStatefulSet(cluster),
 		JmService:    getDesiredJobManagerService(cluster),
 		JmIngress:    getDesiredJobManagerIngress(cluster),
-		TmDeployment: getDesiredTaskManagerDeployment(cluster),
+		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
 		Job:          getDesiredJob(observed),
 	}
 }
 
-// Gets the desired JobManager deployment spec from the FlinkCluster spec.
-func getDesiredJobManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+// Gets the desired JobManager StatefulSet spec from the FlinkCluster spec.
+func getDesiredJobManagerStatefulSet(
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
-	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
+	if shouldCleanup(flinkCluster, "JobManagerStatefulSet") {
 		return nil
 	}
 
@@ -99,10 +99,10 @@ func getDesiredJobManagerDeployment(
 	for _, port := range jobManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
-	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
+	var jobManagerStatefulSetName = getJobManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
@@ -208,16 +208,19 @@ func getDesiredJobManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var jobManagerDeployment = &appsv1.Deployment{
+
+	var jobManagerStatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
-			Name:            jobManagerDeploymentName,
+			Name:            jobManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
-			Labels:          deploymentLabels,
+			Labels:          statefulSetLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: jobManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: jobManagerStatefulSetName,
+			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -227,7 +230,7 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 	}
-	return jobManagerDeployment
+	return jobManagerStatefulSet
 }
 
 // Gets the desired JobManager service spec from a cluster spec.
@@ -373,11 +376,11 @@ func getDesiredJobManagerIngress(
 	return jobManagerIngress
 }
 
-// Gets the desired TaskManager deployment spec from a cluster spec.
-func getDesiredTaskManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+// Gets the desired TaskManager StatefulSet spec from a cluster spec.
+func getDesiredTaskManagerStatefulSet(
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
-	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
+	if shouldCleanup(flinkCluster, "TaskManagerStatefulSet") {
 		return nil
 	}
 
@@ -394,10 +397,10 @@ func getDesiredTaskManagerDeployment(
 	for _, port := range taskManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
-	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
+	var taskManagerStatefulSetName = getTaskManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
 	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 
 	var securityContext = taskManagerSpec.SecurityContext
 
@@ -504,17 +507,20 @@ func getDesiredTaskManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var taskManagerDeployment = &appsv1.Deployment{
+	var taskManagerStatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
-			Name:      taskManagerDeploymentName,
+			Name:      taskManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{
 				ToOwnerReference(flinkCluster)},
-			Labels: deploymentLabels,
+			Labels: statefulSetLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: &taskManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: taskManagerStatefulSetName,
+			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
+			PodManagementPolicy: "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -524,7 +530,7 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 	}
-	return taskManagerDeployment
+	return taskManagerStatefulSet
 }
 
 // Gets the desired configMap.
@@ -886,7 +892,7 @@ func shouldCleanup(
 	case v1beta1.CleanupActionDeleteCluster:
 		return true
 	case v1beta1.CleanupActionDeleteTaskManager:
-		return component == "TaskManagerDeployment"
+		return component == "TaskManagerStatefulSet"
 	}
 
 	return false

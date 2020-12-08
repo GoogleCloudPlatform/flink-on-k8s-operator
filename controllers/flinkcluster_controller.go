@@ -48,6 +48,8 @@ type FlinkClusterReconciler struct {
 // +kubebuilder:rbac:groups=flinkoperator.k8s.io,resources=flinkclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -88,6 +90,7 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
 		Complete(reconciler)
@@ -177,10 +180,10 @@ func (handler *FlinkClusterHandler) reconcile(
 	} else {
 		log.Info("Desired state", "ConfigMap", "nil")
 	}
-	if desired.JmDeployment != nil {
-		log.Info("Desired state", "JobManager deployment", *desired.JmDeployment)
+	if desired.JmStatefulSet != nil {
+		log.Info("Desired state", "JobManager StatefulSet", *desired.JmStatefulSet)
 	} else {
-		log.Info("Desired state", "JobManager deployment", "nil")
+		log.Info("Desired state", "JobManager StatefulSet", "nil")
 	}
 	if desired.JmService != nil {
 		log.Info("Desired state", "JobManager service", *desired.JmService)
@@ -192,10 +195,10 @@ func (handler *FlinkClusterHandler) reconcile(
 	} else {
 		log.Info("Desired state", "JobManager ingress", "nil")
 	}
-	if desired.TmDeployment != nil {
-		log.Info("Desired state", "TaskManager deployment", *desired.TmDeployment)
+	if desired.TmStatefulSet != nil {
+		log.Info("Desired state", "TaskManager StatefulSet", *desired.TmStatefulSet)
 	} else {
-		log.Info("Desired state", "TaskManager deployment", "nil")
+		log.Info("Desired state", "TaskManager StatefulSet", "nil")
 	}
 	if desired.Job != nil {
 		log.Info("Desired state", "Job", *desired.Job)

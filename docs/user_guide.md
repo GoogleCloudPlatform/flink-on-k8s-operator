@@ -482,6 +482,12 @@ taskManager:
     runAsGroup: 1000
     fsGroup: 2000
 ```
-You can set different SecurityContexts for the TaskManager, JobManager deployments and the Job, but all TaskManager pods
+You can set different SecurityContexts for the TaskManager, JobManager StatefulSets and the Job, but all TaskManager pods
 will share the same one.
 Examples and explanations of the available options can be found [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
+
+### Mounting external volumes to the pods
+If your deployment requires larger storage captivity, or a faster access to the state backend you can use `volumeClaimTemplates` option in TaskManager config
+to create a new claim template and then mount it in `volumeMounts`  
+Check the [FlinkCluster Custom Resource Definition](./crd.md) and [StatefulSet's doc](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) for more info
+
