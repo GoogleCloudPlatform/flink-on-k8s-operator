@@ -41,7 +41,7 @@ const (
 	ComponentStateDeleted  = "Deleted"
 )
 
-// JobState defines states for a Flink job.
+// JobState defines states for a Flink job deployment.
 const (
 	JobStatePending   = "Pending"
 	JobStateRunning   = "Running"
@@ -49,7 +49,9 @@ const (
 	JobStateSucceeded = "Succeeded"
 	JobStateFailed    = "Failed"
 	JobStateCancelled = "Cancelled"
+	JobStateSuspended = "Suspended"
 	JobStateUnknown   = "Unknown"
+	JobStateLost      = "Lost"
 )
 
 // AccessScope defines the access scope of JobManager service.
@@ -537,10 +539,10 @@ type FlinkClusterControlStatus struct {
 // JobStatus defines the status of a job.
 type JobStatus struct {
 	// The name of the Kubernetes job resource.
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 
 	// The ID of the Flink job.
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
 
 	// The state of the Kubernetes job.
 	State string `json:"state"`

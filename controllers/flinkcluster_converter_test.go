@@ -122,162 +122,164 @@ func TestGetDesiredClusterState(t *testing.T) {
 	}
 
 	// Setup.
-	var cluster = &v1beta1.FlinkCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "FlinkCluster",
-			APIVersion: "flinkoperator.k8s.io/v1beta1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "flinkjobcluster-sample",
-			Namespace: "default",
-		},
-		Spec: v1beta1.FlinkClusterSpec{
-			Image:              v1beta1.ImageSpec{Name: "flink:1.8.1"},
-			ServiceAccountName: &serviceAccount,
-			Job: &v1beta1.JobSpec{
-				Args:        []string{"--input", "./README.txt"},
-				ClassName:   &className,
-				JarFile:     "/cache/my-job.jar",
-				Parallelism: &parallelism,
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-						corev1.ResourceMemory: resource.MustParse("256Mi"),
-					},
-					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("200m"),
-						corev1.ResourceMemory: resource.MustParse("512Mi"),
-					},
-				},
-				RestartPolicy: &restartPolicy,
-				Volumes: []corev1.Volume{
-					{
-						Name: "cache-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
+	var observed = &ObservedClusterState{
+		cluster: &v1beta1.FlinkCluster{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "FlinkCluster",
+				APIVersion: "flinkoperator.k8s.io/v1beta1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "flinkjobcluster-sample",
+				Namespace: "default",
+			},
+			Spec: v1beta1.FlinkClusterSpec{
+				Image:              v1beta1.ImageSpec{Name: "flink:1.8.1"},
+				ServiceAccountName: &serviceAccount,
+				Job: &v1beta1.JobSpec{
+					Args:        []string{"--input", "./README.txt"},
+					ClassName:   &className,
+					JarFile:     "/cache/my-job.jar",
+					Parallelism: &parallelism,
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("256Mi"),
+						},
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("200m"),
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
 						},
 					},
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "cache-volume", MountPath: "/cache"},
-				},
-				InitContainers: []corev1.Container{
-					{
-						Name:    "gcs-downloader",
-						Image:   "google/cloud-sdk",
-						Command: []string{"gsutil"},
-						Args: []string{
-							"cp", "gs://my-bucket/my-job.jar", "/cache/my-job.jar",
+					RestartPolicy: &restartPolicy,
+					Volumes: []corev1.Volume{
+						{
+							Name: "cache-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
 						},
 					},
-				},
-				PodAnnotations: map[string]string{
-					"example.com": "example",
-				},
-				SecurityContext: &securityContext,
-			},
-			JobManager: v1beta1.JobManagerSpec{
-				AccessScope: v1beta1.AccessScopeVPC,
-				Ingress: &v1beta1.JobManagerIngressSpec{
-					HostFormat: &hostFormat,
-					Annotations: map[string]string{
-						"kubernetes.io/ingress.class":                "nginx",
-						"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
-						"nginx.ingress.kubernetes.io/rewrite-target": "/",
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "cache-volume", MountPath: "/cache"},
 					},
-					UseTLS: &useTLS,
-				},
-				Ports: v1beta1.JobManagerPorts{
-					RPC:   &jmRPCPort,
-					Blob:  &jmBlobPort,
-					Query: &jmQueryPort,
-					UI:    &jmUIPort,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-						corev1.ResourceMemory: resource.MustParse("256Mi"),
-					},
-					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("200m"),
-						corev1.ResourceMemory: resource.MustParse("512Mi"),
-					},
-				},
-				Tolerations:        tolerations,
-				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   memoryOffHeapMin,
-				PodAnnotations: map[string]string{
-					"example.com": "example",
-				},
-				SecurityContext: &securityContext,
-			},
-			TaskManager: v1beta1.TaskManagerSpec{
-				Replicas: 42,
-				Ports: v1beta1.TaskManagerPorts{
-					Data:  &tmDataPort,
-					RPC:   &tmRPCPort,
-					Query: &tmQueryPort,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("200m"),
-						corev1.ResourceMemory: resource.MustParse("512Mi"),
-					},
-					Limits: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceCPU:    resource.MustParse("500m"),
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
-					},
-				},
-				MemoryOffHeapRatio: &memoryOffHeapRatio,
-				MemoryOffHeapMin:   memoryOffHeapMin,
-				Sidecars:           []corev1.Container{{Name: "sidecar", Image: "alpine"}},
-				Volumes: []corev1.Volume{
-					{
-						Name: "cache-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "gcs-downloader",
+							Image:   "google/cloud-sdk",
+							Command: []string{"gsutil"},
+							Args: []string{
+								"cp", "gs://my-bucket/my-job.jar", "/cache/my-job.jar",
+							},
 						},
 					},
+					PodAnnotations: map[string]string{
+						"example.com": "example",
+					},
+					SecurityContext: &securityContext,
 				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "cache-volume", MountPath: "/cache"},
+				JobManager: v1beta1.JobManagerSpec{
+					AccessScope: v1beta1.AccessScopeVPC,
+					Ingress: &v1beta1.JobManagerIngressSpec{
+						HostFormat: &hostFormat,
+						Annotations: map[string]string{
+							"kubernetes.io/ingress.class":                "nginx",
+							"certmanager.k8s.io/cluster-issuer":          "letsencrypt-stg",
+							"nginx.ingress.kubernetes.io/rewrite-target": "/",
+						},
+						UseTLS: &useTLS,
+					},
+					Ports: v1beta1.JobManagerPorts{
+						RPC:   &jmRPCPort,
+						Blob:  &jmBlobPort,
+						Query: &jmQueryPort,
+						UI:    &jmUIPort,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("256Mi"),
+						},
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("200m"),
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
+						},
+					},
+					Tolerations:        tolerations,
+					MemoryOffHeapRatio: &memoryOffHeapRatio,
+					MemoryOffHeapMin:   memoryOffHeapMin,
+					PodAnnotations: map[string]string{
+						"example.com": "example",
+					},
+					SecurityContext: &securityContext,
 				},
-				Tolerations: tolerations,
-				PodAnnotations: map[string]string{
-					"example.com": "example",
+				TaskManager: v1beta1.TaskManagerSpec{
+					Replicas: 42,
+					Ports: v1beta1.TaskManagerPorts{
+						Data:  &tmDataPort,
+						RPC:   &tmRPCPort,
+						Query: &tmQueryPort,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("200m"),
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
+						},
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceCPU:    resource.MustParse("500m"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+					MemoryOffHeapRatio: &memoryOffHeapRatio,
+					MemoryOffHeapMin:   memoryOffHeapMin,
+					Sidecars:           []corev1.Container{{Name: "sidecar", Image: "alpine"}},
+					Volumes: []corev1.Volume{
+						{
+							Name: "cache-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "cache-volume", MountPath: "/cache"},
+					},
+					Tolerations: tolerations,
+					PodAnnotations: map[string]string{
+						"example.com": "example",
+					},
+					SecurityContext: &securityContext,
 				},
-				SecurityContext: &securityContext,
-			},
-			FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
-			EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
-			EnvFrom: []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "FOOMAP",
-				}}}},
-			HadoopConfig: &v1beta1.HadoopConfig{
-				ConfigMapName: "hadoop-configmap",
-				MountPath:     "/etc/hadoop/conf",
-			},
-			GCPConfig: &v1beta1.GCPConfig{
-				ServiceAccount: &v1beta1.GCPServiceAccount{
-					SecretName: "gcp-service-account-secret",
-					KeyFile:    "gcp_service_account_key.json",
-					MountPath:  "/etc/gcp_service_account/",
+				FlinkProperties: map[string]string{"taskmanager.numberOfTaskSlots": "1"},
+				EnvVars:         []corev1.EnvVar{{Name: "FOO", Value: "abc"}},
+				EnvFrom: []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "FOOMAP",
+					}}}},
+				HadoopConfig: &v1beta1.HadoopConfig{
+					ConfigMapName: "hadoop-configmap",
+					MountPath:     "/etc/hadoop/conf",
+				},
+				GCPConfig: &v1beta1.GCPConfig{
+					ServiceAccount: &v1beta1.GCPServiceAccount{
+						SecretName: "gcp-service-account-secret",
+						KeyFile:    "gcp_service_account_key.json",
+						MountPath:  "/etc/gcp_service_account/",
+					},
+				},
+				LogConfig: map[string]string{
+					"extra-file.txt":           "hello!",
+					"log4j-console.properties": "foo",
+					"logback-console.xml":      "bar",
 				},
 			},
-			LogConfig: map[string]string{
-				"extra-file.txt":           "hello!",
-				"log4j-console.properties": "foo",
-				"logback-console.xml":      "bar",
+			Status: v1beta1.FlinkClusterStatus{
+				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
 			},
-		},
-		Status: v1beta1.FlinkClusterStatus{
-			NextRevision: "flinkjobcluster-sample-85dc8f749-1",
 		},
 	}
 
 	// Run.
-	var desiredState = getDesiredClusterState(cluster, time.Now())
+	var desiredState = getDesiredClusterState(observed, time.Now())
 
 	// Verify.
 
@@ -728,7 +730,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 	// Job
 	var expectedDesiredJob = batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "flinkjobcluster-sample-job",
+			Name:      "flinkjobcluster-sample-job-submitter",
 			Namespace: "default",
 			Labels: map[string]string{
 				"app":             "flink",
@@ -788,6 +790,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 								"./README.txt",
 							},
 							Env: []v1.EnvVar{
+								{Name: "FLINK_JM_ADDR", Value: "flinkjobcluster-sample-jobmanager:8081"},
 								{Name: "HADOOP_CONF_DIR", Value: "/etc/hadoop/conf"},
 								{
 									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -948,76 +951,80 @@ func TestSecurityContext(t *testing.T) {
 	}
 
 	// Provided security context
-	var cluster = &v1beta1.FlinkCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "flinkjobcluster-sample",
-			Namespace: "default",
-		},
-		Spec: v1beta1.FlinkClusterSpec{
-			Job: &v1beta1.JobSpec{
-				SecurityContext: &securityContext,
+	var observed = &ObservedClusterState{
+		cluster: &v1beta1.FlinkCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "flinkjobcluster-sample",
+				Namespace: "default",
 			},
-			JobManager: v1beta1.JobManagerSpec{
-				AccessScope: v1beta1.AccessScopeVPC,
-				Ports: v1beta1.JobManagerPorts{
-					RPC:   &jmRPCPort,
-					Blob:  &jmBlobPort,
-					Query: &jmQueryPort,
-					UI:    &jmUIPort,
+			Spec: v1beta1.FlinkClusterSpec{
+				Job: &v1beta1.JobSpec{
+					SecurityContext: &securityContext,
 				},
-				SecurityContext: &securityContext,
-			},
-			TaskManager: v1beta1.TaskManagerSpec{
-				Ports: v1beta1.TaskManagerPorts{
-					Data:  &tmDataPort,
-					RPC:   &tmRPCPort,
-					Query: &tmQueryPort,
+				JobManager: v1beta1.JobManagerSpec{
+					AccessScope: v1beta1.AccessScopeVPC,
+					Ports: v1beta1.JobManagerPorts{
+						RPC:   &jmRPCPort,
+						Blob:  &jmBlobPort,
+						Query: &jmQueryPort,
+						UI:    &jmUIPort,
+					},
+					SecurityContext: &securityContext,
 				},
-				SecurityContext: &securityContext,
+				TaskManager: v1beta1.TaskManagerSpec{
+					Ports: v1beta1.TaskManagerPorts{
+						Data:  &tmDataPort,
+						RPC:   &tmRPCPort,
+						Query: &tmQueryPort,
+					},
+					SecurityContext: &securityContext,
+				},
 			},
-		},
-		Status: v1beta1.FlinkClusterStatus{
-			NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+			Status: v1beta1.FlinkClusterStatus{
+				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+			},
 		},
 	}
 
-	var desired = getDesiredClusterState(cluster, time.Now())
+	var desired = getDesiredClusterState(observed, time.Now())
 
 	assert.DeepEqual(t, desired.Job.Spec.Template.Spec.SecurityContext, &securityContext)
 	assert.DeepEqual(t, desired.JmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
 	assert.DeepEqual(t, desired.TmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
 
 	// No security context
-	var cluster2 = &v1beta1.FlinkCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "flinkjobcluster-sample",
-			Namespace: "default",
-		},
-		Spec: v1beta1.FlinkClusterSpec{
-			Job: &v1beta1.JobSpec{},
-			JobManager: v1beta1.JobManagerSpec{
-				AccessScope: v1beta1.AccessScopeVPC,
-				Ports: v1beta1.JobManagerPorts{
-					RPC:   &jmRPCPort,
-					Blob:  &jmBlobPort,
-					Query: &jmQueryPort,
-					UI:    &jmUIPort,
+	var observed2 = &ObservedClusterState{
+		cluster: &v1beta1.FlinkCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "flinkjobcluster-sample",
+				Namespace: "default",
+			},
+			Spec: v1beta1.FlinkClusterSpec{
+				Job: &v1beta1.JobSpec{},
+				JobManager: v1beta1.JobManagerSpec{
+					AccessScope: v1beta1.AccessScopeVPC,
+					Ports: v1beta1.JobManagerPorts{
+						RPC:   &jmRPCPort,
+						Blob:  &jmBlobPort,
+						Query: &jmQueryPort,
+						UI:    &jmUIPort,
+					},
+				},
+				TaskManager: v1beta1.TaskManagerSpec{
+					Ports: v1beta1.TaskManagerPorts{
+						Data:  &tmDataPort,
+						RPC:   &tmRPCPort,
+						Query: &tmQueryPort,
+					},
 				},
 			},
-			TaskManager: v1beta1.TaskManagerSpec{
-				Ports: v1beta1.TaskManagerPorts{
-					Data:  &tmDataPort,
-					RPC:   &tmRPCPort,
-					Query: &tmQueryPort,
-				},
+			Status: v1beta1.FlinkClusterStatus{
+				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
 			},
-		},
-		Status: v1beta1.FlinkClusterStatus{
-			NextRevision: "flinkjobcluster-sample-85dc8f749-1",
 		},
 	}
 
-	var desired2 = getDesiredClusterState(cluster2, time.Now())
+	var desired2 = getDesiredClusterState(observed2, time.Now())
 
 	assert.Assert(t, desired2.Job.Spec.Template.Spec.SecurityContext == nil)
 	assert.Assert(t, desired2.JmDeployment.Spec.Template.Spec.SecurityContext == nil)

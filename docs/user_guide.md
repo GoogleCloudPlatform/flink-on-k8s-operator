@@ -258,18 +258,18 @@ kubectl describe flinkclusters <CLUSTER-NAME>
 
 ### Flink job
 
-To get a list of jobs
+In a job cluster, the job is automatically submitted by the operator.
+The operator creates a submitter for a Flink job.
+The job submitter itself is created as a Kubernetes job.
+
+When the job submitter starts, it first checks the status of Flink job manager.
+And it submits a Flink job when confirmed that Flink job manager is ready and then terminates.
+
+You can check the Flink job submission status and logs with
 
 ```bash
-kubectl get jobs
-```
-
-In a job cluster, the job is automatically submitted by the operator you can
-check the Flink job status and logs with
-
-```bash
-kubectl describe jobs <CLUSTER-NAME>-job
-kubectl logs jobs/<CLUSTER-NAME>-job -f --tail=1000
+kubectl describe jobs <CLUSTER-NAME>-job-submitter
+kubectl logs jobs/<CLUSTER-NAME>-job-submitter -f
 ```
 
 In a session cluster, depending on how you submit the job, you can check the
