@@ -174,7 +174,7 @@ func (handler *FlinkClusterHandler) reconcile(
 
 	log.Info("---------- 3. Compute the desired state ----------")
 
-	*desired = getDesiredClusterState(observed.cluster, time.Now())
+	*desired = getDesiredClusterState(observed, time.Now())
 	if desired.ConfigMap != nil {
 		log.Info("Desired state", "ConfigMap", *desired.ConfigMap)
 	} else {
@@ -214,7 +214,8 @@ func (handler *FlinkClusterHandler) reconcile(
 		context:     context,
 		log:         log,
 		observed:    handler.observed,
-		desired:     handler.desired, recorder: handler.recorder,
+		desired:     handler.desired,
+		recorder:    handler.recorder,
 	}
 	result, err := reconciler.reconcile()
 	if err != nil {
