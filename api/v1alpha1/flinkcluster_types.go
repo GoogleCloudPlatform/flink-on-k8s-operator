@@ -372,7 +372,7 @@ type FlinkClusterComponentsStatus struct {
 	// The state of configMap.
 	ConfigMap FlinkClusterComponentState `json:"configMap"`
 
-	// The state of JobManager deployment.
+	// The state of JobManager Deployment.
 	JobManagerDeployment FlinkClusterComponentState `json:"jobManagerDeployment"`
 
 	// The state of JobManager service.
@@ -381,7 +381,7 @@ type FlinkClusterComponentsStatus struct {
 	// The state of JobManager ingress.
 	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
 
-	// The state of TaskManager deployment.
+	// The state of TaskManager Deployment.
 	TaskManagerDeployment FlinkClusterComponentState `json:"taskManagerDeployment"`
 
 	// The status of the job, available only when JobSpec is provided.

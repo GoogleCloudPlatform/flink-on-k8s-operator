@@ -87,12 +87,12 @@ func (updater *ClusterStatusUpdater) updateStatusIfChanged() (
 func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	oldStatus v1beta1.FlinkClusterStatus,
 	newStatus v1beta1.FlinkClusterStatus) {
-	if oldStatus.Components.JobManagerDeployment.State !=
-		newStatus.Components.JobManagerDeployment.State {
+	if oldStatus.Components.JobManagerStatefulSet.State !=
+		newStatus.Components.JobManagerStatefulSet.State {
 		updater.createStatusChangeEvent(
-			"JobManager deployment",
-			oldStatus.Components.JobManagerDeployment.State,
-			newStatus.Components.JobManagerDeployment.State)
+			"JobManager StatefulSet",
+			oldStatus.Components.JobManagerStatefulSet.State,
+			newStatus.Components.JobManagerStatefulSet.State)
 	}
 
 	// ConfigMap.
@@ -128,12 +128,12 @@ func (updater *ClusterStatusUpdater) createStatusChangeEvents(
 	}
 
 	// TaskManager.
-	if oldStatus.Components.TaskManagerDeployment.State !=
-		newStatus.Components.TaskManagerDeployment.State {
+	if oldStatus.Components.TaskManagerStatefulSet.State !=
+		newStatus.Components.TaskManagerStatefulSet.State {
 		updater.createStatusChangeEvent(
-			"TaskManager deployment",
-			oldStatus.Components.TaskManagerDeployment.State,
-			newStatus.Components.TaskManagerDeployment.State)
+			"TaskManager StatefulSet",
+			oldStatus.Components.TaskManagerStatefulSet.State,
+			newStatus.Components.TaskManagerStatefulSet.State)
 	}
 
 	// Job.
@@ -190,7 +190,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	observed *ObservedClusterState) v1beta1.FlinkClusterStatus {
 	var status = v1beta1.FlinkClusterStatus{}
 	var runningComponents = 0
-	// jmDeployment, jmService, tmDeployment.
+	// jmStatefulSet, jmService, tmStatefulSet.
 	var totalComponents = 3
 	var updateState = getUpdateState(*observed)
 	var isClusterUpdating = !isClusterUpdateToDate(*observed) && updateState == UpdateStateInProgress
@@ -212,21 +212,21 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 	}
 
-	// JobManager deployment.
-	var observedJmDeployment = observed.jmDeployment
-	if !isComponentUpdated(observedJmDeployment, *observed.cluster) && isJobUpdating {
-		recorded.Components.JobManagerDeployment.DeepCopyInto(&status.Components.JobManagerDeployment)
-		status.Components.JobManagerDeployment.State = v1beta1.ComponentStateUpdating
-	} else if observedJmDeployment != nil {
-		status.Components.JobManagerDeployment.Name = observedJmDeployment.ObjectMeta.Name
-		status.Components.JobManagerDeployment.State = getDeploymentState(observedJmDeployment)
-		if status.Components.JobManagerDeployment.State == v1beta1.ComponentStateReady {
+	// JobManager StatefulSet.
+	var observedJmStatefulSet = observed.jmStatefulSet
+	if !isComponentUpdated(observedJmStatefulSet, *observed.cluster) && isJobUpdating {
+		recorded.Components.JobManagerStatefulSet.DeepCopyInto(&status.Components.JobManagerStatefulSet)
+		status.Components.JobManagerStatefulSet.State = v1beta1.ComponentStateUpdating
+	} else if observedJmStatefulSet != nil {
+		status.Components.JobManagerStatefulSet.Name = observedJmStatefulSet.ObjectMeta.Name
+		status.Components.JobManagerStatefulSet.State = getStatefulSetState(observedJmStatefulSet)
+		if status.Components.JobManagerStatefulSet.State == v1beta1.ComponentStateReady {
 			runningComponents++
 		}
-	} else if recorded.Components.JobManagerDeployment.Name != "" {
-		status.Components.JobManagerDeployment =
+	} else if recorded.Components.JobManagerStatefulSet.Name != "" {
+		status.Components.JobManagerStatefulSet =
 			v1beta1.FlinkClusterComponentState{
-				Name:  recorded.Components.JobManagerDeployment.Name,
+				Name:  recorded.Components.JobManagerStatefulSet.Name,
 				State: v1beta1.ComponentStateDeleted,
 			}
 	}
@@ -365,24 +365,24 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			}
 	}
 
-	// TaskManager deployment.
-	var observedTmDeployment = observed.tmDeployment
-	if !isComponentUpdated(observedTmDeployment, *observed.cluster) && isJobUpdating {
-		recorded.Components.TaskManagerDeployment.DeepCopyInto(&status.Components.TaskManagerDeployment)
-		status.Components.TaskManagerDeployment.State = v1beta1.ComponentStateUpdating
-	} else if observedTmDeployment != nil {
-		status.Components.TaskManagerDeployment.Name =
-			observedTmDeployment.ObjectMeta.Name
-		status.Components.TaskManagerDeployment.State =
-			getDeploymentState(observedTmDeployment)
-		if status.Components.TaskManagerDeployment.State ==
+	// TaskManager StatefulSet.
+	var observedTmStatefulSet = observed.tmStatefulSet
+	if !isComponentUpdated(observedTmStatefulSet, *observed.cluster) && isJobUpdating {
+		recorded.Components.TaskManagerStatefulSet.DeepCopyInto(&status.Components.TaskManagerStatefulSet)
+		status.Components.TaskManagerStatefulSet.State = v1beta1.ComponentStateUpdating
+	} else if observedTmStatefulSet != nil {
+		status.Components.TaskManagerStatefulSet.Name =
+			observedTmStatefulSet.ObjectMeta.Name
+		status.Components.TaskManagerStatefulSet.State =
+			getStatefulSetState(observedTmStatefulSet)
+		if status.Components.TaskManagerStatefulSet.State ==
 			v1beta1.ComponentStateReady {
 			runningComponents++
 		}
-	} else if recorded.Components.TaskManagerDeployment.Name != "" {
-		status.Components.TaskManagerDeployment =
+	} else if recorded.Components.TaskManagerStatefulSet.Name != "" {
+		status.Components.TaskManagerStatefulSet =
 			v1beta1.FlinkClusterComponentState{
-				Name:  recorded.Components.TaskManagerDeployment.Name,
+				Name:  recorded.Components.TaskManagerStatefulSet.Name,
 				State: v1beta1.ComponentStateDeleted,
 			}
 	}
@@ -805,13 +805,13 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			newStatus.Components.ConfigMap)
 		changed = true
 	}
-	if newStatus.Components.JobManagerDeployment !=
-		currentStatus.Components.JobManagerDeployment {
+	if newStatus.Components.JobManagerStatefulSet !=
+		currentStatus.Components.JobManagerStatefulSet {
 		updater.log.Info(
-			"JobManager deployment status changed",
-			"current", currentStatus.Components.JobManagerDeployment,
+			"JobManager StatefulSet status changed",
+			"current", currentStatus.Components.JobManagerStatefulSet,
 			"new",
-			newStatus.Components.JobManagerDeployment)
+			newStatus.Components.JobManagerStatefulSet)
 		changed = true
 	}
 	if newStatus.Components.JobManagerService !=
@@ -843,14 +843,14 @@ func (updater *ClusterStatusUpdater) isStatusChanged(
 			changed = true
 		}
 	}
-	if newStatus.Components.TaskManagerDeployment !=
-		currentStatus.Components.TaskManagerDeployment {
+	if newStatus.Components.TaskManagerStatefulSet !=
+		currentStatus.Components.TaskManagerStatefulSet {
 		updater.log.Info(
-			"TaskManager deployment status changed",
+			"TaskManager StatefulSet status changed",
 			"current",
-			currentStatus.Components.TaskManagerDeployment,
+			currentStatus.Components.TaskManagerStatefulSet,
 			"new",
-			newStatus.Components.TaskManagerDeployment)
+			newStatus.Components.TaskManagerStatefulSet)
 		changed = true
 	}
 	if currentStatus.Components.Job == nil {
@@ -939,8 +939,8 @@ func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1
 	return nil
 }
 
-func getDeploymentState(deployment *appsv1.Deployment) string {
-	if deployment.Status.AvailableReplicas >= *deployment.Spec.Replicas {
+func getStatefulSetState(statefulSet *appsv1.StatefulSet) string {
+	if statefulSet.Status.ReadyReplicas >= *statefulSet.Spec.Replicas {
 		return v1beta1.ComponentStateReady
 	}
 	return v1beta1.ComponentStateNotReady

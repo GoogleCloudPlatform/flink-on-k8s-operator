@@ -25,24 +25,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestGetDeploymentStateNotReady(t *testing.T) {
+func TestGetStatefulSetStateNotReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.Deployment{
-		Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
-		Status: appsv1.DeploymentStatus{AvailableReplicas: 2},
+	var statefulSet = appsv1.StatefulSet{
+		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
+		Status: appsv1.StatefulSetStatus{ReadyReplicas: 2},
 	}
-	var state = getDeploymentState(&deployment)
+	var state = getStatefulSetState(&statefulSet)
 	assert.Assert(
 		t, state == v1beta1.ComponentStateNotReady)
 }
 
-func TestGetDeploymentStateReady(t *testing.T) {
+func TestGetStatefulSetStateReady(t *testing.T) {
 	var replicas int32 = 3
-	var deployment = appsv1.Deployment{
-		Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
-		Status: appsv1.DeploymentStatus{AvailableReplicas: 3},
+	var statefulSet = appsv1.StatefulSet{
+		Spec:   appsv1.StatefulSetSpec{Replicas: &replicas},
+		Status: appsv1.StatefulSetStatus{ReadyReplicas: 3},
 	}
-	var state = getDeploymentState(&deployment)
+	var state = getStatefulSetState(&statefulSet)
 	assert.Assert(t, state == v1beta1.ComponentStateReady)
 }
 
@@ -56,11 +56,11 @@ func TestIsStatusChangedFalse(t *testing.T) {
 func TestIsStatusChangedTrue(t *testing.T) {
 	var oldStatus = v1beta1.FlinkClusterStatus{
 		Components: v1beta1.FlinkClusterComponentsStatus{
-			JobManagerDeployment: v1beta1.FlinkClusterComponentState{
+			JobManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-jobmanager",
 				State: "NotReady",
 			},
-			TaskManagerDeployment: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-taskmanager",
 				State: "NotReady",
 			},
@@ -80,11 +80,11 @@ func TestIsStatusChangedTrue(t *testing.T) {
 		State: "Creating"}
 	var newStatus = v1beta1.FlinkClusterStatus{
 		Components: v1beta1.FlinkClusterComponentsStatus{
-			JobManagerDeployment: v1beta1.FlinkClusterComponentState{
+			JobManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-jobmanager",
 				State: "Ready",
 			},
-			TaskManagerDeployment: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
 				Name:  "my-taskmanager",
 				State: "Ready",
 			},

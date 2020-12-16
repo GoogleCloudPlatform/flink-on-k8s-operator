@@ -283,8 +283,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 
 	// Verify.
 
-	// JmDeployment
-	var expectedDesiredJmDeployment = appsv1.Deployment{
+	// JmStatefulSet
+	var expectedDesiredJmStatefulSet = appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "flinkjobcluster-sample-jobmanager",
 			Namespace: "default",
@@ -304,7 +304,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app":       "flink",
@@ -312,6 +312,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					"component": "jobmanager",
 				},
 			},
+			ServiceName: "flinkjobcluster-sample-jobmanager",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -447,11 +448,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 		},
 	}
 
-	assert.Assert(t, desiredState.JmDeployment != nil)
+	assert.Assert(t, desiredState.JmStatefulSet != nil)
 	assert.DeepEqual(
 		t,
-		*desiredState.JmDeployment,
-		expectedDesiredJmDeployment,
+		*desiredState.JmStatefulSet,
+		expectedDesiredJmStatefulSet,
 		cmpopts.IgnoreUnexported(resource.Quantity{}))
 
 	// JmService
@@ -551,8 +552,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 		*desiredState.JmIngress,
 		expectedDesiredJmIngress)
 
-	// TmDeployment
-	var expectedDesiredTmDeployment = appsv1.Deployment{
+	// TmStatefulSet
+	var expectedDesiredTmStatefulSet = appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "flinkjobcluster-sample-taskmanager",
 			Namespace: "default",
@@ -572,8 +573,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
+			ServiceName: "flinkjobcluster-sample-taskmanager",
+			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app":       "flink",
@@ -720,11 +723,11 @@ func TestGetDesiredClusterState(t *testing.T) {
 		},
 	}
 
-	assert.Assert(t, desiredState.TmDeployment != nil)
+	assert.Assert(t, desiredState.TmStatefulSet != nil)
 	assert.DeepEqual(
 		t,
-		*desiredState.TmDeployment,
-		expectedDesiredTmDeployment,
+		*desiredState.TmStatefulSet,
+		expectedDesiredTmStatefulSet,
 		cmpopts.IgnoreUnexported(resource.Quantity{}))
 
 	// Job
@@ -989,8 +992,8 @@ func TestSecurityContext(t *testing.T) {
 	var desired = getDesiredClusterState(observed, time.Now())
 
 	assert.DeepEqual(t, desired.Job.Spec.Template.Spec.SecurityContext, &securityContext)
-	assert.DeepEqual(t, desired.JmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
-	assert.DeepEqual(t, desired.TmDeployment.Spec.Template.Spec.SecurityContext, &securityContext)
+	assert.DeepEqual(t, desired.JmStatefulSet.Spec.Template.Spec.SecurityContext, &securityContext)
+	assert.DeepEqual(t, desired.TmStatefulSet.Spec.Template.Spec.SecurityContext, &securityContext)
 
 	// No security context
 	var observed2 = &ObservedClusterState{
@@ -1027,8 +1030,8 @@ func TestSecurityContext(t *testing.T) {
 	var desired2 = getDesiredClusterState(observed2, time.Now())
 
 	assert.Assert(t, desired2.Job.Spec.Template.Spec.SecurityContext == nil)
-	assert.Assert(t, desired2.JmDeployment.Spec.Template.Spec.SecurityContext == nil)
-	assert.Assert(t, desired2.TmDeployment.Spec.Template.Spec.SecurityContext == nil)
+	assert.Assert(t, desired2.JmStatefulSet.Spec.Template.Spec.SecurityContext == nil)
+	assert.Assert(t, desired2.TmStatefulSet.Spec.Template.Spec.SecurityContext == nil)
 }
 
 func TestCalFlinkHeapSize(t *testing.T) {
