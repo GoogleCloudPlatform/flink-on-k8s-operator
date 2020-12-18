@@ -4991,8 +4991,6 @@ spec:
                     state:
                       type: string
                   required:
-                  - id
-                  - name
                   - state
                   type: object
                 jobManagerStatefulSet:
