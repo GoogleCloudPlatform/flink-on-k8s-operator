@@ -571,6 +571,11 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ShouldTakeSavepointOnUpgrade != nil {
+		in, out := &in.ShouldTakeSavepointOnUpgrade, &out.ShouldTakeSavepointOnUpgrade
+		*out = new(bool)
+		**out = **in
+	}
 	if in.SavepointsDir != nil {
 		in, out := &in.SavepointsDir, &out.SavepointsDir
 		*out = new(string)

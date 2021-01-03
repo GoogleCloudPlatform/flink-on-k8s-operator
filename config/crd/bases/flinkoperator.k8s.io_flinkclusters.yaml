@@ -163,6 +163,8 @@ spec:
                   type: integer
                 cancelRequested:
                   type: boolean
+                shouldTakeSavepointOnUpgrade:
+                  type: boolean
                 className:
                   type: string
                 cleanupPolicy:

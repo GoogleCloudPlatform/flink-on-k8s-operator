@@ -468,27 +468,23 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		var jobID = reconciler.getFlinkJobID()
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var recordedJobStatus = observed.cluster.Status.Components.Job
+		var jobSpec = reconciler.observed.cluster.Spec.Job
 
 		// Update or recover Flink job by restart.
-		var restartJob bool
 		if shouldUpdateJob(observed) {
 			log.Info("Job is about to be restarted to update")
-			restartJob = true
+			err := reconciler.restartJob(*jobSpec.ShouldTakeSavepointOnUpgrade)
+			return requeueResult, err
 		} else if shouldRestartJob(restartPolicy, recordedJobStatus) {
 			log.Info("Job is about to be restarted to recover failure")
-			restartJob = true
-		}
-		if restartJob {
-			err := reconciler.restartJob()
-			if err != nil {
-				return requeueResult, err
-			}
-			return requeueResult, nil
+			err := reconciler.restartJob(false)
+			return requeueResult, err
 		}
 
 		// Trigger savepoint if required.
 		if len(jobID) > 0 {
-			if ok, savepointTriggerReason := reconciler.shouldTakeSavepoint(); ok {
+			shouldTakeSavepont, savepointTriggerReason := reconciler.shouldTakeSavepoint()
+			if shouldTakeSavepont {
 				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
 			}
 		}
@@ -575,14 +571,15 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 	return ""
 }
 
-func (reconciler *ClusterReconciler) restartJob() error {
+func (reconciler *ClusterReconciler) restartJob(shouldTakeSavepoint bool) error {
 	var log = reconciler.log
 	var observedJob = reconciler.observed.job
 	var observedFlinkJob = reconciler.observed.flinkJobStatus.flinkJob
 
 	log.Info("Stopping Flink job to restart", "", observedFlinkJob)
+	shouldTakeSavepoint = shouldTakeSavepoint && canTakeSavepoint(*reconciler.observed.cluster)
 
-	var err = reconciler.cancelRunningJobs(false /* takeSavepoint */)
+	var err = reconciler.cancelRunningJobs(shouldTakeSavepoint /* takeSavepoint */)
 	if err != nil {
 		return err
 	}

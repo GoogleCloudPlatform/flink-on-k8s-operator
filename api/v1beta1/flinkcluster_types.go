@@ -347,6 +347,9 @@ type JobSpec struct {
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
+	// Should take savepoint before upgrading the job, default: false.
+	ShouldTakeSavepointOnUpgrade *bool `json:"shouldTakeSavepointOnUpgrade,omitempty"`
+
 	// Savepoints dir where to store savepoints of the job.
 	SavepointsDir *string `json:"savepointsDir,omitempty"`
 
