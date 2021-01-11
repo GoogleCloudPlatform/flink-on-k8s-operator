@@ -485,6 +485,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		if len(jobID) > 0 {
 			shouldTakeSavepont, savepointTriggerReason := reconciler.shouldTakeSavepoint()
 			if shouldTakeSavepont {
+				reconciler.updateSavepointTriggerTimeStatus()
 				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
 			}
 		}
@@ -708,6 +709,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
+	var tc = &TimeConverter{}
 
 	if !canTakeSavepoint(*reconciler.observed.cluster) {
 		return false, ""
@@ -741,13 +743,21 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 		return false, ""
 	}
 
+	var lastTriggerTime = time.Time{}
+	if len(jobStatus.LastSavepointTriggerTime) != 0 {
+		lastTriggerTime = tc.FromString(jobStatus.LastSavepointTriggerTime)
+	}
+	var nextOkTriggerTime = lastTriggerTime.Add(time.Duration(SavepointTimeoutSec * int64(time.Second))) // give the reconciler 15 mins to update the SP status properly
+	if time.Now().Before(nextOkTriggerTime) {
+		return false, ""
+	}
+
 	// First savepoint.
 	if len(jobStatus.LastSavepointTime) == 0 {
-		return true, v1beta1.SavepointTriggerReasonScheduled
+		return true, v1beta1.SavepointTriggerReasonScheduledInitial
 	}
 
 	// Interval expired.
-	var tc = &TimeConverter{}
 	var lastTime = tc.FromString(jobStatus.LastSavepointTime)
 	var nextTime = lastTime.Add(
 		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
@@ -814,6 +824,14 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 	}
 
 	return err
+}
+
+func (reconciler *ClusterReconciler) updateSavepointTriggerTimeStatus() error {
+	var cluster = v1beta1.FlinkCluster{}
+	reconciler.observed.cluster.DeepCopyInto(&cluster)
+	var jobStatus = cluster.Status.Components.Job
+	setTimestamp(&jobStatus.LastSavepointTriggerTime)
+	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(

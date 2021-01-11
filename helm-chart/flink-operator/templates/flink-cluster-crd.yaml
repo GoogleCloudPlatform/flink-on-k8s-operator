@@ -4978,6 +4978,8 @@ spec:
                       type: string
                     lastSavepointTime:
                       type: string
+                    lastSavepointTriggerTime:
+                      type: string
                     lastSavepointTriggerID:
                       type: string
                     name:
