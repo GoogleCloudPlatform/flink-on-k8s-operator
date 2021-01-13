@@ -99,6 +99,7 @@ FlinkCluster
             |__ mountPath
     |__ logConfig
     |__ revisionHistoryLimit
+    |__ recreateOnUpdate
 |__ status
     |__ state
     |__ components
@@ -313,6 +314,7 @@ FlinkCluster
         to stdout will be provided.
       * Other arbitrary keys are also allowed, and will become part of the ConfigMap.
     * **revisionHistoryLimit** (optional): The maximum number of revision history to keep, default: 10.
+    * **recreateOnUpdate** (optional): Recreate components when updating flinkcluster, default: true.
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.
     * **components**: The status of the components.

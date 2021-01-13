@@ -459,6 +459,9 @@ type FlinkClusterSpec struct {
 
 	// The maximum number of revision history to keep, default: 10.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// Recreate components when updating flinkcluster, default: true.
+	RecreateOnUpdate *bool `json:"recreateOnUpdate,omitempty"`
 }
 
 // HadoopConfig defines configs for Hadoop.
