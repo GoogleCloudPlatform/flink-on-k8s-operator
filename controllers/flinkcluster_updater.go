@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"time"
@@ -370,18 +371,28 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	if !isComponentUpdated(observedTmStatefulSet, *observed.cluster) && isJobUpdating {
 		recorded.Components.TaskManagerStatefulSet.DeepCopyInto(&status.Components.TaskManagerStatefulSet)
 		status.Components.TaskManagerStatefulSet.State = v1beta1.ComponentStateUpdating
+		// TODO: should we also update the state of replicas and labels here
 	} else if observedTmStatefulSet != nil {
 		status.Components.TaskManagerStatefulSet.Name =
 			observedTmStatefulSet.ObjectMeta.Name
 		status.Components.TaskManagerStatefulSet.State =
 			getStatefulSetState(observedTmStatefulSet)
+		status.Components.TaskManagerStatefulSet.Replicas =
+			observedTmStatefulSet.Status.Replicas
+		selector, err := metav1.LabelSelectorAsSelector(observedTmStatefulSet.Spec.Selector)
+		if err != nil {
+			updater.log.Error(errors.New("Failed to get task manager selector - hpa will not work."), "taskmanager status update")
+		}
+		status.Components.TaskManagerStatefulSet.Selector =
+			selector.String()
+
 		if status.Components.TaskManagerStatefulSet.State ==
 			v1beta1.ComponentStateReady {
 			runningComponents++
 		}
 	} else if recorded.Components.TaskManagerStatefulSet.Name != "" {
 		status.Components.TaskManagerStatefulSet =
-			v1beta1.FlinkClusterComponentState{
+			v1beta1.TaskManagerStatefulSetStatus{
 				Name:  recorded.Components.TaskManagerStatefulSet.Name,
 				State: v1beta1.ComponentStateDeleted,
 			}

@@ -519,7 +519,7 @@ type FlinkClusterComponentsStatus struct {
 	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
 
 	// The state of TaskManager StatefulSet.
-	TaskManagerStatefulSet FlinkClusterComponentState `json:"taskManagerStatefulSet"`
+	TaskManagerStatefulSet TaskManagerStatefulSetStatus `json:"taskManagerStatefulSet"`
 
 	// The status of the job, available only when JobSpec is provided.
 	Job *JobStatus `json:"job,omitempty"`
@@ -625,6 +625,21 @@ type JobManagerServiceStatus struct {
 	NodePort int32 `json:"nodePort,omitempty"`
 }
 
+// TaskManagerStatefulSetStatus
+type TaskManagerStatefulSetStatus struct {
+	// The name of the Kubernetes jobManager service.
+	Name string `json:"name"`
+
+	// The state of the component.
+	State string `json:"state"`
+
+	// The number of replicas in the tasks manager.
+	Replicas int32 `json:"replicas"`
+
+	// The label for the tasks manager pods.
+	Selector string `json:"selector"`
+}
+
 // FlinkClusterStatus defines the observed state of FlinkCluster
 type FlinkClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -667,6 +682,7 @@ type FlinkClusterStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.taskManager.replicas,statuspath=.status.components.taskManagerStatefulSet.replicas,selectorpath=.status.components.taskManagerStatefulSet.selector
 
 // FlinkCluster is the Schema for the flinkclusters API
 type FlinkCluster struct {
