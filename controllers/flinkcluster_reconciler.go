@@ -473,7 +473,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		// Update or recover Flink job by restart.
 		if shouldUpdateJob(observed) {
 			log.Info("Job is about to be restarted to update")
-			err := reconciler.restartJob(*jobSpec.ShouldTakeSavepointOnUpgrade)
+			err := reconciler.restartJob(*jobSpec.TakeSavepointOnUpgrade)
 			return requeueResult, err
 		} else if shouldRestartJob(restartPolicy, recordedJobStatus) {
 			log.Info("Job is about to be restarted to recover failure")
@@ -485,11 +485,12 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		if len(jobID) > 0 {
 			shouldTakeSavepont, savepointTriggerReason := reconciler.shouldTakeSavepoint()
 			if shouldTakeSavepont {
-				reconciler.updateSavepointTriggerTimeStatus()
-				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
+				err = reconciler.updateSavepointTriggerTimeStatus()
+				if err != nil {
+					newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
+				}
 			}
 		}
-
 		log.Info("Job is not finished yet, no action", "jobID", jobID)
 		return requeueResult, nil
 	}
@@ -709,7 +710,6 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	var jobSpec = reconciler.observed.cluster.Spec.Job
 	var jobStatus = reconciler.observed.cluster.Status.Components.Job
 	var savepointStatus = reconciler.observed.cluster.Status.Savepoint
-	var tc = &TimeConverter{}
 
 	if !canTakeSavepoint(*reconciler.observed.cluster) {
 		return false, ""
@@ -743,11 +743,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 		return false, ""
 	}
 
-	var lastTriggerTime = time.Time{}
-	if len(jobStatus.LastSavepointTriggerTime) != 0 {
-		lastTriggerTime = tc.FromString(jobStatus.LastSavepointTriggerTime)
-	}
-	var nextOkTriggerTime = lastTriggerTime.Add(time.Duration(SavepointTimeoutSec * int64(time.Second))) // give the reconciler 15 mins to update the SP status properly
+	var nextOkTriggerTime = getNextOkTime(jobStatus.LastSavepointTriggerTime, SavepointTimeoutSec)
 	if time.Now().Before(nextOkTriggerTime) {
 		return false, ""
 	}
@@ -757,11 +753,19 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 		return true, v1beta1.SavepointTriggerReasonScheduledInitial
 	}
 
-	// Interval expired.
-	var lastTime = tc.FromString(jobStatus.LastSavepointTime)
-	var nextTime = lastTime.Add(
-		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
+	// Scheduled, check if next trigger time arrived.
+	var nextTime = getNextOkTime(jobStatus.LastSavepointTime, int64(*jobSpec.AutoSavepointSeconds))
 	return time.Now().After(nextTime), v1beta1.SavepointTriggerReasonScheduled
+}
+
+// Convert raw time to object and add `addedSeconds` to it
+func getNextOkTime(rawTime string, addedSeconds int64) time.Time {
+	var tc = &TimeConverter{}
+	var lastTriggerTime = time.Time{}
+	if len(rawTime) != 0 {
+		lastTriggerTime = tc.FromString(rawTime)
+	}
+	return lastTriggerTime.Add(time.Duration(addedSeconds * int64(time.Second)))
 }
 
 // Trigger savepoint for a job then return savepoint status to update.

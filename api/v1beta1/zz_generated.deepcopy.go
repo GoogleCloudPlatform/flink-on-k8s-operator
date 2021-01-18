@@ -571,8 +571,8 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.ShouldTakeSavepointOnUpgrade != nil {
-		in, out := &in.ShouldTakeSavepointOnUpgrade, &out.ShouldTakeSavepointOnUpgrade
+	if in.TakeSavepointOnUpgrade != nil {
+		in, out := &in.TakeSavepointOnUpgrade, &out.takeSavepointOnUpgrade
 		*out = new(bool)
 		**out = **in
 	}

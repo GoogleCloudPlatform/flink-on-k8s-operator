@@ -100,7 +100,7 @@ const (
 
 	SavepointTriggerReasonUserRequested    = "user requested"
 	SavepointTriggerReasonScheduled        = "scheduled"
-	SavepointTriggerReasonScheduledInitial = "scheduledInitial"
+	SavepointTriggerReasonScheduledInitial = "scheduled initial" // The first triggered savepoint has slightly different flow
 	SavepointTriggerReasonJobCancel        = "job cancel"
 	SavepointTriggerReasonUpdate           = "update"
 )
@@ -349,7 +349,7 @@ type JobSpec struct {
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
 	// Should take savepoint before upgrading the job, default: false.
-	ShouldTakeSavepointOnUpgrade *bool `json:"shouldTakeSavepointOnUpgrade,omitempty"`
+	TakeSavepointOnUpgrade *bool `json:"takeSavepointOnUpgrade,omitempty"`
 
 	// Savepoints dir where to store savepoints of the job.
 	SavepointsDir *string `json:"savepointsDir,omitempty"`

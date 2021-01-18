@@ -163,7 +163,7 @@ spec:
                   type: integer
                 cancelRequested:
                   type: boolean
-                shouldTakeSavepointOnUpgrade:
+                takeSavepointOnUpgrade:
                   type: boolean
                 className:
                   type: string
