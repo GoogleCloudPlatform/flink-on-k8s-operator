@@ -27,6 +27,7 @@ import (
 	"github.com/googlecloudplatform/flink-operator/controllers/model"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -93,6 +94,7 @@ func (reconciler *FlinkClusterReconciler) SetupWithManager(
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&batchv1.Job{}).
+		Owns(&autoscalingv1.HorizontalPodAutoscaler{}).
 		Complete(reconciler)
 }
 

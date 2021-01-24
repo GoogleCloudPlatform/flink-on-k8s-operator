@@ -9,12 +9,37 @@ FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
 RESOURCE_PREFIX ?= flink-operator-
 # The Kubernetes namespace to limit watching.
 WATCH_NAMESPACE ?=
+# Kind cluster name
+KIND_CLUSTER ?= kind-flink-operator
+KIND_IMAGE ?= kindest/node:v1.17.17
 
 GREEN=\033[1;32m
 RED=\033[1;31m
 RESET=\033[0m
 
 #################### Local build and test ####################
+
+# Setup kind cluster
+kind-ensure:
+	kubectx kind-${KIND_CLUSTER}
+
+kind-setup:
+	kind create cluster --name ${KIND_CLUSTER} --image ${KIND_IMAGE}
+
+kind-up-image: operator-image
+	kind load docker-image ${IMG} --name ${KIND_CLUSTER}
+
+kind-teardown:
+	kind delete cluster --name ${KIND_CLUSTER}
+
+kind-deploy: kind-ensure
+	deploy
+
+kind-example: kind-ensure
+	kubectl apply -f config/samples/flinkoperator_v1beta1_flinkjobcluster.yaml
+
+kind-undeploy: kind-ensure
+	undeploy
 
 # Build the flink-operator binary
 build: generate fmt vet
@@ -153,3 +178,5 @@ undeploy: undeploy-controller undeploy-crd
 # Deploy the sample Flink clusters in the Kubernetes cluster
 samples:
 	kubectl apply -f config/samples/
+
+#################### Local build and test ####################

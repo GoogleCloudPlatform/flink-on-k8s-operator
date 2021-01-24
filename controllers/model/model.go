@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 )
 
@@ -28,4 +29,5 @@ type DesiredClusterState struct {
 	TmStatefulSet *appsv1.StatefulSet
 	ConfigMap     *corev1.ConfigMap
 	Job           *batchv1.Job
+	HPA           *autoscalingv1.HorizontalPodAutoscaler
 }

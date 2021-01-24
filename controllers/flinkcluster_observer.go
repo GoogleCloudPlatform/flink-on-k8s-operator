@@ -25,6 +25,7 @@ import (
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
+	v1autoscaling "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -57,6 +58,7 @@ type ObservedClusterState struct {
 	tmStatefulSet     *appsv1.StatefulSet
 	job               *batchv1.Job
 	jobPod            *corev1.Pod
+	hpa               *v1autoscaling.HorizontalPodAutoscaler
 	flinkJobStatus    FlinkJobStatus
 	flinkJobSubmitLog *FlinkJobSubmitLog
 	savepoint         *flinkclient.SavepointStatus
@@ -189,6 +191,21 @@ func (observer *ClusterStateObserver) observe(
 	} else {
 		log.Info("Observed TaskManager StatefulSet", "state", *observedTmStatefulSet)
 		observed.tmStatefulSet = observedTmStatefulSet
+	}
+
+	// (Optional) hpa
+	var observedHPA = new(v1autoscaling.HorizontalPodAutoscaler)
+	err = observer.observeHPA(observedHPA)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get hpa")
+			return err
+		}
+		log.Info("Observed hpa", "state", "nil")
+		observedHPA = nil
+	} else {
+		log.Info("Observed hpa", "state", *observedHPA)
+		observed.hpa = observedHPA
 	}
 
 	// (Optional) Savepoint.
@@ -345,6 +362,22 @@ func (observer *ClusterStateObserver) observeFlinkJobStatus(
 	}
 
 	return
+}
+
+func (observer *ClusterStateObserver) observeHPA(observed *v1autoscaling.HorizontalPodAutoscaler) error {
+
+	var clusterNamespace = observer.request.Namespace
+	var clusterName = observer.request.Name
+	var tmStatefulSetName = getHPAName(clusterName)
+
+	return observer.k8sClient.Get(
+		observer.context,
+		types.NamespacedName{
+			Namespace: clusterNamespace,
+			Name:      tmStatefulSetName,
+		},
+		observed)
+
 }
 
 func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedClusterState) error {

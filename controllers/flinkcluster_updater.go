@@ -410,6 +410,25 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		jobStopped = true
 	}
 
+	// (Optional) hpa
+	var observedHPA = observed.hpa
+	if !isComponentUpdated(observedHPA, *observed.cluster) && isJobUpdating {
+		status.Components.HPA = &v1beta1.HPAStatus{}
+		recorded.Components.HPA.DeepCopyInto(status.Components.HPA)
+		status.Components.JobManagerIngress.State = v1beta1.ComponentStateUpdating
+	} else if observedHPA != nil {
+		status.Components.HPA.CurrentReplicas = observed.hpa.Status.CurrentReplicas
+		status.Components.HPA.DesiredReplicas = observed.hpa.Status.DesiredReplicas
+		status.Components.HPA.CurrentCPUUtilizationPercentage = observed.hpa.Status.CurrentCPUUtilizationPercentage
+	} else if recorded.Components.HPA != nil &&
+		recorded.Components.HPA.Name != "" {
+		status.Components.HPA =
+			&v1beta1.HPAStatus{
+				Name:  recorded.Components.JobManagerIngress.Name,
+				State: v1beta1.ComponentStateDeleted,
+			}
+	}
+
 	// Derive the new cluster state.
 	switch recorded.State {
 	case "", v1beta1.ClusterStateCreating:

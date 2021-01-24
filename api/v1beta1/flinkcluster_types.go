@@ -412,6 +412,18 @@ type JobSpec struct {
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 }
 
+// HPASpec defines properties of a HPA for the cluster.
+type HPASpec struct {
+	// Taskmanager lower limit for the number of pods.
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
+
+	// Taskmanager upper limit for the number of pods.
+	MaxReplicas int32 `json:"maxReplicas"`
+
+	// Taskmanager target average CPU utilization
+	TargetCPUUtilizationPercentage *int32 `json:"targetCPUUtilizationPercentage,omitempty"`
+}
+
 // FlinkClusterSpec defines the desired state of FlinkCluster
 type FlinkClusterSpec struct {
 	// Flink image spec for the cluster's components.
@@ -451,6 +463,9 @@ type FlinkClusterSpec struct {
 
 	// Config for GCP.
 	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
+
+	// Config for HPA
+	HPA *HPASpec `json:"hpa,omitempty"`
 
 	// The logging configuration, which should have keys 'log4j-console.properties' and 'logback-console.xml'.
 	// These will end up in the 'flink-config-volume' ConfigMap, which gets mounted at /opt/flink/conf.
@@ -521,6 +536,9 @@ type FlinkClusterComponentsStatus struct {
 	// The state of TaskManager StatefulSet.
 	TaskManagerStatefulSet TaskManagerStatefulSetStatus `json:"taskManagerStatefulSet"`
 
+	// The state of the HPA
+	HPA *HPAStatus `json:"hpa,omitempty"`
+
 	// The status of the job, available only when JobSpec is provided.
 	Job *JobStatus `json:"job,omitempty"`
 }
@@ -575,6 +593,23 @@ type JobStatus struct {
 
 	// The number of restarts.
 	RestartCount int32 `json:"restartCount,omitempty"`
+}
+
+type HPAStatus struct {
+	// The name of the Kubernetes HPS resource.
+	Name string `json:"name,omitempty"`
+
+	// The state of the Kubernetes hpa.
+	State string `json:"state"`
+
+	// The current number of replicas in the cluster seen by the hpa.
+	CurrentReplicas int32 `json:"currentReplicas"`
+
+	// The desired number of replicas in the cluster seen by the hpa.
+	DesiredReplicas int32 `json:"desiredReplicas"`
+
+	// The current average CPU utilization over all pods in the taskmanager statefulset
+	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage,omitempty"`
 }
 
 // SavepointStatus defines the status of savepoint progress

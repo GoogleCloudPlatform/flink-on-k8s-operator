@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"math"
 	"regexp"
 	"sort"
@@ -74,6 +75,7 @@ func getDesiredClusterState(
 		JmIngress:     getDesiredJobManagerIngress(cluster),
 		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
 		Job:           getDesiredJob(observed),
+		HPA:           getDesiredHPA(observed),
 	}
 }
 
@@ -759,6 +761,37 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 		},
 	}
 	return job
+}
+
+// Gets the desired autoscaler spec from the cluster spec
+func getDesiredHPA(observed *ObservedClusterState) *autoscalingv1.HorizontalPodAutoscaler {
+
+	var flinkCluster = observed.cluster
+	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
+	var clusterName = flinkCluster.ObjectMeta.Name
+	var jobName = getJobName(clusterName)
+	var labels = mergeLabels(
+		getClusterLabels(*flinkCluster),
+		getRevisionHashLabels(flinkCluster.Status))
+
+	return &autoscalingv1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      jobName,
+			OwnerReferences: []metav1.OwnerReference{
+				ToOwnerReference(flinkCluster)},
+			Labels: labels,
+		},
+		Spec: autoscalingv1.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: autoscalingv1.CrossVersionObjectReference{
+				Kind: "FlinkCluster",
+				Name: clusterName,
+			},
+			MinReplicas: observed.cluster.Spec.HPA.MinReplicas,
+			MaxReplicas: observed.cluster.Spec.HPA.MaxReplicas,
+			TargetCPUUtilizationPercentage: observed.cluster.Spec.HPA.TargetCPUUtilizationPercentage,
+		},
+	}
 }
 
 // Decide from which savepoint Flink job should be restored when the job created, updated or restarted

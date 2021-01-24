@@ -138,6 +138,33 @@ spec:
                 mountPath:
                   type: string
               type: object
+            hpa:
+              properties:
+                maxReplicas:
+                  format: int32
+                  type: integer
+                minReplicas:
+                  format: int32
+                  type: integer
+                scaleTargetRef:
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  type: object
+                targetCPUUtilizationPercentage:
+                  format: int32
+                  type: integer
+              required:
+              - maxReplicas
+              - scaleTargetRef
+              type: object
             image:
               properties:
                 name:
@@ -5370,6 +5397,26 @@ spec:
               type: integer
             components:
               properties:
+                HPA:
+                  properties:
+                    currentCPUUtilizationPercentage:
+                      format: int32
+                      type: integer
+                    currentReplicas:
+                      format: int32
+                      type: integer
+                    desiredReplicas:
+                      format: int32
+                      type: integer
+                    name:
+                      type: string
+                    state:
+                      type: string
+                  required:
+                  - currentReplicas
+                  - desiredReplicas
+                  - state
+                  type: object
                 configMap:
                   properties:
                     name:

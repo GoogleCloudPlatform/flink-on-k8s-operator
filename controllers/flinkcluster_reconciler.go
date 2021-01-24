@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -99,6 +100,11 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 	}
 
 	err = reconciler.reconcileJobManagerIngress()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = reconciler.reconcileHPA()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -345,6 +351,39 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 	return nil
 }
 
+func (reconciler *ClusterReconciler) reconcileHPA() error {
+	var desiredHPA = reconciler.desired.HPA
+	var observedHPA = reconciler.observed.hpa
+
+	if desiredHPA != nil && observedHPA == nil {
+		return reconciler.createHPA(desiredHPA, "HPA")
+	}
+
+	if desiredHPA != nil && observedHPA != nil {
+		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredHPA, observedHPA, "HPA")
+			} else {
+				err = reconciler.updateComponent(desiredHPA, "HPA")
+			}
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		reconciler.log.Info("JobManager ingress already exists, no action")
+		return nil
+	}
+
+	if desiredHPA == nil && observedHPA != nil {
+		return reconciler.deleteHPA(observedHPA, "JobManager")
+	}
+
+
+	return nil
+}
+
 func (reconciler *ClusterReconciler) createIngress(
 	ingress *extensionsv1beta1.Ingress, component string) error {
 	var context = reconciler.context
@@ -361,6 +400,23 @@ func (reconciler *ClusterReconciler) createIngress(
 	return err
 }
 
+func (reconciler *ClusterReconciler) createHPA(
+	hpa *autoscalingv1.HorizontalPodAutoscaler, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Creating HPA", "resource", *hpa)
+	var err = k8sClient.Create(context, hpa)
+	if err != nil {
+		log.Info("Failed to create HPA", "error", err)
+	} else {
+		log.Info("HPA created")
+	}
+	return err
+}
+
+
 func (reconciler *ClusterReconciler) deleteIngress(
 	ingress *extensionsv1beta1.Ingress, component string) error {
 	var context = reconciler.context
@@ -374,6 +430,23 @@ func (reconciler *ClusterReconciler) deleteIngress(
 		log.Error(err, "Failed to delete ingress")
 	} else {
 		log.Info("Ingress deleted")
+	}
+	return err
+}
+
+func (reconciler *ClusterReconciler) deleteHPA(
+	hpa *autoscalingv1.HorizontalPodAutoscaler, component string) error {
+	var context = reconciler.context
+	var log = reconciler.log.WithValues("component", component)
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Deleting HPA", "HPA", hpa)
+	var err = k8sClient.Delete(context, hpa)
+	err = client.IgnoreNotFound(err)
+	if err != nil {
+		log.Error(err, "Failed to delete HPA")
+	} else {
+		log.Info("Ingress HPA")
 	}
 	return err
 }

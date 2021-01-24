@@ -24,6 +24,7 @@ import (
 	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -105,6 +106,11 @@ func getJobManagerIngressName(clusterName string) string {
 // Gets TaskManager name
 func getTaskManagerStatefulSetName(clusterName string) string {
 	return clusterName + "-taskmanager"
+}
+
+// Gets hpa name
+func getHPAName(clusterName string) string {
+	return clusterName + "-hpa"
 }
 
 // Gets Job name
@@ -458,6 +464,13 @@ func isComponentUpdated(component runtime.Object, cluster v1beta1.FlinkCluster) 
 	case *extensionsv1beta1.Ingress:
 		if o == nil {
 			if cluster.Spec.JobManager.Ingress != nil {
+				return false
+			}
+			return true
+		}
+	case *autoscalingv1.HorizontalPodAutoscaler:
+		if o == nil {
+			if cluster.Spec.HPA != nil {
 				return false
 			}
 			return true
