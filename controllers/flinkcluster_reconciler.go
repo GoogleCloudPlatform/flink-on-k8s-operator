@@ -743,7 +743,7 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 		return false, ""
 	}
 
-	var nextOkTriggerTime = getNextOkTime(jobStatus.LastSavepointTriggerTime, SavepointTimeoutSec)
+	var nextOkTriggerTime = getTimeAfterAddedSeconds(jobStatus.LastSavepointTriggerTime, SavepointTimeoutSec)
 	if time.Now().Before(nextOkTriggerTime) {
 		return false, ""
 	}
@@ -754,12 +754,13 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 	}
 
 	// Scheduled, check if next trigger time arrived.
-	var nextTime = getNextOkTime(jobStatus.LastSavepointTime, int64(*jobSpec.AutoSavepointSeconds))
+	var nextTime = getTimeAfterAddedSeconds(jobStatus.LastSavepointTime, int64(*jobSpec.AutoSavepointSeconds))
 	return time.Now().After(nextTime), v1beta1.SavepointTriggerReasonScheduled
 }
 
-// Convert raw time to object and add `addedSeconds` to it
-func getNextOkTime(rawTime string, addedSeconds int64) time.Time {
+// Convert raw time to object and add `addedSeconds` to it,
+// getting a time object for the parsed `rawTime` with `addedSeconds` added to it.
+func getTimeAfterAddedSeconds(rawTime string, addedSeconds int64) time.Time {
 	var tc = &TimeConverter{}
 	var lastTriggerTime = time.Time{}
 	if len(rawTime) != 0 {

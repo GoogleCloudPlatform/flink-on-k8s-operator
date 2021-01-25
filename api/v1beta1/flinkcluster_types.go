@@ -571,7 +571,8 @@ type JobStatus struct {
 	// Last savepoint trigger ID.
 	LastSavepointTriggerID string `json:"lastSavepointTriggerID,omitempty"`
 
-	// Last successful or failed savepoint operation timestamp.
+	// Last savepoint trigger time. This is updated to make sure multiple
+	// savepoints will not be taken simultaneously.
 	LastSavepointTriggerTime string `json:"lastSavepointTriggerTime,omitempty"`
 
 	// Last successful or failed savepoint operation timestamp.
