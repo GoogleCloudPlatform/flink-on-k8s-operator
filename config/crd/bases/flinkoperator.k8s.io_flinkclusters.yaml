@@ -163,6 +163,8 @@ spec:
                   type: integer
                 cancelRequested:
                   type: boolean
+                takeSavepointOnUpgrade:
+                  type: boolean
                 className:
                   type: string
                 cleanupPolicy:
@@ -5147,6 +5149,8 @@ spec:
                     fromSavepoint:
                       type: string
                     id:
+                      type: string
+                    lastSavepointTriggerTime:
                       type: string
                     lastSavepointTime:
                       type: string

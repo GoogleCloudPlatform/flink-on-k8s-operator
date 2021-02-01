@@ -69,6 +69,7 @@ FlinkCluster
         |__ args
         |__ fromSavepoint
         |__ allowNonRestoredState
+        |__ takeSavepointOnUpgrade
         |__ autoSavepointSeconds
         |__ savepointsDir
         |__ savepointGeneration
@@ -262,6 +263,7 @@ FlinkCluster
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointsDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
+      * **takeSavepointOnUpgrade** (optional):  Should take savepoint before upgrading the job, default: false.
       * **savepointGeneration** (optional): Update this field to `jobStatus.savepointGeneration + 1` for a running job
         cluster to trigger a new savepoint to `savepointsDir` on demand.
       * **parallelism** (optional): Parallelism of the job, default: 1.
