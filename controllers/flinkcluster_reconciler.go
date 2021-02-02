@@ -521,7 +521,7 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 			shouldTakeSavepont, savepointTriggerReason := reconciler.shouldTakeSavepoint()
 			if shouldTakeSavepont {
 				err = reconciler.updateSavepointTriggerTimeStatus()
-				if err != nil {
+				if err == nil {
 					newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
 				}
 			}
@@ -997,6 +997,7 @@ func (reconciler *ClusterReconciler) updateStatusForNewJob() error {
 		clusterClone.Status.Components.Job = newJobStatus
 	}
 	var fromSavepoint = getFromSavepoint(desiredJob.Spec)
+	newJobStatus.ID = ""
 	newJobStatus.State = v1beta1.JobStatePending
 	newJobStatus.FromSavepoint = fromSavepoint
 	if newJobStatus.SavepointLocation != "" {
