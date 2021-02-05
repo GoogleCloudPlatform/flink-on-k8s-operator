@@ -19,8 +19,8 @@ import (
 
 	"k8s.io/klog"
 
-	schedulerinterface "github.com/googlecloudplatform/flink-operator/controllers/batchscheduler/interface"
-	"github.com/googlecloudplatform/flink-operator/controllers/batchscheduler/volcano"
+	schedulerinterface "github.com/spotify/flink-on-k8s-operator/controllers/batchscheduler/interface"
+	"github.com/spotify/flink-on-k8s-operator/controllers/batchscheduler/volcano"
 )
 
 var (

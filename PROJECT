@@ -1,6 +1,6 @@
 version: "2"
 domain: k8s.io
-repo: github.com/googlecloudplatform/flink-operator
+repo: github.com/spotify/flink-on-k8s-operator
 resources:
 - group: flinkoperator
   version: v1beta1

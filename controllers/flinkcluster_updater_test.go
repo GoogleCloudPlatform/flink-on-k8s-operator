@@ -19,7 +19,7 @@ package controllers
 import (
 	"testing"
 
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	v1beta1 "github.com/spotify/flink-on-k8s-operator/api/v1beta1"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"

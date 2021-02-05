@@ -1,4 +1,4 @@
-module github.com/googlecloudplatform/flink-operator
+module github.com/spotify/flink-on-k8s-operator
 
 go 1.14
 

@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
-	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
+	v1beta1 "github.com/spotify/flink-on-k8s-operator/api/v1beta1"
+	"github.com/spotify/flink-on-k8s-operator/controllers/flinkclient"
+	"github.com/spotify/flink-on-k8s-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,10 +51,10 @@ type ObservedClusterState struct {
 	cluster           *v1beta1.FlinkCluster
 	revisions         []*appsv1.ControllerRevision
 	configMap         *corev1.ConfigMap
-	jmStatefulSet      *appsv1.StatefulSet
+	jmStatefulSet     *appsv1.StatefulSet
 	jmService         *corev1.Service
 	jmIngress         *extensionsv1beta1.Ingress
-	tmStatefulSet      *appsv1.StatefulSet
+	tmStatefulSet     *appsv1.StatefulSet
 	job               *batchv1.Job
 	jobPod            *corev1.Pod
 	flinkJobStatus    FlinkJobStatus

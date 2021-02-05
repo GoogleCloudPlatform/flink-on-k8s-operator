@@ -14,8 +14,8 @@ limitations under the License.
 package schedulerinterface
 
 import (
-	"github.com/googlecloudplatform/flink-operator/api/v1beta1"
-	"github.com/googlecloudplatform/flink-operator/controllers/model"
+	"github.com/spotify/flink-on-k8s-operator/api/v1beta1"
+	"github.com/spotify/flink-on-k8s-operator/controllers/model"
 )
 
 // BatchScheduler is the general batch scheduler interface.
