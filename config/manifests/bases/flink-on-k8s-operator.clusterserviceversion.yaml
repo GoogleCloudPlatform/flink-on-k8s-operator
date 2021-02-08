@@ -6,13 +6,19 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.0.0
     operators.operatorframework.io/project_layout: go
-  name: flink-on-k8s-operator.vX.Y.Z
+  name: flink-on-k8s-operator.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
-  customresourcedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: FlinkCluster is the Schema for the flinkclusters API
+      displayName: Flink Cluster
+      kind: FlinkCluster
+      name: flinkclusters.flinkoperator.k8s.io
+      version: v1beta1
   description: Flink operator
-  displayName: Flink operator
+  displayName: Flink Operator
   icon:
   - base64data: ""
     mediatype: ""
@@ -30,9 +36,9 @@ spec:
   - supported: true
     type: AllNamespaces
   keywords:
-  - pulsar
   - flink
   - sql
+  - pulsar
   links:
   - name: Flink On K8s Operator
     url: https://flink-on-k8s-operator.domain

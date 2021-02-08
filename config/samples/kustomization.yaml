@@ -1,0 +1,6 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+  - flinkoperator_v1beta1_flinkjobcluster.yaml
+  - flinkoperator_v1beta1_flinksessioncluster.yaml
+  - flinkoperator_v1beta1_remotejobjar.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
