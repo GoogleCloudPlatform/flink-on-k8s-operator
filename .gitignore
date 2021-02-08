@@ -29,3 +29,6 @@ config/default/manager_image_patch.yaml
 config/deploy
 ./helm-chart/.deploy
 .deploy
+
+bundle/
+bundle.Dockerfile
