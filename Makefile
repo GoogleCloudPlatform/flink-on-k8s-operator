@@ -2,6 +2,7 @@ VERSION ?= 0.0.1
 
 # Image URL to use all building/pushing image targets
 IMG ?= gcr.io/flink-operator/flink-operator:latest
+UPSTREAM_IMG ?= gcr.io/flink-operator/flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:maxDescLen=0,trivialVersions=true"
 # The Kubernetes namespace in which the operator will be deployed.
@@ -102,6 +103,14 @@ operator-image: builder-image test-in-docker
 push-operator-image:
 	docker push ${IMG}
 
+# no need to build the image unless the repo has changes from the upstream
+docker-build:
+	docker pull ${UPSTREAM_IMG}
+	docker tag ${UPSTREAM_IMG} ${IMG}
+
+# Push the docker image
+docker-push:
+	docker push ${IMG}
 
 #################### Deployment ####################
 
