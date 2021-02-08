@@ -1,0 +1,52 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operators.operatorframework.io/project_layout: go
+  name: flink-on-k8s-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: FlinkCluster is the Schema for the flinkclusters API
+      displayName: Flink Cluster
+      kind: FlinkCluster
+      name: flinkclusters.flinkoperator.k8s.io
+      version: v1beta1
+  description: Flink operator
+  displayName: Flink Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - flink
+  - sql
+  - pulsar
+  links:
+  - name: Flink On K8s Operator
+    url: https://flink-on-k8s-operator.domain
+  maintainers:
+  - email: nlu@streamnative.io
+    name: Neng Lu
+  maturity: alpha
+  provider:
+    name: streamnative.io
+    url: streamnative.io
+  version: 0.0.0
