@@ -104,17 +104,17 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	err = reconciler.reconcileHPA()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	err = reconciler.reconcileTaskManagerStatefulSet()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	result, err := reconciler.reconcileJob()
+
+	err = reconciler.reconcileHPA()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return result, nil
 }
@@ -372,7 +372,7 @@ func (reconciler *ClusterReconciler) reconcileHPA() error {
 			}
 			return nil
 		}
-		reconciler.log.Info("JobManager ingress already exists, no action")
+		reconciler.log.Info("HPA already exists, no action")
 		return nil
 	}
 
@@ -446,7 +446,7 @@ func (reconciler *ClusterReconciler) deleteHPA(
 	if err != nil {
 		log.Error(err, "Failed to delete HPA")
 	} else {
-		log.Info("Ingress HPA")
+		log.Info("HPA deleted")
 	}
 	return err
 }
