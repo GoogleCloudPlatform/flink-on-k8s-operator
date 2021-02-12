@@ -195,7 +195,7 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 # Generate bundle manifests and metadata, then validate generated files.
-bundle: manifests config/default/manager_image_patch.yaml
+bundle: config/default/manager_image_patch.yaml
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	cd config/default && $(KUSTOMIZE) edit set image gcr.io/kubebuilder/kube-rbac-proxy=$(KUBE_RBAC_PROXY_IMG)
