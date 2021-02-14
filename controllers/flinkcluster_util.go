@@ -42,7 +42,7 @@ const (
 	ControlRetries            = "retries"
 	ControlMaxRetries         = "3"
 
-	SavepointTimeoutSec = 60
+	SavepointTimeoutSec = 900 // 15 mins
 
 	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
 

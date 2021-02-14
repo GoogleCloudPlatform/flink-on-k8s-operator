@@ -140,7 +140,12 @@ func (reconciler *ClusterReconciler) reconcileStatefulSet(
 	if desiredStatefulSet != nil && observedStatefulSet != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
 			updateComponent := fmt.Sprintf("%v StatefulSet", component)
-			err := reconciler.deleteOldComponent(desiredStatefulSet, observedStatefulSet, updateComponent)
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredStatefulSet, observedStatefulSet, updateComponent)
+			} else {
+				err = reconciler.updateComponent(desiredStatefulSet, updateComponent)
+			}
 			if err != nil {
 				return err
 			}
@@ -192,6 +197,21 @@ func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, 
 	return nil
 }
 
+func (reconciler *ClusterReconciler) updateComponent(desired runtime.Object, component string) error {
+	var log = reconciler.log.WithValues("component", component)
+	var context = reconciler.context
+	var k8sClient = reconciler.k8sClient
+
+	log.Info("Update component", "component", desired)
+	err := k8sClient.Update(context, desired)
+	if err != nil {
+		log.Error(err, "Failed to update component for update")
+		return err
+	}
+	log.Info("Component update successfully")
+	return nil
+}
+
 func (reconciler *ClusterReconciler) updateStatefulSet(
 	statefulSet *appsv1.StatefulSet, component string) error {
 	var context = reconciler.context
@@ -238,7 +258,12 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 			// v1.Service API does not handle update correctly when below values are empty.
 			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
 			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
-			err := reconciler.deleteOldComponent(desiredJmService, observedJmService, "JobManager service")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredJmService, observedJmService, "JobManager service")
+			} else {
+				err = reconciler.updateComponent(desiredJmService, "JobManager service")
+			}
 			if err != nil {
 				return err
 			}
@@ -298,7 +323,12 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
-			err := reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
+			} else {
+				err = reconciler.updateComponent(desiredJmIngress, "JobManager ingress")
+			}
 			if err != nil {
 				return err
 			}
@@ -358,7 +388,12 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
 		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
-			err := reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			var err error
+			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
+				err = reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
+			} else {
+				err = reconciler.updateComponent(desiredConfigMap, "ConfigMap")
+			}
 			if err != nil {
 				return err
 			}
@@ -468,31 +503,29 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 		var jobID = reconciler.getFlinkJobID()
 		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
 		var recordedJobStatus = observed.cluster.Status.Components.Job
+		var jobSpec = reconciler.observed.cluster.Spec.Job
 
 		// Update or recover Flink job by restart.
-		var restartJob bool
 		if shouldUpdateJob(observed) {
 			log.Info("Job is about to be restarted to update")
-			restartJob = true
+			err := reconciler.restartJob(*jobSpec.TakeSavepointOnUpgrade)
+			return requeueResult, err
 		} else if shouldRestartJob(restartPolicy, recordedJobStatus) {
 			log.Info("Job is about to be restarted to recover failure")
-			restartJob = true
-		}
-		if restartJob {
-			err := reconciler.restartJob()
-			if err != nil {
-				return requeueResult, err
-			}
-			return requeueResult, nil
+			err := reconciler.restartJob(false)
+			return requeueResult, err
 		}
 
 		// Trigger savepoint if required.
 		if len(jobID) > 0 {
-			if ok, savepointTriggerReason := reconciler.shouldTakeSavepoint(); ok {
-				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
+			shouldTakeSavepont, savepointTriggerReason := reconciler.shouldTakeSavepoint()
+			if shouldTakeSavepont {
+				err = reconciler.updateSavepointTriggerTimeStatus()
+				if err == nil {
+					newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
+				}
 			}
 		}
-
 		log.Info("Job is not finished yet, no action", "jobID", jobID)
 		return requeueResult, nil
 	}
@@ -575,14 +608,15 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 	return ""
 }
 
-func (reconciler *ClusterReconciler) restartJob() error {
+func (reconciler *ClusterReconciler) restartJob(shouldTakeSavepoint bool) error {
 	var log = reconciler.log
 	var observedJob = reconciler.observed.job
 	var observedFlinkJob = reconciler.observed.flinkJobStatus.flinkJob
 
 	log.Info("Stopping Flink job to restart", "", observedFlinkJob)
+	shouldTakeSavepoint = shouldTakeSavepoint && canTakeSavepoint(*reconciler.observed.cluster)
 
-	var err = reconciler.cancelRunningJobs(false /* takeSavepoint */)
+	var err = reconciler.cancelRunningJobs(shouldTakeSavepoint /* takeSavepoint */)
 	if err != nil {
 		return err
 	}
@@ -744,17 +778,30 @@ func (reconciler *ClusterReconciler) shouldTakeSavepoint() (bool, string) {
 		return false, ""
 	}
 
-	// First savepoint.
-	if len(jobStatus.LastSavepointTime) == 0 {
-		return true, v1beta1.SavepointTriggerReasonScheduled
+	var nextOkTriggerTime = getTimeAfterAddedSeconds(jobStatus.LastSavepointTriggerTime, SavepointTimeoutSec)
+	if time.Now().Before(nextOkTriggerTime) {
+		return false, ""
 	}
 
-	// Interval expired.
-	var tc = &TimeConverter{}
-	var lastTime = tc.FromString(jobStatus.LastSavepointTime)
-	var nextTime = lastTime.Add(
-		time.Duration(int64(*jobSpec.AutoSavepointSeconds) * int64(time.Second)))
+	// First savepoint.
+	if len(jobStatus.LastSavepointTime) == 0 {
+		return true, v1beta1.SavepointTriggerReasonScheduledInitial
+	}
+
+	// Scheduled, check if next trigger time arrived.
+	var nextTime = getTimeAfterAddedSeconds(jobStatus.LastSavepointTime, int64(*jobSpec.AutoSavepointSeconds))
 	return time.Now().After(nextTime), v1beta1.SavepointTriggerReasonScheduled
+}
+
+// Convert raw time to object and add `addedSeconds` to it,
+// getting a time object for the parsed `rawTime` with `addedSeconds` added to it.
+func getTimeAfterAddedSeconds(rawTime string, addedSeconds int64) time.Time {
+	var tc = &TimeConverter{}
+	var lastTriggerTime = time.Time{}
+	if len(rawTime) != 0 {
+		lastTriggerTime = tc.FromString(rawTime)
+	}
+	return lastTriggerTime.Add(time.Duration(addedSeconds * int64(time.Second)))
 }
 
 // Trigger savepoint for a job then return savepoint status to update.
@@ -817,6 +864,14 @@ func (reconciler *ClusterReconciler) takeSavepoint(
 	}
 
 	return err
+}
+
+func (reconciler *ClusterReconciler) updateSavepointTriggerTimeStatus() error {
+	var cluster = v1beta1.FlinkCluster{}
+	reconciler.observed.cluster.DeepCopyInto(&cluster)
+	var jobStatus = cluster.Status.Components.Job
+	setTimestamp(&jobStatus.LastSavepointTriggerTime)
+	return reconciler.k8sClient.Status().Update(reconciler.context, &cluster)
 }
 
 func (reconciler *ClusterReconciler) updateSavepointStatus(
@@ -942,6 +997,7 @@ func (reconciler *ClusterReconciler) updateStatusForNewJob() error {
 		clusterClone.Status.Components.Job = newJobStatus
 	}
 	var fromSavepoint = getFromSavepoint(desiredJob.Spec)
+	newJobStatus.ID = ""
 	newJobStatus.State = v1beta1.JobStatePending
 	newJobStatus.FromSavepoint = fromSavepoint
 	if newJobStatus.SavepointLocation != "" {

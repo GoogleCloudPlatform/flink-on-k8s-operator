@@ -55,6 +55,8 @@ func TestSetDefault(t *testing.T) {
 	var defatulJobManagerIngressTLSUse = false
 	var defaultMemoryOffHeapRatio = int32(25)
 	var defaultMemoryOffHeapMin = resource.MustParse("600M")
+	defaultRecreateOnUpdate := new(bool)
+	*defaultRecreateOnUpdate = true
 	var expectedCluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -112,7 +114,8 @@ func TestSetDefault(t *testing.T) {
 			HadoopConfig: &HadoopConfig{
 				MountPath: "/etc/hadoop/conf",
 			},
-			EnvVars: nil,
+			EnvVars:          nil,
+			RecreateOnUpdate: defaultRecreateOnUpdate,
 		},
 		Status: FlinkClusterStatus{},
 	}
@@ -146,6 +149,8 @@ func TestSetNonDefault(t *testing.T) {
 		RunAsUser:  &securityContextUserGroup,
 		RunAsGroup: &securityContextUserGroup,
 	}
+	defaultRecreateOnUpdate := new(bool)
+	*defaultRecreateOnUpdate = true
 	var cluster = FlinkCluster{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -267,7 +272,8 @@ func TestSetNonDefault(t *testing.T) {
 			HadoopConfig: &HadoopConfig{
 				MountPath: "/opt/flink/hadoop/conf",
 			},
-			EnvVars: nil,
+			EnvVars:          nil,
+			RecreateOnUpdate: defaultRecreateOnUpdate,
 		},
 		Status: FlinkClusterStatus{},
 	}

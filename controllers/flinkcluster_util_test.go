@@ -230,9 +230,10 @@ func TestShouldUpdateJob(t *testing.T) {
 		cluster: &v1beta1.FlinkCluster{
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:             v1beta1.JobStateRunning,
-					LastSavepointTime: tc.ToString(savepointTime),
-					SavepointLocation: "gs://my-bucket/savepoint-123",
+					State:                    v1beta1.JobStateRunning,
+					LastSavepointTime:        tc.ToString(savepointTime),
+					LastSavepointTriggerTime: tc.ToString(savepointTime),
+					SavepointLocation:        "gs://my-bucket/savepoint-123",
 				}},
 				CurrentRevision: "1", NextRevision: "2",
 			},
@@ -264,9 +265,10 @@ func TestShouldUpdateJob(t *testing.T) {
 		cluster: &v1beta1.FlinkCluster{
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:             v1beta1.JobStateRunning,
-					LastSavepointTime: tc.ToString(savepointTime),
-					SavepointLocation: "gs://my-bucket/savepoint-123",
+					State:                    v1beta1.JobStateRunning,
+					LastSavepointTime:        tc.ToString(savepointTime),
+					LastSavepointTriggerTime: tc.ToString(savepointTime),
+					SavepointLocation:        "gs://my-bucket/savepoint-123",
 				}},
 				CurrentRevision: "1", NextRevision: "2",
 			},
@@ -325,9 +327,10 @@ func TestIsSavepointUpToDate(t *testing.T) {
 	var savepointTime = time.Now()
 	var observeTime = savepointTime.Add(time.Second * 100)
 	var jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		LastSavepointTime: tc.ToString(savepointTime),
-		SavepointLocation: "gs://my-bucket/savepoint-123",
+		State:                    v1beta1.JobStateFailed,
+		LastSavepointTime:        tc.ToString(savepointTime),
+		LastSavepointTriggerTime: tc.ToString(savepointTime),
+		SavepointLocation:        "gs://my-bucket/savepoint-123",
 	}
 	var update = isSavepointUpToDate(observeTime, jobStatus)
 	assert.Equal(t, update, true)
@@ -336,9 +339,10 @@ func TestIsSavepointUpToDate(t *testing.T) {
 	savepointTime = time.Now()
 	observeTime = savepointTime.Add(time.Second * 500)
 	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		LastSavepointTime: tc.ToString(savepointTime),
-		SavepointLocation: "gs://my-bucket/savepoint-123",
+		State:                    v1beta1.JobStateFailed,
+		LastSavepointTime:        tc.ToString(savepointTime),
+		LastSavepointTriggerTime: tc.ToString(savepointTime),
+		SavepointLocation:        "gs://my-bucket/savepoint-123",
 	}
 	update = isSavepointUpToDate(observeTime, jobStatus)
 	assert.Equal(t, update, false)
@@ -347,8 +351,9 @@ func TestIsSavepointUpToDate(t *testing.T) {
 	savepointTime = time.Now()
 	observeTime = savepointTime.Add(time.Second * 500)
 	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		LastSavepointTime: tc.ToString(savepointTime),
+		State:                    v1beta1.JobStateFailed,
+		LastSavepointTime:        tc.ToString(savepointTime),
+		LastSavepointTriggerTime: tc.ToString(savepointTime),
 	}
 	update = isSavepointUpToDate(observeTime, jobStatus)
 	assert.Equal(t, update, false)
@@ -408,8 +413,8 @@ func TestIsFlinkAPIReady(t *testing.T) {
 			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
 		configMap:      &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmStatefulSet:   &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmStatefulSet:   &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmStatefulSet:  &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmStatefulSet:  &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		jmService:      &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		flinkJobStatus: FlinkJobStatus{flinkJobList: &flinkclient.JobStatusList{}},
 	}
@@ -425,10 +430,10 @@ func TestIsFlinkAPIReady(t *testing.T) {
 			},
 			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -442,9 +447,9 @@ func TestIsFlinkAPIReady(t *testing.T) {
 			},
 			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -458,10 +463,10 @@ func TestIsFlinkAPIReady(t *testing.T) {
 			},
 			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
 		},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	ready = isFlinkAPIReady(observed)
 	assert.Equal(t, ready, false)
@@ -478,11 +483,11 @@ func TestGetUpdateState(t *testing.T) {
 				Components:      v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{State: v1beta1.JobStateRunning}},
 				CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
-		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		job:           &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	var state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStatePreparing)
@@ -497,7 +502,7 @@ func TestGetUpdateState(t *testing.T) {
 		},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
 	state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateInProgress)
@@ -510,12 +515,12 @@ func TestGetUpdateState(t *testing.T) {
 			},
 			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
 		},
-		job:          &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		configMap:    &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		job:           &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		jmService:    &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		jmIngress:    &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmIngress:     &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 	}
 	state = getUpdateState(observed)
 	assert.Equal(t, state, UpdateStateFinished)

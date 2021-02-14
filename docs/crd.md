@@ -69,6 +69,7 @@ FlinkCluster
         |__ args
         |__ fromSavepoint
         |__ allowNonRestoredState
+        |__ takeSavepointOnUpgrade
         |__ autoSavepointSeconds
         |__ savepointsDir
         |__ savepointGeneration
@@ -99,6 +100,7 @@ FlinkCluster
             |__ mountPath
     |__ logConfig
     |__ revisionHistoryLimit
+    |__ recreateOnUpdate
 |__ status
     |__ state
     |__ components
@@ -261,6 +263,7 @@ FlinkCluster
       * **autoSavepointSeconds** (optional): Automatically take a savepoint to the `savepointsDir` every n seconds.
       * **savepointsDir** (optional): Savepoints dir where to store automatically taken savepoints.
       * **allowNonRestoredState** (optional):  Allow non-restored state, default: false.
+      * **takeSavepointOnUpgrade** (optional):  Should take savepoint before upgrading the job, default: false.
       * **savepointGeneration** (optional): Update this field to `jobStatus.savepointGeneration + 1` for a running job
         cluster to trigger a new savepoint to `savepointsDir` on demand.
       * **parallelism** (optional): Parallelism of the job, default: 1.
@@ -313,6 +316,7 @@ FlinkCluster
         to stdout will be provided.
       * Other arbitrary keys are also allowed, and will become part of the ConfigMap.
     * **revisionHistoryLimit** (optional): The maximum number of revision history to keep, default: 10.
+    * **recreateOnUpdate** (optional): Recreate components when updating flinkcluster, default: true.
   * **status**: Flink job or session cluster status.
     * **state**: The overall state of the Flink cluster.
     * **components**: The status of the components.

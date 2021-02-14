@@ -23,6 +23,10 @@ import (
 
 // Sets default values for unspecified FlinkCluster properties.
 func _SetDefault(cluster *FlinkCluster) {
+	if cluster.Spec.RecreateOnUpdate == nil {
+		cluster.Spec.RecreateOnUpdate = new(bool)
+		*cluster.Spec.RecreateOnUpdate = true
+	}
 	_SetImageDefault(&cluster.Spec.Image)
 	_SetJobManagerDefault(&cluster.Spec.JobManager)
 	_SetTaskManagerDefault(&cluster.Spec.TaskManager)
