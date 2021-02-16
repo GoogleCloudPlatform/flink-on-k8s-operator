@@ -30,5 +30,5 @@ curl -s -S -L "${kustomize_url}" -o kustomize_linux_amd64.tar.gz
 sudo mkdir -p /usr/local/kustomize
 sudo tar -xzf ./kustomize_linux_amd64.tar.gz -C /usr/local/kustomize
 sudo ln -sf /usr/local/kustomize/kustomize /usr/local/bin/kustomize
-rm -f ./kustomize_v*_linux_amd64.tar.gz
+rm -f ./kustomize_linux_amd64.tar.gz
 
