@@ -164,7 +164,7 @@ spec:
                   type: integer
                 cancelRequested:
                   type: boolean
-                takeSavepointOnUpgrade:
+                takeSavepointOnUpdate:
                   type: boolean
                 className:
                   type: string
@@ -4977,8 +4977,6 @@ spec:
                     id:
                       type: string
                     lastSavepointTime:
-                      type: string
-                    lastSavepointTriggerTime:
                       type: string
                     lastSavepointTriggerID:
                       type: string

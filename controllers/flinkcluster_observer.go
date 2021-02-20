@@ -51,17 +51,16 @@ type ObservedClusterState struct {
 	cluster           *v1beta1.FlinkCluster
 	revisions         []*appsv1.ControllerRevision
 	configMap         *corev1.ConfigMap
-	jmStatefulSet      *appsv1.StatefulSet
+	jmStatefulSet     *appsv1.StatefulSet
 	jmService         *corev1.Service
 	jmIngress         *extensionsv1beta1.Ingress
-	tmStatefulSet      *appsv1.StatefulSet
+	tmStatefulSet     *appsv1.StatefulSet
 	job               *batchv1.Job
 	jobPod            *corev1.Pod
 	flinkJobStatus    FlinkJobStatus
 	flinkJobSubmitLog *FlinkJobSubmitLog
-	savepoint         *flinkclient.SavepointStatus
+	savepoint         *Savepoint
 	revisionStatus    *RevisionStatus
-	savepointErr      error
 	observeTime       time.Time
 }
 
@@ -74,6 +73,11 @@ type FlinkJobStatus struct {
 type FlinkJobSubmitLog struct {
 	JobID   string `yaml:"jobID,omitempty"`
 	Message string `yaml:"message"`
+}
+
+type Savepoint struct {
+	*flinkclient.SavepointStatus
+	savepointErr error
 }
 
 // Observes the state of the cluster and its components.
@@ -364,12 +368,12 @@ func (observer *ClusterStateObserver) observeSavepoint(observed *ObservedCluster
 		var err error
 
 		savepoint, err = observer.flinkClient.GetSavepointStatus(flinkAPIBaseURL, jobID, triggerID)
-		observed.savepoint = &savepoint
+		observed.savepoint = &Savepoint{SavepointStatus: &savepoint}
 		if err == nil && len(savepoint.FailureCause.StackTrace) > 0 {
 			err = fmt.Errorf("%s", savepoint.FailureCause.StackTrace)
 		}
 		if err != nil {
-			observed.savepointErr = err
+			observed.savepoint.savepointErr = err
 			log.Info("Failed to get savepoint.", "error", err, "jobID", jobID, "triggerID", triggerID)
 		}
 		return err

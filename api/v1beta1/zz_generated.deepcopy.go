@@ -494,6 +494,13 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.VolumeClaimTemplates != nil {
+		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
+		*out = make([]v1.PersistentVolumeClaim, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.InitContainers != nil {
 		in, out := &in.InitContainers, &out.InitContainers
 		*out = make([]v1.Container, len(*in))
@@ -576,14 +583,19 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.TakeSavepointOnUpgrade != nil {
-		in, out := &in.TakeSavepointOnUpgrade, &out.takeSavepointOnUpgrade
+	if in.TakeSavepointOnUpdate != nil {
+		in, out := &in.TakeSavepointOnUpdate, &out.TakeSavepointOnUpdate
 		*out = new(bool)
 		**out = **in
 	}
 	if in.SavepointsDir != nil {
 		in, out := &in.SavepointsDir, &out.SavepointsDir
 		*out = new(string)
+		**out = **in
+	}
+	if in.SavepointMaxAgeForUpdateSeconds != nil {
+		in, out := &in.SavepointMaxAgeForUpdateSeconds, &out.SavepointMaxAgeForUpdateSeconds
+		*out = new(int32)
 		**out = **in
 	}
 	if in.AutoSavepointSeconds != nil {
@@ -770,6 +782,13 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 	if in.VolumeMounts != nil {
 		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.VolumeClaimTemplates != nil {
+		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
+		*out = make([]v1.PersistentVolumeClaim, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

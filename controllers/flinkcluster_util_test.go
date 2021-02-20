@@ -225,15 +225,18 @@ func TestShouldUpdateJob(t *testing.T) {
 	var tc = &TimeConverter{}
 	var savepointTime = time.Now()
 	var observeTime = savepointTime.Add(time.Second * 100)
+	var savepointMaxAgeForUpdateSeconds = int32(300)
 	var observed = ObservedClusterState{
 		observeTime: observeTime,
 		cluster: &v1beta1.FlinkCluster{
+			Spec: v1beta1.FlinkClusterSpec{Job: &v1beta1.JobSpec{
+				SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
+			}},
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:                    v1beta1.JobStateRunning,
-					LastSavepointTime:        tc.ToString(savepointTime),
-					LastSavepointTriggerTime: tc.ToString(savepointTime),
-					SavepointLocation:        "gs://my-bucket/savepoint-123",
+					State:             v1beta1.JobStateRunning,
+					LastSavepointTime: tc.ToString(savepointTime),
+					SavepointLocation: "gs://my-bucket/savepoint-123",
 				}},
 				CurrentRevision: "1", NextRevision: "2",
 			},
@@ -245,6 +248,9 @@ func TestShouldUpdateJob(t *testing.T) {
 	// should update when update triggered and job failed.
 	observed = ObservedClusterState{
 		cluster: &v1beta1.FlinkCluster{
+			Spec: v1beta1.FlinkClusterSpec{Job: &v1beta1.JobSpec{
+				SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
+			}},
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
 					State: v1beta1.JobStateFailed,
@@ -263,12 +269,14 @@ func TestShouldUpdateJob(t *testing.T) {
 	observed = ObservedClusterState{
 		observeTime: observeTime,
 		cluster: &v1beta1.FlinkCluster{
+			Spec: v1beta1.FlinkClusterSpec{Job: &v1beta1.JobSpec{
+				SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
+			}},
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:                    v1beta1.JobStateRunning,
-					LastSavepointTime:        tc.ToString(savepointTime),
-					LastSavepointTriggerTime: tc.ToString(savepointTime),
-					SavepointLocation:        "gs://my-bucket/savepoint-123",
+					State:             v1beta1.JobStateRunning,
+					LastSavepointTime: tc.ToString(savepointTime),
+					SavepointLocation: "gs://my-bucket/savepoint-123",
 				}},
 				CurrentRevision: "1", NextRevision: "2",
 			},
@@ -278,12 +286,11 @@ func TestShouldUpdateJob(t *testing.T) {
 	assert.Equal(t, update, false)
 
 	// cannot update without savepointLocation
-	tc = &TimeConverter{}
-	savepointTime = time.Now()
-	observeTime = savepointTime.Add(time.Second * 500)
 	observed = ObservedClusterState{
-		observeTime: observeTime,
 		cluster: &v1beta1.FlinkCluster{
+			Spec: v1beta1.FlinkClusterSpec{Job: &v1beta1.JobSpec{
+				SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
+			}},
 			Status: v1beta1.FlinkClusterStatus{
 				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
 					State: v1beta1.JobStateUpdating,
@@ -294,6 +301,25 @@ func TestShouldUpdateJob(t *testing.T) {
 	}
 	update = shouldUpdateJob(observed)
 	assert.Equal(t, update, false)
+
+	// proceed update without savepointLocation if takeSavepoint is false.
+	takeSavepointOnUpdate := false
+	observed = ObservedClusterState{
+		cluster: &v1beta1.FlinkCluster{
+			Spec: v1beta1.FlinkClusterSpec{Job: &v1beta1.JobSpec{
+				TakeSavepointOnUpdate:           &takeSavepointOnUpdate,
+				SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
+			}},
+			Status: v1beta1.FlinkClusterStatus{
+				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
+					State: v1beta1.JobStateUpdating,
+				}},
+				CurrentRevision: "1", NextRevision: "2",
+			},
+		},
+	}
+	update = shouldUpdateJob(observed)
+	assert.Equal(t, update, true)
 }
 
 func TestGetNextRevisionNumber(t *testing.T) {
@@ -326,36 +352,37 @@ func TestIsSavepointUpToDate(t *testing.T) {
 	var tc = &TimeConverter{}
 	var savepointTime = time.Now()
 	var observeTime = savepointTime.Add(time.Second * 100)
-	var jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
-		SavepointLocation:        "gs://my-bucket/savepoint-123",
+	var savepointMaxAgeForUpdateSeconds = int32(300)
+	var jobSpec = v1beta1.JobSpec{
+		SavepointMaxAgeForUpdateSeconds: &savepointMaxAgeForUpdateSeconds,
 	}
-	var update = isSavepointUpToDate(observeTime, jobStatus)
+	var jobStatus = v1beta1.JobStatus{
+		State:             v1beta1.JobStateFailed,
+		LastSavepointTime: tc.ToString(savepointTime),
+		SavepointLocation: "gs://my-bucket/savepoint-123",
+	}
+	var update = isSavepointUpToDate(observeTime, &jobSpec, &jobStatus)
 	assert.Equal(t, update, true)
 
 	// old
 	savepointTime = time.Now()
 	observeTime = savepointTime.Add(time.Second * 500)
 	jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
-		SavepointLocation:        "gs://my-bucket/savepoint-123",
+		State:             v1beta1.JobStateFailed,
+		LastSavepointTime: tc.ToString(savepointTime),
+		SavepointLocation: "gs://my-bucket/savepoint-123",
 	}
-	update = isSavepointUpToDate(observeTime, jobStatus)
+	update = isSavepointUpToDate(observeTime, &jobSpec, &jobStatus)
 	assert.Equal(t, update, false)
 
 	// Fails without savepointLocation
 	savepointTime = time.Now()
 	observeTime = savepointTime.Add(time.Second * 500)
 	jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
+		State:             v1beta1.JobStateFailed,
+		LastSavepointTime: tc.ToString(savepointTime),
 	}
-	update = isSavepointUpToDate(observeTime, jobStatus)
+	update = isSavepointUpToDate(observeTime, &jobSpec, &jobStatus)
 	assert.Equal(t, update, false)
 }
 

@@ -42,13 +42,10 @@ const (
 	ControlRetries            = "retries"
 	ControlMaxRetries         = "3"
 
-	SavepointTimeoutSec = 900 // 15 mins
-
 	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
 
-	// TODO: need to be user configurable
-	SavepointAgeForJobUpdateSec      = 300
-	SavepointRequestRetryIntervalSec = 10
+	SavepointMaxAgeForUpdateSecondsDefault = 300 // 5 min
+	SavepointRequestRetryIntervalSec       = 10
 )
 
 type UpdateState string
@@ -143,11 +140,12 @@ func canTakeSavepoint(cluster v1beta1.FlinkCluster) bool {
 	var savepointStatus = cluster.Status.Savepoint
 	var jobStatus = cluster.Status.Components.Job
 	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		!isJobStopped(jobStatus) &&
+		jobStatus.State == v1beta1.JobStateRunning &&
 		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
 }
 
 // shouldRestartJob returns true if the controller should restart failed or lost job.
+// The controller can restart the job only if there is a savepoint to restore, recorded in status field.
 func shouldRestartJob(
 	restartPolicy *v1beta1.JobRestartPolicy,
 	jobStatus *v1beta1.JobStatus) bool {
@@ -158,9 +156,17 @@ func shouldRestartJob(
 		len(jobStatus.SavepointLocation) > 0
 }
 
+// shouldUpdateJob returns true if the controller should update the job.
+// The controller should update the job when update is triggered and it is prepared to update.
+// When the job is stopped, no savepoint is required, or the savepoint recorded in status field is up to date, it is ready to update.
 func shouldUpdateJob(observed ObservedClusterState) bool {
 	var jobStatus = observed.cluster.Status.Components.Job
-	var readyToUpdate = jobStatus == nil || isJobStopped(jobStatus) || isSavepointUpToDate(observed.observeTime, *jobStatus)
+	var jobSpec = observed.cluster.Spec.Job
+	var takeSavepointOnUpdate = jobSpec.TakeSavepointOnUpdate == nil || *jobSpec.TakeSavepointOnUpdate == true
+	var readyToUpdate = jobStatus == nil ||
+		isJobStopped(jobStatus) ||
+		!takeSavepointOnUpdate ||
+		isSavepointUpToDate(observed.observeTime, jobSpec, jobStatus)
 	return isUpdateTriggered(observed.cluster.Status) && readyToUpdate
 }
 
@@ -302,16 +308,6 @@ func getRequestedSavepointStatus(triggerReason string) *v1beta1.SavepointStatus 
 	}
 }
 
-func savepointTimeout(s *v1beta1.SavepointStatus) bool {
-	if s.TriggerTime == "" {
-		return false
-	}
-	tc := &TimeConverter{}
-	triggerTime := tc.FromString(s.TriggerTime)
-	validTime := triggerTime.Add(time.Duration(int64(SavepointTimeoutSec) * int64(time.Second)))
-	return time.Now().After(validTime)
-}
-
 func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
 	var msg = status.Message
 	if len(msg) > 100 {
@@ -402,10 +398,16 @@ func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) boo
 		controlStatus.State == v1beta1.ControlStateFailed
 }
 
-// Check if the savepoint has been created recently.
-func isSavepointUpToDate(now time.Time, jobStatus v1beta1.JobStatus) bool {
+// Check if the savepoint is up to date.
+func isSavepointUpToDate(now time.Time, jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) bool {
 	if jobStatus.SavepointLocation != "" && jobStatus.LastSavepointTime != "" {
-		if !hasTimeElapsed(jobStatus.LastSavepointTime, now, SavepointAgeForJobUpdateSec) {
+		var spMaxAge int
+		if jobSpec.SavepointMaxAgeForUpdateSeconds != nil {
+			spMaxAge = int(*jobSpec.SavepointMaxAgeForUpdateSeconds)
+		} else {
+			spMaxAge = SavepointMaxAgeForUpdateSecondsDefault
+		}
+		if !hasTimeElapsed(jobStatus.LastSavepointTime, now, spMaxAge) {
 			return true
 		}
 	}
@@ -517,16 +519,17 @@ func isFlinkAPIReady(observed ObservedClusterState) bool {
 
 func getUpdateState(observed ObservedClusterState) UpdateState {
 	var recordedJobStatus = observed.cluster.Status.Components.Job
-	if !isUpdateTriggered(observed.cluster.Status) {
+
+	switch {
+	case !isUpdateTriggered(observed.cluster.Status):
 		return ""
-	}
-	if isJobActive(recordedJobStatus) {
+	case isJobActive(recordedJobStatus):
 		return UpdateStatePreparing
-	}
-	if isClusterUpdateToDate(observed) {
+	case isClusterUpdateToDate(observed):
 		return UpdateStateFinished
+	default:
+		return UpdateStateInProgress
 	}
-	return UpdateStateInProgress
 }
 
 func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int) []*appsv1.ControllerRevision {
