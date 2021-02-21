@@ -96,7 +96,7 @@ You can use the following [dashboard](https://grafana.com/grafana/dashboards/103
 ## Run Jobs with InitContainer
 
 You have the option to download job jars to be executed as jobs, directly into the Flink job cluster pods.
-There is already an [example](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/config/samples/flinkoperator_v1beta1_remotejobjar.yaml.) on how to run the Flink job cluster with a remote job jar.
+There is already an [example](https://github.com/GoogleCloudPlatform/flink-on-k8s-operator/blob/master/config/samples/flinkoperator_v1beta1_remotejobjar.yaml). on how to run the Flink job cluster with a remote job jar.
 
 ## Run Jobs without InitContainer
 
