@@ -458,134 +458,17 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 	}
 
 	// Update savepoint status if it is in progress or requested.
-	if recorded.Savepoint != nil {
-		status.Savepoint = updater.getSavepointStatus(
-			observed.savepoint,
-			recorded.Savepoint,
-			recorded.Components.Job,
-			updater.getFlinkJobID())
-	}
+	status.Savepoint = updater.getUpdatedSavepointStatus(
+		observed.savepoint,
+		recorded.Savepoint,
+		recorded.Components.Job,
+		updater.getFlinkJobID())
 
 	// User requested control
-	var userControl = observed.cluster.Annotations[v1beta1.ControlAnnotation]
+	status.Control = getControlStatus(observed.cluster, &status, recorded)
 
-	// Update job control status in progress
-	var controlStatus *v1beta1.FlinkClusterControlStatus
-	if recorded.Control != nil && userControl == recorded.Control.Name &&
-		recorded.Control.State == v1beta1.ControlStateProgressing {
-		controlStatus = recorded.Control.DeepCopy()
-		var newSavepointStatus = status.Savepoint
-		switch recorded.Control.Name {
-		case v1beta1.ControlNameJobCancel:
-			if status.Components.Job.State == v1beta1.JobStateCancelled {
-				controlStatus.State = v1beta1.ControlStateSucceeded
-				setTimestamp(&controlStatus.UpdateTime)
-			} else if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
-				controlStatus.Message = "Aborted job cancellation: Job is terminated."
-				controlStatus.State = v1beta1.ControlStateFailed
-				setTimestamp(&controlStatus.UpdateTime)
-			} else if newSavepointStatus != nil && newSavepointStatus.State == v1beta1.SavepointStateFailed {
-				controlStatus.Message = "Aborted job cancellation: failed to create savepoint."
-				controlStatus.State = v1beta1.ControlStateFailed
-				setTimestamp(&controlStatus.UpdateTime)
-			} else if recorded.Control.Message != "" {
-				controlStatus.State = v1beta1.ControlStateFailed
-				setTimestamp(&controlStatus.UpdateTime)
-			}
-		case v1beta1.ControlNameSavepoint:
-			if newSavepointStatus != nil {
-				if newSavepointStatus.State == v1beta1.SavepointStateSucceeded {
-					controlStatus.State = v1beta1.ControlStateSucceeded
-					setTimestamp(&controlStatus.UpdateTime)
-				} else if newSavepointStatus.State == v1beta1.SavepointStateFailed || newSavepointStatus.State == v1beta1.SavepointStateTriggerFailed {
-					controlStatus.State = v1beta1.ControlStateFailed
-					setTimestamp(&controlStatus.UpdateTime)
-				}
-			}
-		}
-		// aborted by max retry reach
-		var retries = controlStatus.Details[ControlRetries]
-		if retries == ControlMaxRetries {
-			controlStatus.Message = fmt.Sprintf("Aborted control %v. The maximum number of retries has been reached.", controlStatus.Name)
-			controlStatus.State = v1beta1.ControlStateFailed
-			setTimestamp(&controlStatus.UpdateTime)
-		}
-	} else if userControl != "" {
-		// Handle new user control.
-		updater.log.Info("New user control requested: " + userControl)
-		if userControl != v1beta1.ControlNameJobCancel && userControl != v1beta1.ControlNameSavepoint {
-			if userControl != "" {
-				updater.log.Info(fmt.Sprintf(v1beta1.InvalidControlAnnMsg, v1beta1.ControlAnnotation, userControl))
-			}
-		} else if recorded.Control != nil && recorded.Control.State == v1beta1.ControlStateProgressing {
-			updater.log.Info(fmt.Sprintf(v1beta1.ControlChangeWarnMsg, v1beta1.ControlAnnotation), "current control", recorded.Control.Name, "new control", userControl)
-		} else {
-			switch userControl {
-			case v1beta1.ControlNameSavepoint:
-				if observed.cluster.Spec.Job.SavepointsDir == nil || *observed.cluster.Spec.Job.SavepointsDir == "" {
-					updater.log.Info(fmt.Sprintf(v1beta1.InvalidSavepointDirMsg, v1beta1.ControlAnnotation))
-					break
-				} else if isJobStopped(observed.cluster.Status.Components.Job) {
-					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForSavepointMsg, v1beta1.ControlAnnotation))
-					break
-				}
-				// Although a savepoint is in progress, if user requested savepoint, new savepoint should be triggered.
-				status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUserRequested)
-				controlStatus = getNewUserControlStatus(userControl)
-				updater.log.Info("Marked to take new savepoint user requested.")
-			case v1beta1.ControlNameJobCancel:
-				if isJobTerminated(observed.cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
-					updater.log.Info(fmt.Sprintf(v1beta1.InvalidJobStateForJobCancelMsg, v1beta1.ControlAnnotation))
-					break
-				}
-				// Savepoint for job-cancel
-				var observedSavepoint = observed.cluster.Status.Savepoint
-				if observedSavepoint == nil ||
-					(observedSavepoint.State != v1beta1.SavepointStateInProgress && observedSavepoint.State != v1beta1.SavepointStateNotTriggered) {
-					status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonJobCancel)
-					updater.log.Info("Marked to take new savepoint for job cancel.")
-				} else {
-					updater.log.Info("There is a savepoint in progress. No need to trigger new savepoint for job cancel.")
-				}
-				controlStatus = getNewUserControlStatus(userControl)
-			}
-		}
-	}
-	// Maintain control status if there is no change.
-	if recorded.Control != nil && controlStatus == nil {
-		controlStatus = recorded.Control.DeepCopy()
-	}
-	status.Control = controlStatus
-
-	// Handle update.
-	switch updateState {
-	case UpdateStatePreparing:
-		// Even if savepoint has been created for update already, we check the age of savepoint continually.
-		// If created savepoint is old and savepoint can be triggered, we should take savepoint again.
-		// (e.g., for the case update is not progressed by accidents like network partition)
-		var jobSpec = observed.cluster.Spec.Job
-		var jobStatus = status.Components.Job
-		if !isSavepointUpToDate(observed.observeTime, jobSpec, jobStatus) &&
-			canTakeSavepoint(*observed.cluster) &&
-			(recorded.Savepoint == nil || recorded.Savepoint.State != v1beta1.SavepointStateNotTriggered) {
-			// TODO: apply exponential backoff retry
-			// If failed to take savepoint, retry after SavepointRequestRetryIntervalSec.
-			if recorded.Savepoint != nil &&
-				!hasTimeElapsed(recorded.Savepoint.RequestTime, time.Now(), SavepointRequestRetryIntervalSec) {
-				updater.log.Info(fmt.Sprintf("Will retry to trigger savepoint for update, in %v seconds because previous request was failed", SavepointRequestRetryIntervalSec))
-			} else {
-				// Mark to take new savepoint for update.
-				status.Savepoint = getRequestedSavepointStatus(v1beta1.SavepointTriggerReasonUpdate)
-				updater.log.Info("Marked to take new savepoint for update.")
-			}
-		} else if recorded.Savepoint != nil && recorded.Savepoint.State == v1beta1.SavepointStateInProgress {
-			updater.log.Info("Savepoint for update is in progress.")
-		} else {
-			updater.log.Info("Job is stopping for update.")
-		}
-	case UpdateStateInProgress:
-		updater.log.Info("Update is in progress.")
-	case UpdateStateFinished:
+	// Update finished
+	if updateState == UpdateStateFinished {
 		status.CurrentRevision = observed.cluster.Status.NextRevision
 		updater.log.Info("Finished update.")
 	}
@@ -893,14 +776,18 @@ func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1
 	return nil
 }
 
-func (updater *ClusterStatusUpdater) getSavepointStatus(
+func (updater *ClusterStatusUpdater) getUpdatedSavepointStatus(
 	observedSavepoint *Savepoint,
 	recordedSavepointStatus *v1beta1.SavepointStatus,
 	recordedJobStatus *v1beta1.JobStatus,
 	flinkJobID *string) *v1beta1.SavepointStatus {
+	if recordedSavepointStatus == nil {
+		return nil
+	}
+
 	var savepointStatus = recordedSavepointStatus.DeepCopy()
 	var errMsg string
-	if recordedSavepointStatus.State == v1beta1.SavepointStateInProgress && observedSavepoint != nil {
+	if savepointStatus.State == v1beta1.SavepointStateInProgress && observedSavepoint != nil {
 		switch {
 		case observedSavepoint.IsSuccessful():
 			savepointStatus.State = v1beta1.SavepointStateSucceeded
@@ -914,7 +801,7 @@ func (updater *ClusterStatusUpdater) getSavepointStatus(
 			}
 		}
 	}
-	if savepointStatus.State == v1beta1.SavepointStateNotTriggered || savepointStatus.State == v1beta1.SavepointStateInProgress {
+	if savepointStatus.State == v1beta1.SavepointStateInProgress {
 		switch {
 		case isJobStopped(recordedJobStatus):
 			errMsg = "Flink job is stopped."
@@ -939,6 +826,70 @@ func (updater *ClusterStatusUpdater) getSavepointStatus(
 		savepointStatus.Message = errMsg
 	}
 	return savepointStatus
+}
+
+func getControlStatus(cluster *v1beta1.FlinkCluster,
+	new *v1beta1.FlinkClusterStatus,
+	recorded *v1beta1.FlinkClusterStatus) *v1beta1.FlinkClusterControlStatus {
+	var userControl = cluster.Annotations[v1beta1.ControlAnnotation]
+	var controlStatus *v1beta1.FlinkClusterControlStatus
+	var controlRequest = getNewUserControlRequest(cluster)
+
+	// New control status
+	if controlRequest != "" {
+		controlStatus = getUserControlStatus(controlRequest, v1beta1.ControlStateRequested)
+		return controlStatus
+	}
+
+	// Update control status in progress
+	if recorded.Control != nil && userControl == recorded.Control.Name &&
+		recorded.Control.State == v1beta1.ControlStateInProgress {
+		controlStatus = recorded.Control.DeepCopy()
+		switch recorded.Control.Name {
+		case v1beta1.ControlNameJobCancel:
+			if new.Components.Job.State == v1beta1.JobStateCancelled {
+				controlStatus.State = v1beta1.ControlStateSucceeded
+				setTimestamp(&controlStatus.UpdateTime)
+			} else if isJobTerminated(cluster.Spec.Job.RestartPolicy, recorded.Components.Job) {
+				controlStatus.Message = "Aborted job cancellation: job is terminated already."
+				controlStatus.State = v1beta1.ControlStateFailed
+				setTimestamp(&controlStatus.UpdateTime)
+			} else if new.Savepoint != nil && new.Savepoint.State == v1beta1.SavepointStateFailed {
+				controlStatus.Message = "Aborted job cancellation: failed to take savepoint."
+				controlStatus.State = v1beta1.ControlStateFailed
+				setTimestamp(&controlStatus.UpdateTime)
+			} else if recorded.Control.Message != "" {
+				controlStatus.State = v1beta1.ControlStateFailed
+				setTimestamp(&controlStatus.UpdateTime)
+			}
+		case v1beta1.ControlNameSavepoint:
+			if new.Savepoint != nil {
+				if new.Savepoint.State == v1beta1.SavepointStateSucceeded {
+					controlStatus.State = v1beta1.ControlStateSucceeded
+					setTimestamp(&controlStatus.UpdateTime)
+				} else if new.Savepoint.State == v1beta1.SavepointStateFailed || new.Savepoint.State == v1beta1.SavepointStateTriggerFailed {
+					controlStatus.State = v1beta1.ControlStateFailed
+					setTimestamp(&controlStatus.UpdateTime)
+				}
+			}
+		}
+		// Aborted by max retry reach
+		var retries = controlStatus.Details[ControlRetries]
+		if retries == ControlMaxRetries {
+			controlStatus.Message = fmt.Sprintf("Aborted control %v. The maximum number of retries has been reached.", controlStatus.Name)
+			controlStatus.State = v1beta1.ControlStateFailed
+			setTimestamp(&controlStatus.UpdateTime)
+		}
+		return controlStatus
+	}
+
+	// Maintain control status if there is no change.
+	if recorded.Control != nil && controlStatus == nil {
+		controlStatus = recorded.Control.DeepCopy()
+		return controlStatus
+	}
+
+	return nil
 }
 
 func getStatefulSetState(statefulSet *appsv1.StatefulSet) string {

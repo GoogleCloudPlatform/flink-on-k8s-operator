@@ -85,14 +85,14 @@ const (
 	ControlNameJobCancel = "job-cancel"
 
 	// control state
-	ControlStateProgressing = "Progressing"
-	ControlStateSucceeded   = "Succeeded"
-	ControlStateFailed      = "Failed"
+	ControlStateRequested  = "Requested"
+	ControlStateInProgress = "InProgress"
+	ControlStateSucceeded  = "Succeeded"
+	ControlStateFailed     = "Failed"
 )
 
 // Savepoint status
 const (
-	SavepointStateNotTriggered  = "NotTriggered"
 	SavepointStateInProgress    = "InProgress"
 	SavepointStateTriggerFailed = "TriggerFailed"
 	SavepointStateFailed        = "Failed"
@@ -601,7 +601,7 @@ type SavepointStatus struct {
 	TriggerReason string `json:"triggerReason,omitempty"`
 
 	// Savepoint requested time.
-	RequestTime string `json:"requestTime,omitempty"`
+	UpdateTime string `json:"requestTime,omitempty"`
 
 	// Savepoint state.
 	State string `json:"state"`

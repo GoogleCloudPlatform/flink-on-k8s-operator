@@ -37,10 +37,8 @@ import (
 )
 
 const (
-	ControlSavepointTriggerID = "SavepointTriggerID"
-	ControlJobID              = "jobID"
-	ControlRetries            = "retries"
-	ControlMaxRetries         = "3"
+	ControlRetries    = "retries"
+	ControlMaxRetries = "3"
 
 	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
 
@@ -140,7 +138,7 @@ func canTakeSavepoint(cluster v1beta1.FlinkCluster) bool {
 	var savepointStatus = cluster.Status.Savepoint
 	var jobStatus = cluster.Status.Components.Job
 	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		jobStatus.State == v1beta1.JobStateRunning &&
+		!isJobStopped(jobStatus) &&
 		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
 }
 
@@ -272,40 +270,42 @@ func getRetryCount(data map[string]string) (string, error) {
 	return retries, err
 }
 
-func getNewUserControlStatus(controlName string) *v1beta1.FlinkClusterControlStatus {
+func getNewUserControlRequest(cluster *v1beta1.FlinkCluster) string {
+	var userControl = cluster.Annotations[v1beta1.ControlAnnotation]
+	var recorded = cluster.Status
+	if recorded.Control == nil || recorded.Control.State != v1beta1.ControlStateInProgress {
+		return userControl
+	}
+	return ""
+}
+
+func getUserControlStatus(controlName string, state string) *v1beta1.FlinkClusterControlStatus {
 	var controlStatus = new(v1beta1.FlinkClusterControlStatus)
 	controlStatus.Name = controlName
-	controlStatus.State = v1beta1.ControlStateProgressing
+	controlStatus.State = state
 	setTimestamp(&controlStatus.UpdateTime)
 	return controlStatus
 }
 
-func getTriggeredSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) v1beta1.SavepointStatus {
-	var savepointStatus = v1beta1.SavepointStatus{}
+func getNewSavepointStatus(jobID string, triggerID string, triggerReason string, message string, triggerSuccess bool) *v1beta1.SavepointStatus {
+	var savepointState string
 	var now string
 	setTimestamp(&now)
-	savepointStatus.JobID = jobID
-	savepointStatus.TriggerID = triggerID
-	savepointStatus.TriggerReason = triggerReason
-	savepointStatus.TriggerTime = now
-	savepointStatus.RequestTime = now
-	savepointStatus.Message = message
 	if triggerSuccess {
-		savepointStatus.State = v1beta1.SavepointStateInProgress
+		savepointState = v1beta1.SavepointStateInProgress
 	} else {
-		savepointStatus.State = v1beta1.SavepointStateTriggerFailed
+		savepointState = v1beta1.SavepointStateTriggerFailed
+	}
+	var savepointStatus = &v1beta1.SavepointStatus{
+		JobID:         jobID,
+		TriggerID:     triggerID,
+		TriggerReason: triggerReason,
+		TriggerTime:   now,
+		UpdateTime:    now,
+		Message:       message,
+		State:         savepointState,
 	}
 	return savepointStatus
-}
-
-func getRequestedSavepointStatus(triggerReason string) *v1beta1.SavepointStatus {
-	var now string
-	setTimestamp(&now)
-	return &v1beta1.SavepointStatus{
-		State:         v1beta1.SavepointStateNotTriggered,
-		TriggerReason: triggerReason,
-		RequestTime:   now,
-	}
 }
 
 func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string, eventReason string, eventMessage string) {
@@ -314,7 +314,7 @@ func getControlEvent(status v1beta1.FlinkClusterControlStatus) (eventType string
 		msg = msg[:100] + "..."
 	}
 	switch status.State {
-	case v1beta1.ControlStateProgressing:
+	case v1beta1.ControlStateInProgress:
 		eventType = corev1.EventTypeNormal
 		eventReason = "ControlRequested"
 		eventMessage = fmt.Sprintf("Requested new user control %v", status.Name)

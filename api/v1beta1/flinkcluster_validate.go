@@ -115,7 +115,7 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 	oldUserControl, _ := old.Annotations[ControlAnnotation]
 	newUserControl, ok := new.Annotations[ControlAnnotation]
 	if ok {
-		if oldUserControl != newUserControl && old.Status.Control != nil && old.Status.Control.State == ControlStateProgressing {
+		if oldUserControl != newUserControl && old.Status.Control != nil && old.Status.Control.State == ControlStateInProgress {
 			return fmt.Errorf(ControlChangeWarnMsg, ControlAnnotation)
 		}
 		switch newUserControl {
