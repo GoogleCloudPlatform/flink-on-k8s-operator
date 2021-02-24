@@ -39,6 +39,7 @@ FlinkCluster
         |__ initContainers
         |__ nodeSelector
         |__ tolerations
+        |__ affinity
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
@@ -59,6 +60,7 @@ FlinkCluster
         |__ initContainers
         |__ nodeSelector
         |__ tolerations
+        |__ affinity
         |__ sidecars
         |__ podAnnotations
         |__ podLabels
@@ -202,6 +204,9 @@ FlinkCluster
       * **tolerations** (optional): Allows the JobManager pod to run on a tainted node
         in the cluster.
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+      * **affinity** (optional): Allows the JobManager pod to set node affinity & inter-pod affinity & anti-affinity
+        in the cluster.
+        See [more info](hhttps://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
       * **sidecars** (optional): Sidecar containers running alongside with the JobManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
       * **podAnnotations** (optional): Pod template annotations for the JobManager StatefulSet.
@@ -244,6 +249,9 @@ FlinkCluster
       * **tolerations** (optional): Allows the TaskManager pod to run on a tainted node
         in the cluster.
         See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+      * **affinity** (optional): Allows the TaskManager pod to set node affinity & inter-pod affinity & anti-affinity
+        in the cluster.
+        See [more info](hhttps://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
       * **sidecars** (optional): Sidecar containers running alongside with the TaskManager container in the pod.
         See [more info](https://kubernetes.io/docs/concepts/containers/) about containers.
       * **podAnnotations** (optional): Pod template annotations for the TaskManager StatefulSet.
