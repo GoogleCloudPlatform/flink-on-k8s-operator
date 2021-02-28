@@ -51,7 +51,7 @@ job:
   jarFile: ./examples/streaming/WordCount.jar 
   className: org.apache.flink.streaming.examples.wordcount.WordCount
   args: ["--input", "./README.txt"]
-  paralellism: 2
+  parallelism: 2
   restartPolicy: Never
   
   # Mount an EmptyDir so the InitContainer can store its JarFile in the specific path for the job to execute, only needed when initContainer is enabled.
