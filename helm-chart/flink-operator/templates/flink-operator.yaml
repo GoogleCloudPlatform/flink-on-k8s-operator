@@ -1,37 +1,10 @@
 {{- if .Values.rbac.create }}
-{{- if .Values.flinkOperatorNamespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
   name: {{ .Values.flinkOperatorNamespace.name }}
-{{- end }}
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  creationTimestamp: null
-  name: flink-operator-mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace.name }}
-      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
-  failurePolicy: Fail
-  name: mflinkcluster.flinkoperator.k8s.io
-  rules:
-  - apiGroups:
-    - flinkoperator.k8s.io
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - flinkclusters
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -364,13 +337,18 @@ spec:
         command:
         - /flink-operator
         image: {{ .Values.operatorImage.name }}
-        imagePullPolicy: {{ .Values.operatorImage.pullPolicy }}
         name: flink-operator
         ports:
         - containerPort: 443
           name: webhook-server
           protocol: TCP
-        resources: {{ .Values.resources | toYaml | nindent 10 }}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
@@ -381,6 +359,31 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-cert
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: flink-operator-mutating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: flink-operator-webhook-service
+      namespace: {{ .Values.flinkOperatorNamespace.name }}
+      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
+  failurePolicy: Fail
+  name: mflinkcluster.flinkoperator.k8s.io
+  rules:
+  - apiGroups:
+    - flinkoperator.k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flinkclusters
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
