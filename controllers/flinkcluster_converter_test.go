@@ -115,6 +115,108 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Value:             "toleration-value2",
 		},
 	}
+	var jmAffinity = *&corev1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{
+					{
+						MatchExpressions: []v1.NodeSelectorRequirement{
+							{
+								Key:      "node-allow/jobmanagers",
+								Operator: v1.NodeSelectorOpNotIn,
+								Values:   []string{"false"},
+							},
+						},
+					},
+				},
+			},
+		},
+		PodAffinity: &v1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"kafka-click-generator"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+		PodAntiAffinity: &v1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "component",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"jobmanager"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
+	var tmAffinity = *&corev1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{
+					{
+						MatchExpressions: []v1.NodeSelectorRequirement{
+							{
+								Key:      "node-allow/taskmanagers",
+								Operator: v1.NodeSelectorOpNotIn,
+								Values:   []string{"false"},
+							},
+						},
+					},
+				},
+			},
+		},
+		PodAffinity: &v1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"kafka-click-generator"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+		PodAntiAffinity: &v1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "component",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"taskmanager"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
 	var userAndGroupId int64 = 9999
 	var securityContext = corev1.PodSecurityContext{
 		RunAsUser:  &userAndGroupId,
@@ -205,6 +307,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 					Tolerations:        tolerations,
+					Affinity:           &jmAffinity,
 					MemoryOffHeapRatio: &memoryOffHeapRatio,
 					MemoryOffHeapMin:   memoryOffHeapMin,
 					PodAnnotations: map[string]string{
@@ -244,6 +347,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						{Name: "cache-volume", MountPath: "/cache"},
 					},
 					Tolerations: tolerations,
+					Affinity:    &tmAffinity,
 					PodAnnotations: map[string]string{
 						"example.com": "example",
 					},
@@ -408,6 +512,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 					Tolerations: tolerations,
+					Affinity:    &jmAffinity,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,
@@ -574,8 +679,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			ServiceName: "flinkjobcluster-sample-taskmanager",
+			Replicas:            &replicas,
+			ServiceName:         "flinkjobcluster-sample-taskmanager",
 			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -713,6 +818,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 						},
 					},
 					Tolerations: tolerations,
+					Affinity:    &tmAffinity,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,
