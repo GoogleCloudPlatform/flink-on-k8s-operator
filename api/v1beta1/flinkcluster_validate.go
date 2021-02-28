@@ -67,7 +67,7 @@ func (v *Validator) ValidateCreate(cluster *FlinkCluster) error {
 	if err != nil {
 		return err
 	}
-	err = v.validateJob(cluster.Spec.Job)
+	err = v.validateJob(cluster.Spec.Job, &cluster.Spec.TaskManager)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 	return nil
 }
 
-func (v *Validator) validateJob(jobSpec *JobSpec) error {
+func (v *Validator) validateJob(jobSpec *JobSpec, tmSpec *TaskManagerSpec) error {
 	if jobSpec == nil {
 		return nil
 	}
@@ -406,7 +406,11 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 	if *jobSpec.Parallelism < 1 {
 		return fmt.Errorf("job parallelism must be >= 1")
 	}
-
+	if jobSpec.ParallelismPerTaskManager != nil    {
+		if  *jobSpec.ParallelismPerTaskManager * tmSpec.Replicas != *jobSpec.Parallelism {
+			return fmt.Errorf("if set, job parallelism must be = parallelismPerTaskManager * Replicas")
+		}
+	}
 	if jobSpec.RestartPolicy == nil {
 		return fmt.Errorf("job restartPolicy is unspecified")
 	}

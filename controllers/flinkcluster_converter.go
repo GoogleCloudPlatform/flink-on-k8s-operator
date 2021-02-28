@@ -595,6 +595,7 @@ func getDesiredConfigMap(
 func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 	var flinkCluster = observed.cluster
 	var jobSpec = flinkCluster.Spec.Job
+	var tmSpec = flinkCluster.Spec.TaskManager
 	var jobStatus = flinkCluster.Status.Components.Job
 
 	if jobSpec == nil {
@@ -637,7 +638,10 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 		*jobSpec.AllowNonRestoredState == true {
 		jobArgs = append(jobArgs, "--allowNonRestoredState")
 	}
-	if jobSpec.Parallelism != nil {
+	if jobSpec.ParallelismPerTaskManager != nil {
+		jobArgs = append(
+			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism * tmSpec.Replicas))
+	} else if jobSpec.Parallelism != nil {
 		jobArgs = append(
 			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism))
 	}
