@@ -6,6 +6,9 @@ flinkOperatorNamespace:
 # Watch custom resources in the namespace, ignore other namespaces. If empty, all namespaces will be watched.
 watchNamespace:
 
+# -- Image pull secrets
+imagePullSecrets: []
+
 # The number of replicas of the operator Deployment
 replicas: 1
 
