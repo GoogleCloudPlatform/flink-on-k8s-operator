@@ -78,6 +78,9 @@ FlinkCluster
         |__ volumes
         |__ volumeMounts
         |__ initContainers
+        |__ nodeSelector
+        |__ tolerations
+        |__ affinity
         |__ restartPolicy
         |__ cleanupPolicy
             |__ afterJobSucceeds
@@ -270,6 +273,13 @@ FlinkCluster
       * **noLoggingToStdout** (optional): No logging output to STDOUT, default: false.
       * **initContainers** (optional): Init containers of the Job pod.
         See [more info](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) about init containers.
+      * **nodeSelector** (optional): Selector which must match a node's labels for the Job pod to be scheduled on that node.
+        See [more info](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
+      * **tolerations** (optional): Allows the Job pod to run on a tainted node
+        in the cluster.
+        See [more info](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+      * **affinity** (optional): Allows the Job pod to set node affinity & inter-pod affinity & anti-affinity in the cluster.
+        See [more info](hhttps://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
       * **volumes** (optional): Volumes in the Job pod.
         See [more info](https://kubernetes.io/docs/concepts/storage/volumes/) about volumes.
       * **volumeMounts** (optional): Volume mounts in the Job containers. If there is no confilcts, these mounts will be
