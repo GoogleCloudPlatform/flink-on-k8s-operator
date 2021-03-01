@@ -675,6 +675,9 @@ type FlinkClusterStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName="fc"
+// +kubebuilder:printcolumn:name="status",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // FlinkCluster is the Schema for the flinkclusters API
 type FlinkCluster struct {
