@@ -447,6 +447,25 @@ You can check the list of revisions and their contents like this:
 kubectl get controllerrevision
 kubectl get controllerrevision <REVISION-NAME> -o yaml
 ```
+### Scale A Flink Job
+
+The operator supports scaling up and down of a Job Cluster by exposing a 
+[scale subresource](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource).
+This allows the number of taskmanagers to be scaled either manually, or by using an something such as a horizontal pod 
+autoscaler (HPA).
+
+To enable scaling of a job, it is also neccessary to allow for the parallelism of the job to be scalable. To enable this
+there is an alternative way of specifying `parallelism` of a Job using `paralleismPerTaskManager`:
+```bash
+job:
+  paralleismPerTaskManager: 1
+```
+A sensible default for this would be to set it to be equal to the number of cpu available to your TaskManager, but the 
+perfect value will depend on your own job.
+
+**Note**: `parallelism` and `paralleismPerTaskManager` are mutually exclusive, you cannot set both.
+
+
 
 ### Control Logging Behavior
 

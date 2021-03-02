@@ -546,6 +546,7 @@ func getDesiredConfigMap(
 	var flinkProperties = flinkCluster.Spec.FlinkProperties
 	var jmPorts = flinkCluster.Spec.JobManager.Ports
 	var tmPorts = flinkCluster.Spec.TaskManager.Ports
+	var jobSpec = flinkCluster.Spec.Job
 	var configMapName = getConfigMapName(clusterName)
 	var labels = mergeLabels(
 		getClusterLabels(*flinkCluster),
@@ -559,6 +560,7 @@ func getDesiredConfigMap(
 		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
 		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
 		"taskmanager.rpc.port":   strconv.FormatInt(int64(*tmPorts.RPC), 10),
+		"pipeline.max-parallelism": strconv.FormatInt(int64(*jobSpec.MaxParallelism), 10),
 	}
 	if flinkHeapSize["jobmanager.heap.size"] != "" {
 		flinkProps["jobmanager.heap.size"] = flinkHeapSize["jobmanager.heap.size"]
@@ -574,6 +576,7 @@ func getDesiredConfigMap(
 		}
 		flinkProps[k] = v
 	}
+
 	var configData = getLogConf(flinkCluster.Spec)
 	configData["flink-conf.yaml"] = getFlinkProperties(flinkProps)
 	configData["submit-job.sh"] = submitJobScript

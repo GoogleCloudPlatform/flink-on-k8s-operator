@@ -20,7 +20,6 @@ spec:
       labelSelectorPath: .status.components.taskManagerStatefulSet.selector
       specReplicasPath: .spec.taskManager.replicas
       statusReplicasPath: .status.components.taskManagerStatefulSet.replicas
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -718,9 +717,15 @@ spec:
                   type: array
                 jarFile:
                   type: string
+                maxParallelism:
+                  format: int32
+                  type: integer
                 noLoggingToStdout:
                   type: boolean
                 parallelism:
+                  format: int32
+                  type: integer
+                parallelismPerTaskManager:
                   format: int32
                   type: integer
                 podAnnotations:

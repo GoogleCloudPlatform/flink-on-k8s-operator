@@ -55,6 +55,7 @@ clusters and jobs.
 * Batch scheduling for JobManager and TaskManager Pods
 * GCP integration (service account, GCS connector, networking)
 * Support for Beam Python jobs
+* Support for scaling Jobs (by attaching an HPA)
 
 ## Installation
 
