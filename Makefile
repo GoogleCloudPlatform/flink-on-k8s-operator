@@ -1,6 +1,8 @@
+VERSION ?= 0.0.1
 
 # Image URL to use all building/pushing image targets
 IMG ?= gcr.io/flink-operator/flink-operator:latest
+UPSTREAM_IMG ?= gcr.io/flink-operator/flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:maxDescLen=0,trivialVersions=true"
 # The Kubernetes namespace in which the operator will be deployed.
@@ -13,6 +15,21 @@ WATCH_NAMESPACE ?=
 GREEN=\033[1;32m
 RED=\033[1;31m
 RESET=\033[0m
+
+# Default bundle image tag
+BUNDLE_IMG ?= controller-bundle:$(VERSION)
+# Options for 'bundle-build'
+ifneq ($(origin CHANNELS), undefined)
+BUNDLE_CHANNELS := --channels=$(CHANNELS)
+endif
+ifneq ($(origin DEFAULT_CHANNEL), undefined)
+BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
+endif
+BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+# Bases for bundle manifests
+BUNDLE_MANIFESTS_BASES=config/manifests
+BUNDLE_MANIFESTS ?= $(BUNDLE_MANIFESTS_BASES)
+KUBE_RBAC_PROXY_IMG ?= gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
 
 #################### Local build and test ####################
 
@@ -62,7 +79,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.4 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(shell go env GOPATH)/bin/controller-gen
@@ -86,6 +103,14 @@ operator-image: builder-image test-in-docker
 push-operator-image:
 	docker push ${IMG}
 
+# no need to build the image unless the repo has changes from the upstream
+docker-build:
+	docker pull ${UPSTREAM_IMG}
+	docker tag ${UPSTREAM_IMG} ${IMG}
+
+# Push the docker image
+docker-push:
+	docker push ${IMG}
 
 #################### Deployment ####################
 
@@ -153,3 +178,30 @@ undeploy: undeploy-controller undeploy-crd
 # Deploy the sample Flink clusters in the Kubernetes cluster
 samples:
 	kubectl apply -f config/samples/
+
+kustomize:
+ifeq (, $(shell which kustomize))
+	@{ \
+	set -e ;\
+	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
+	}
+KUSTOMIZE=$(GOBIN)/kustomize
+else
+KUSTOMIZE=$(shell which kustomize)
+endif
+
+# Generate bundle manifests and metadata, then validate generated files.
+bundle:
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image flink-operator=$(IMG)
+	cd config/default && $(KUSTOMIZE) edit set image gcr.io/kubebuilder/kube-rbac-proxy=$(KUBE_RBAC_PROXY_IMG)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	operator-sdk bundle validate ./bundle
+
+# Build the bundle image.
+bundle-build:
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
