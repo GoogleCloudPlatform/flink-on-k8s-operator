@@ -16,7 +16,7 @@ metadata:
 spec:
   ...
   job:
-    fromSavepoint: gs://my-bucket/savepoints/savepoint-123
+    fromSavePoint: gs://my-bucket/savepoints/savepoint-123
     allowNonRestoredState: false
     ...
 ```
