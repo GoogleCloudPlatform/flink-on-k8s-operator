@@ -4,8 +4,12 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
   creationTimestamp: null
   name: flinkclusters.flinkoperator.k8s.io
 spec:
@@ -5290,4 +5294,3 @@ status:
   conditions: []
   storedVersions: []
 {{ end }}
-
