@@ -215,6 +215,7 @@ func getDesiredJobManagerStatefulSet(
 			Name:            jobManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
 			Labels:          statefulSetLabels,
+			Annotations:     jobManagerSpec.PodAnnotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: jobManagerSpec.Replicas,
@@ -514,6 +515,7 @@ func getDesiredTaskManagerStatefulSet(
 			OwnerReferences: []metav1.OwnerReference{
 				ToOwnerReference(flinkCluster)},
 			Labels: statefulSetLabels,
+			Annotations: taskManagerSpec.PodAnnotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &taskManagerSpec.Replicas,

@@ -303,6 +303,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 					BlockOwnerDeletion: &blockOwnerDeletion,
 				},
 			},
+			Annotations: map[string]string{
+				"example.com": "example",
+			},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -571,6 +574,9 @@ func TestGetDesiredClusterState(t *testing.T) {
 					Controller:         &controller,
 					BlockOwnerDeletion: &blockOwnerDeletion,
 				},
+			},
+			Annotations: map[string]string{
+				"example.com": "example",
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
