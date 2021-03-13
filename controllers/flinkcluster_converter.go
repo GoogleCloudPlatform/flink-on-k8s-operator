@@ -68,12 +68,12 @@ func getDesiredClusterState(
 		return model.DesiredClusterState{}
 	}
 	return model.DesiredClusterState{
-		ConfigMap:    getDesiredConfigMap(cluster),
+		ConfigMap:     getDesiredConfigMap(cluster),
 		JmStatefulSet: getDesiredJobManagerStatefulSet(cluster),
-		JmService:    getDesiredJobManagerService(cluster),
-		JmIngress:    getDesiredJobManagerIngress(cluster),
+		JmService:     getDesiredJobManagerService(cluster),
+		JmIngress:     getDesiredJobManagerIngress(cluster),
 		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
-		Job:          getDesiredJob(observed),
+		Job:           getDesiredJob(observed),
 	}
 }
 
@@ -217,9 +217,9 @@ func getDesiredJobManagerStatefulSet(
 			Labels:          statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: jobManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: jobManagerStatefulSetName,
+			Replicas:             jobManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          jobManagerStatefulSetName,
 			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -516,11 +516,11 @@ func getDesiredTaskManagerStatefulSet(
 			Labels: statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &taskManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: taskManagerStatefulSetName,
+			Replicas:             &taskManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          taskManagerStatefulSetName,
 			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
-			PodManagementPolicy: "Parallel",
+			PodManagementPolicy:  "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -554,12 +554,12 @@ func getDesiredConfigMap(
 	var flinkHeapSize = calFlinkHeapSize(flinkCluster)
 	// Properties which should be provided from real deployed environment.
 	var flinkProps = map[string]string{
-		"jobmanager.rpc.address": getJobManagerServiceName(clusterName),
-		"jobmanager.rpc.port":    strconv.FormatInt(int64(*jmPorts.RPC), 10),
-		"blob.server.port":       strconv.FormatInt(int64(*jmPorts.Blob), 10),
-		"query.server.port":      strconv.FormatInt(int64(*jmPorts.Query), 10),
-		"rest.port":              strconv.FormatInt(int64(*jmPorts.UI), 10),
-		"taskmanager.rpc.port":   strconv.FormatInt(int64(*tmPorts.RPC), 10),
+		"jobmanager.rpc.address":   getJobManagerServiceName(clusterName),
+		"jobmanager.rpc.port":      strconv.FormatInt(int64(*jmPorts.RPC), 10),
+		"blob.server.port":         strconv.FormatInt(int64(*jmPorts.Blob), 10),
+		"query.server.port":        strconv.FormatInt(int64(*jmPorts.Query), 10),
+		"rest.port":                strconv.FormatInt(int64(*jmPorts.UI), 10),
+		"taskmanager.rpc.port":     strconv.FormatInt(int64(*tmPorts.RPC), 10),
 		"pipeline.max-parallelism": strconv.FormatInt(int64(*jobSpec.MaxParallelism), 10),
 	}
 	if flinkHeapSize["jobmanager.heap.size"] != "" {
@@ -643,7 +643,7 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 	}
 	if jobSpec.ParallelismPerTaskManager != nil {
 		jobArgs = append(
-			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism * tmSpec.Replicas))
+			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism*tmSpec.Replicas))
 	} else if jobSpec.Parallelism != nil {
 		jobArgs = append(
 			jobArgs, "--parallelism", fmt.Sprint(*jobSpec.Parallelism))

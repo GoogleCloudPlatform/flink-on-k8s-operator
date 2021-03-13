@@ -395,8 +395,8 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 		}
 		status.Components.TaskManagerStatefulSet =
 			v1beta1.TaskManagerStatefulSetStatus{
-				Name:  recorded.Components.TaskManagerStatefulSet.Name,
-				State: v1beta1.ComponentStateDeleted,
+				Name:     recorded.Components.TaskManagerStatefulSet.Name,
+				State:    v1beta1.ComponentStateDeleted,
 				Replicas: recorded.Components.TaskManagerStatefulSet.Replicas,
 				Selector: selector.String(),
 			}
