@@ -694,14 +694,10 @@ type FlinkClusterStatus struct {
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
 }
 
+// Below scale subresource watches taskManager.replicas. See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// The below annotation defines a scale subresource: This allows HPA (or other resources) to scale the number of taskmanager replicas
-// specpath: Gives the path to the desired scale (replicas)
-// statuspath: Gives the path to the current scale (replicas)
-// selectorpath: Gives a selector to use that allows resources such as an HPA to measure stats from all patching pods (cpu for example)
-
 // +kubebuilder:subresource:scale:specpath=.spec.taskManager.replicas,statuspath=.status.components.taskManagerStatefulSet.replicas,selectorpath=.status.components.taskManagerStatefulSet.selector
 
 // FlinkCluster is the Schema for the flinkclusters API

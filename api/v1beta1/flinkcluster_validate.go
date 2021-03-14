@@ -407,7 +407,7 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 		return fmt.Errorf("job parallelism and parallelismPerTaskmanager are unspecified: One must be set")
 	} else if jobSpec.Parallelism != nil && *jobSpec.Parallelism < 1 {
 		return fmt.Errorf("job parallelism must be >= 1")
-	} else if *jobSpec.ParallelismPerTaskManager < 1 {
+	} else if jobSpec.ParallelismPerTaskManager != nil && *jobSpec.ParallelismPerTaskManager < 1 {
 		return fmt.Errorf("job parallelismPerTaskmanager must be >= 1")
 	}
 	if jobSpec.MaxParallelism == nil {

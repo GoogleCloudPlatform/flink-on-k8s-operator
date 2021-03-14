@@ -60,7 +60,7 @@ func TestIsStatusChangedTrue(t *testing.T) {
 				Name:  "my-jobmanager",
 				State: "NotReady",
 			},
-			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.TaskManagerStatefulSetStatus{
 				Name:  "my-taskmanager",
 				State: "NotReady",
 			},
@@ -84,7 +84,7 @@ func TestIsStatusChangedTrue(t *testing.T) {
 				Name:  "my-jobmanager",
 				State: "Ready",
 			},
-			TaskManagerStatefulSet: v1beta1.FlinkClusterComponentState{
+			TaskManagerStatefulSet: v1beta1.TaskManagerStatefulSetStatus{
 				Name:  "my-taskmanager",
 				State: "Ready",
 			},

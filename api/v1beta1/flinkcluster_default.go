@@ -30,7 +30,7 @@ func _SetDefault(cluster *FlinkCluster) {
 	_SetImageDefault(&cluster.Spec.Image)
 	_SetJobManagerDefault(&cluster.Spec.JobManager)
 	_SetTaskManagerDefault(&cluster.Spec.TaskManager)
-	_SetJobDefault(cluster.Spec.Job, &cluster.Spec.TaskManager)
+	_SetJobDefault(cluster.Spec.Job)
 	_SetHadoopConfigDefault(cluster.Spec.HadoopConfig)
 }
 
@@ -101,7 +101,7 @@ func _SetTaskManagerDefault(tmSpec *TaskManagerSpec) {
 	}
 }
 
-func _SetJobDefault(jobSpec *JobSpec, tmSpec *TaskManagerSpec) {
+func _SetJobDefault(jobSpec *JobSpec) {
 	if jobSpec == nil {
 		return
 	}

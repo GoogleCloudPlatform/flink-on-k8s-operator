@@ -20,6 +20,7 @@ spec:
       labelSelectorPath: .status.components.taskManagerStatefulSet.selector
       specReplicasPath: .spec.taskManager.replicas
       statusReplicasPath: .status.components.taskManagerStatefulSet.replicas
+    status: {}
   validation:
     openAPIV3Schema:
       properties:
