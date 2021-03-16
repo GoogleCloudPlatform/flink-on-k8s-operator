@@ -532,7 +532,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				IngressRuleValue: extensionsv1beta1.IngressRuleValue{
 					HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
 						Paths: []extensionsv1beta1.HTTPIngressPath{{
-							Path: "/",
+							Path: "/*",
 							Backend: extensionsv1beta1.IngressBackend{
 								ServiceName: "flinkjobcluster-sample-jobmanager",
 								ServicePort: intstr.FromString("ui"),
@@ -574,8 +574,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			ServiceName: "flinkjobcluster-sample-taskmanager",
+			Replicas:            &replicas,
+			ServiceName:         "flinkjobcluster-sample-taskmanager",
 			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
