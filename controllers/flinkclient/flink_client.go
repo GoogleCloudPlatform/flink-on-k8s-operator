@@ -100,15 +100,38 @@ func (c *FlinkClient) StopJob(
 
 // TriggerSavepoint triggers an async savepoint operation.
 func (c *FlinkClient) TriggerSavepoint(
-	apiBaseURL string, jobID string, dir string) (SavepointTriggerID, error) {
+	apiBaseURL string, jobID string, dir string, cancel bool) (SavepointTriggerID, error) {
 	var url = fmt.Sprintf("%s/jobs/%s/savepoints", apiBaseURL, jobID)
 	var jsonStr = fmt.Sprintf(`{
 		"target-directory" : "%s",
-		"cancel-job" : false
-	}`, dir)
+		"cancel-job" : %v
+	}`, dir, cancel)
 	var triggerID = SavepointTriggerID{}
 	var err = c.HTTPClient.Post(url, []byte(jsonStr), &triggerID)
 	return triggerID, err
+}
+
+// TakeSavepoint takes savepoint, blocks until it succeeds or fails.
+func (c *FlinkClient) TakeSavepoint(
+	apiBaseURL string, jobID string, dir string) (SavepointStatus, error) {
+	var triggerID = SavepointTriggerID{}
+	var status = SavepointStatus{JobID: jobID}
+	var err error
+
+	triggerID, err = c.TriggerSavepoint(apiBaseURL, jobID, dir, false)
+	if err != nil {
+		return SavepointStatus{}, err
+	}
+
+	for i := 0; i < 12; i++ {
+		status, err = c.GetSavepointStatus(apiBaseURL, jobID, triggerID.RequestID)
+		if err == nil && status.Completed {
+			return status, nil
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	return status, err
 }
 
 // GetSavepointStatus returns savepoint status.
@@ -180,40 +203,4 @@ func (c *FlinkClient) GetSavepointStatus(
 		}
 	}
 	return status, err
-}
-
-// TakeSavepoint takes savepoint, blocks until it suceeds or fails.
-func (c *FlinkClient) TakeSavepoint(
-	apiBaseURL string, jobID string, dir string) (SavepointStatus, error) {
-	var triggerID = SavepointTriggerID{}
-	var status = SavepointStatus{JobID: jobID}
-	var err error
-
-	triggerID, err = c.TriggerSavepoint(apiBaseURL, jobID, dir)
-	if err != nil {
-		return SavepointStatus{}, err
-	}
-
-	for i := 0; i < 12; i++ {
-		status, err = c.GetSavepointStatus(apiBaseURL, jobID, triggerID.RequestID)
-		if err == nil && status.Completed {
-			return status, nil
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	return status, err
-}
-
-func (c *FlinkClient) TakeSavepointAsync(
-	apiBaseURL string, jobID string, dir string) (string, error) {
-	var triggerID = SavepointTriggerID{}
-	var err error
-
-	triggerID, err = c.TriggerSavepoint(apiBaseURL, jobID, dir)
-	if err != nil {
-		return "", err
-	}
-
-	return triggerID.RequestID, err
 }

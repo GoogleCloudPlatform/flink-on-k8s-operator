@@ -43,15 +43,17 @@ const (
 
 // JobState defines states for a Flink job deployment.
 const (
-	JobStatePending   = "Pending"
-	JobStateRunning   = "Running"
-	JobStateUpdating  = "Updating"
-	JobStateSucceeded = "Succeeded"
-	JobStateFailed    = "Failed"
-	JobStateCancelled = "Cancelled"
-	JobStateSuspended = "Suspended"
-	JobStateUnknown   = "Unknown"
-	JobStateLost      = "Lost"
+	JobStatePending      = "Pending"
+	JobStateUpdating     = "Updating"
+	JobStateRestarting   = "Restarting"
+	JobStateDeploying    = "Deploying"
+	JobStateDeployFailed = "DeployFailed"
+	JobStateRunning      = "Running"
+	JobStateSucceeded    = "Succeeded"
+	JobStateCancelled    = "Cancelled"
+	JobStateFailed       = "Failed"
+	JobStateLost         = "Lost"
+	JobStateUnknown      = "Unknown"
 )
 
 // AccessScope defines the access scope of JobManager service.
@@ -99,8 +101,8 @@ const (
 	SavepointStateSucceeded     = "Succeeded"
 
 	SavepointTriggerReasonUserRequested = "user requested"
-	SavepointTriggerReasonScheduled     = "scheduled"
 	SavepointTriggerReasonJobCancel     = "job cancel"
+	SavepointTriggerReasonScheduled     = "scheduled"
 	SavepointTriggerReasonUpdate        = "update"
 )
 
@@ -347,14 +349,14 @@ type JobSpec struct {
 	// Allow non-restored state, default: false.
 	AllowNonRestoredState *bool `json:"allowNonRestoredState,omitempty"`
 
-	// Should take savepoint before updating the job, default: true.
-	TakeSavepointOnUpdate *bool `json:"takeSavepointOnUpdate,omitempty"`
-
 	// Savepoints dir where to store savepoints of the job.
 	SavepointsDir *string `json:"savepointsDir,omitempty"`
 
-	// Max age of savepoint allowed to progress update.
-	SavepointMaxAgeForUpdateSeconds *int32 `json:"savepointMaxAgeForUpdateSeconds,omitempty"`
+	// Should take savepoint before updating job, default: true.
+	TakeSavepointOnUpdate *bool `json:"takeSavepointOnUpdate,omitempty"`
+
+	// Maximum age of the savepoint that a job can be restored when the job is restarted or updated from stopped state, default: 300
+	MaxStateAgeToRestoreSeconds *int32 `json:"maxStateAgeToRestoreSeconds,omitempty"`
 
 	// Automatically take a savepoint to the `savepointsDir` every n seconds.
 	AutoSavepointSeconds *int32 `json:"autoSavepointSeconds,omitempty"`
@@ -557,7 +559,7 @@ type JobStatus struct {
 	// The ID of the Flink job.
 	ID string `json:"id,omitempty"`
 
-	// The state of the Kubernetes job.
+	// The state of the Flink job deployment.
 	State string `json:"state"`
 
 	// The actual savepoint from which this job started.
@@ -573,20 +575,26 @@ type JobStatus struct {
 	// Savepoint location.
 	SavepointLocation string `json:"savepointLocation,omitempty"`
 
-	// Last savepoint trigger ID.
-	LastSavepointTriggerID string `json:"lastSavepointTriggerID,omitempty"`
+	// Last successful savepoint completed timestamp.
+	SavepointTime string `json:"savepointTime,omitempty"`
 
-	// Last successful or failed savepoint operation timestamp.
-	LastSavepointTime string `json:"lastSavepointTime,omitempty"`
+	// The savepoint is the final state of the job.
+	FinalSavepoint bool `json:"finalSavepoint,omitempty"`
+
+	// The timestamp of the Flink job deployment that creating job submitter.
+	DeployTime string `json:"deployTime,omitempty"`
 
 	// The Flink job started timestamp.
 	StartTime string `json:"startTime,omitempty"`
+
+	// The Flink job ended timestamp.
+	EndTime string `json:"endTime,omitempty"`
 
 	// The number of restarts.
 	RestartCount int32 `json:"restartCount,omitempty"`
 }
 
-// SavepointStatus defines the status of savepoint progress
+// SavepointStatus is the status of savepoint progress.
 type SavepointStatus struct {
 	// The ID of the Flink job.
 	JobID string `json:"jobID,omitempty"`
@@ -600,7 +608,7 @@ type SavepointStatus struct {
 	// Savepoint triggered reason.
 	TriggerReason string `json:"triggerReason,omitempty"`
 
-	// Savepoint requested time.
+	// Savepoint status update time.
 	UpdateTime string `json:"requestTime,omitempty"`
 
 	// Savepoint state.
@@ -608,6 +616,27 @@ type SavepointStatus struct {
 
 	// Savepoint message.
 	Message string `json:"message,omitempty"`
+}
+
+type RevisionStatus struct {
+	// When the controller creates new ControllerRevision, it generates hash string from the FlinkCluster spec
+	// which is to be stored in ControllerRevision and uses it to compose the ControllerRevision name.
+	// Then the controller updates nextRevision to the ControllerRevision name.
+	// When update process is completed, the controller updates currentRevision as nextRevision.
+	// currentRevision and nextRevision is composed like this:
+	// <FLINK_CLUSTER_NAME>-<FLINK_CLUSTER_SPEC_HASH>-<REVISION_NUMBER_IN_CONTROLLERREVISION>
+	// e.g., myflinkcluster-c464ff7-5
+
+	// CurrentRevision indicates the version of FlinkCluster.
+	CurrentRevision string `json:"currentRevision,omitempty"`
+
+	// NextRevision indicates the version of FlinkCluster updating.
+	NextRevision string `json:"nextRevision,omitempty"`
+
+	// collisionCount is the count of hash collisions for the FlinkCluster. The controller
+	// uses this field as a collision avoidance mechanism when it needs to create the name for the
+	// newest ControllerRevision.
+	CollisionCount *int32 `json:"collisionCount,omitempty"`
 }
 
 // JobManagerIngressStatus defines the status of a JobManager ingress.
@@ -645,30 +674,14 @@ type FlinkClusterStatus struct {
 	// The status of the components.
 	Components FlinkClusterComponentsStatus `json:"components"`
 
-	// The status of control requested by user
+	// The status of control requested by user.
 	Control *FlinkClusterControlStatus `json:"control,omitempty"`
 
-	// The status of savepoint progress
+	// The status of savepoint progress.
 	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
 
-	// When the controller creates new ControllerRevision, it generates hash string from the FlinkCluster spec
-	// which is to be stored in ControllerRevision and uses it to compose the ControllerRevision name.
-	// Then the controller updates nextRevision to the ControllerRevision name.
-	// When update process is completed, the controller updates currentRevision as nextRevision.
-	// currentRevision and nextRevision is composed like this:
-	// <FLINK_CLUSTER_NAME>-<FLINK_CLUSTER_SPEC_HASH>-<REVISION_NUMBER_IN_CONTROLLERREVISION>
-	// e.g., myflinkcluster-c464ff7-5
-
-	// CurrentRevision indicates the version of FlinkCluster.
-	CurrentRevision string `json:"currentRevision,omitempty"`
-
-	// NextRevision indicates the version of FlinkCluster updating.
-	NextRevision string `json:"nextRevision,omitempty"`
-
-	// collisionCount is the count of hash collisions for the FlinkCluster. The controller
-	// uses this field as a collision avoidance mechanism when it needs to create the name for the
-	// newest ControllerRevision.
-	CollisionCount *int32 `json:"collisionCount,omitempty"`
+	// The status of revision.
+	Revision RevisionStatus `json:"revision"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
@@ -697,4 +710,13 @@ type FlinkClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&FlinkCluster{}, &FlinkClusterList{})
+}
+
+func (j *JobStatus) isJobStopped() bool {
+	return j != nil &&
+		(j.State == JobStateSucceeded ||
+			j.State == JobStateCancelled ||
+			j.State == JobStateFailed ||
+			j.State == JobStateLost ||
+			j.State == JobStateDeployFailed)
 }

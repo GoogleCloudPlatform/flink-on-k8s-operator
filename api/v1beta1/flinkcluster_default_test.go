@@ -53,7 +53,7 @@ func TestSetDefault(t *testing.T) {
 	var defaultJobParallelism = int32(1)
 	var defaultJobNoLoggingToStdout = false
 	var defaultJobRestartPolicy = JobRestartPolicyNever
-	var defaultJobSavepointMaxAgeForUpdateSeconds = int32(300)
+	var defaultMaxStateAgeToRestoreSeconds = int32(300)
 	var defaultMemoryOffHeapRatio = int32(25)
 	var defaultMemoryOffHeapMin = resource.MustParse("600M")
 	var defaultRecreateOnUpdate = true
@@ -99,11 +99,11 @@ func TestSetDefault(t *testing.T) {
 				SecurityContext:    nil,
 			},
 			Job: &JobSpec{
-				AllowNonRestoredState:           &defaultJobAllowNonRestoredState,
-				Parallelism:                     &defaultJobParallelism,
-				NoLoggingToStdout:               &defaultJobNoLoggingToStdout,
-				RestartPolicy:                   &defaultJobRestartPolicy,
-				SavepointMaxAgeForUpdateSeconds: &defaultJobSavepointMaxAgeForUpdateSeconds,
+				AllowNonRestoredState:       &defaultJobAllowNonRestoredState,
+				Parallelism:                 &defaultJobParallelism,
+				NoLoggingToStdout:           &defaultJobNoLoggingToStdout,
+				RestartPolicy:               &defaultJobRestartPolicy,
+				MaxStateAgeToRestoreSeconds: &defaultMaxStateAgeToRestoreSeconds,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteCluster",
 					AfterJobFails:     "KeepCluster",
@@ -143,7 +143,7 @@ func TestSetNonDefault(t *testing.T) {
 	var jobParallelism = int32(2)
 	var jobNoLoggingToStdout = true
 	var jobRestartPolicy = JobRestartPolicyFromSavepointOnFailure
-	var jobSavepointMaxAgeForUpdateSeconds = int32(1000)
+	var jobMaxStateAgeToRestoreSeconds = int32(1000)
 	var memoryOffHeapRatio = int32(50)
 	var memoryOffHeapMin = resource.MustParse("600M")
 	var recreateOnUpdate = false
@@ -194,12 +194,12 @@ func TestSetNonDefault(t *testing.T) {
 				SecurityContext:    &securityContext,
 			},
 			Job: &JobSpec{
-				AllowNonRestoredState:           &jobAllowNonRestoredState,
-				Parallelism:                     &jobParallelism,
-				NoLoggingToStdout:               &jobNoLoggingToStdout,
-				RestartPolicy:                   &jobRestartPolicy,
-				SavepointMaxAgeForUpdateSeconds: &jobSavepointMaxAgeForUpdateSeconds,
-				SecurityContext:                 &securityContext,
+				AllowNonRestoredState:       &jobAllowNonRestoredState,
+				Parallelism:                 &jobParallelism,
+				NoLoggingToStdout:           &jobNoLoggingToStdout,
+				RestartPolicy:               &jobRestartPolicy,
+				MaxStateAgeToRestoreSeconds: &jobMaxStateAgeToRestoreSeconds,
+				SecurityContext:             &securityContext,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteTaskManagers",
 					AfterJobFails:     "DeleteCluster",
@@ -260,12 +260,12 @@ func TestSetNonDefault(t *testing.T) {
 				SecurityContext:    &securityContext,
 			},
 			Job: &JobSpec{
-				AllowNonRestoredState:           &jobAllowNonRestoredState,
-				Parallelism:                     &jobParallelism,
-				NoLoggingToStdout:               &jobNoLoggingToStdout,
-				RestartPolicy:                   &jobRestartPolicy,
-				SavepointMaxAgeForUpdateSeconds: &jobSavepointMaxAgeForUpdateSeconds,
-				SecurityContext:                 &securityContext,
+				AllowNonRestoredState:       &jobAllowNonRestoredState,
+				Parallelism:                 &jobParallelism,
+				NoLoggingToStdout:           &jobNoLoggingToStdout,
+				RestartPolicy:               &jobRestartPolicy,
+				MaxStateAgeToRestoreSeconds: &jobMaxStateAgeToRestoreSeconds,
+				SecurityContext:             &securityContext,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteTaskManagers",
 					AfterJobFails:     "DeleteCluster",

@@ -128,9 +128,9 @@ func _SetJobDefault(jobSpec *JobSpec) {
 			AfterJobCancelled: CleanupActionDeleteCluster,
 		}
 	}
-	if jobSpec.SavepointMaxAgeForUpdateSeconds == nil {
-		jobSpec.SavepointMaxAgeForUpdateSeconds = new(int32)
-		*jobSpec.SavepointMaxAgeForUpdateSeconds = 300
+	if jobSpec.MaxStateAgeToRestoreSeconds == nil {
+		jobSpec.MaxStateAgeToRestoreSeconds = new(int32)
+		*jobSpec.MaxStateAgeToRestoreSeconds = 300
 	}
 }
 

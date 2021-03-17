@@ -65,7 +65,7 @@ func (reconciler *ClusterReconciler) reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+	if reconciler.observed.isClusterUpdating() {
 		reconciler.log.Info("The cluster update is in progress")
 	}
 	// If batch-scheduling enabled
@@ -137,7 +137,8 @@ func (reconciler *ClusterReconciler) reconcileStatefulSet(
 	}
 
 	if desiredStatefulSet != nil && observedStatefulSet != nil {
-		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+		var cluster = reconciler.observed.cluster
+		if reconciler.observed.isClusterUpdating() && !isComponentUpdated(observedStatefulSet, cluster) {
 			updateComponent := fmt.Sprintf("%v StatefulSet", component)
 			var err error
 			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
@@ -150,7 +151,7 @@ func (reconciler *ClusterReconciler) reconcileStatefulSet(
 			}
 			return nil
 		}
-		log.Info("Statefulset already exists, no action")
+		log.Info("StatefulSet already exists, no action")
 		return nil
 	}
 
@@ -179,7 +180,7 @@ func (reconciler *ClusterReconciler) createStatefulSet(
 
 func (reconciler *ClusterReconciler) deleteOldComponent(desired runtime.Object, observed runtime.Object, component string) error {
 	var log = reconciler.log.WithValues("component", component)
-	if isComponentUpdated(observed, *reconciler.observed.cluster) {
+	if isComponentUpdated(observed, reconciler.observed.cluster) {
 		reconciler.log.Info(fmt.Sprintf("%v is already updated, no action", component))
 		return nil
 	}
@@ -253,7 +254,8 @@ func (reconciler *ClusterReconciler) reconcileJobManagerService() error {
 	}
 
 	if desiredJmService != nil && observedJmService != nil {
-		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+		var cluster = reconciler.observed.cluster
+		if reconciler.observed.isClusterUpdating() && !isComponentUpdated(observedJmService, cluster) {
 			// v1.Service API does not handle update correctly when below values are empty.
 			desiredJmService.SetResourceVersion(observedJmService.GetResourceVersion())
 			desiredJmService.Spec.ClusterIP = observedJmService.Spec.ClusterIP
@@ -321,7 +323,8 @@ func (reconciler *ClusterReconciler) reconcileJobManagerIngress() error {
 	}
 
 	if desiredJmIngress != nil && observedJmIngress != nil {
-		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+		var cluster = reconciler.observed.cluster
+		if reconciler.observed.isClusterUpdating() && !isComponentUpdated(observedJmIngress, cluster) {
 			var err error
 			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
 				err = reconciler.deleteOldComponent(desiredJmIngress, observedJmIngress, "JobManager ingress")
@@ -386,7 +389,8 @@ func (reconciler *ClusterReconciler) reconcileConfigMap() error {
 	}
 
 	if desiredConfigMap != nil && observedConfigMap != nil {
-		if getUpdateState(reconciler.observed) == UpdateStateInProgress {
+		var cluster = reconciler.observed.cluster
+		if reconciler.observed.isClusterUpdating() && !isComponentUpdated(observedConfigMap, cluster) {
 			var err error
 			if *reconciler.observed.cluster.Spec.RecreateOnUpdate {
 				err = reconciler.deleteOldComponent(desiredConfigMap, observedConfigMap, "ConfigMap")
@@ -446,8 +450,9 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var log = reconciler.log
 	var desiredJob = reconciler.desired.Job
 	var observed = reconciler.observed
-	var observedJob = observed.job
-	var recordedJobStatus = observed.cluster.Status.Components.Job
+	var recorded = observed.cluster.Status
+	var jobSpec = observed.cluster.Spec.Job
+	var jobStatus = recorded.Components.Job
 	var activeFlinkJob bool
 	var err error
 	var jobID = reconciler.getFlinkJobID()
@@ -457,51 +462,43 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	var newControlStatus *v1beta1.FlinkClusterControlStatus
 	defer reconciler.updateStatus(&newSavepointStatus, &newControlStatus)
 
-	// Cancel unexpected jobs
-	if len(observed.flinkJobStatus.flinkJobsUnexpected) > 0 {
-		log.Info("Cancelling unexpected running job(s)")
-		err = reconciler.cancelUnexpectedJobs(false /* takeSavepoint */)
-		return requeueResult, err
-	}
-
 	// Check if Flink job is active
-	if isJobActive(recordedJobStatus) {
+	if isJobActive(jobStatus) {
 		activeFlinkJob = true
-
-		// Trigger savepoint if required.
-		if len(jobID) > 0 {
-			savepointTriggerReason := reconciler.shouldTakeSavepoint()
-			if savepointTriggerReason != "" {
-				newSavepointStatus, _ = reconciler.takeSavepointAsync(jobID, savepointTriggerReason)
-				if userControl := getNewUserControlRequest(observed.cluster); userControl == v1beta1.ControlNameSavepoint {
-					newControlStatus = getUserControlStatus(userControl, v1beta1.ControlStateInProgress)
-				}
-			}
-		}
 	} else {
 		activeFlinkJob = false
 	}
 
-	// Create Flink job submitter
+	// Create new Flink job submitter when starting new job, updating job or restarting job in failure.
 	if desiredJob != nil && !activeFlinkJob {
-		// If update triggered, wait until all Flink cluster components are replaced with next revision.
-		if !isClusterUpdateToDate(observed) {
-			return requeueResult, nil
+		log.Info("Deploying Flink job")
+
+		var unexpectedJobs = observed.flinkJob.unexpected
+		if len(unexpectedJobs) > 0 {
+			if jobSpec.MaxStateAgeToRestoreSeconds != nil {
+				log.Info("Cancelling unexpected running job(s)")
+				err = reconciler.cancelUnexpectedJobs(false /* takeSavepoint */)
+				return requeueResult, err
+			}
+			// In this case the user should identify the cause of the problem
+			// so that the job is not accidentally executed multiple times by mistake or the Flink operator's error.
+			err = fmt.Errorf("failed to create job submitter, unexpected jobs found: %v", unexpectedJobs)
+			return ctrl.Result{}, err
 		}
 
 		// Create Flink job submitter
 		log.Info("Updating job status to proceed creating new job submitter")
-		err = reconciler.updateStatusForNewJob()
+		// Job status must be updated before creating a job submitter to ensure the observed job is the job submitted by the operator.
+		err = reconciler.updateJobDeployStatus()
 		if err != nil {
-			log.Info("Not proceed to create new job submitter because job status update failed")
+			log.Info("Failed to update the job status for job submission")
 			return requeueResult, err
 		}
-		log.Info("Creating new job submitter")
-		if observedJob != nil {
-			log.Info("Deleting old job submitter")
-			err = reconciler.deleteJob(observedJob)
+		var observedSubmitter = observed.flinkJobSubmitter.job
+		if observedSubmitter != nil {
+			log.Info("Found old job submitter")
+			err = reconciler.deleteJob(observedSubmitter)
 			if err != nil {
-				log.Info("Failed to delete previous job submitter")
 				return requeueResult, err
 			}
 		}
@@ -511,27 +508,31 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	}
 
 	if desiredJob != nil && activeFlinkJob {
-		var restartPolicy = observed.cluster.Spec.Job.RestartPolicy
-		var recordedJobStatus = observed.cluster.Status.Components.Job
-
-		// Stop Flink job for update or recovery.
-		var stopReason string
-		if shouldUpdateJob(observed) {
-			stopReason = "update"
-			// Change job state.
-			err := reconciler.changeJobStateToUpdating()
-			if err != nil {
-				log.Error(err, "Failed to change job status for update", "error", err)
-				return requeueResult, err
-			}
-		} else if shouldRestartJob(restartPolicy, recordedJobStatus) {
-			stopReason = "recovery"
+		if jobStatus.State == v1beta1.JobStateDeploying {
+			log.Info("Job submitter is deployed and wait until it is completed")
+			return requeueResult, nil
 		}
-		if stopReason != "" {
-			log.Info(fmt.Sprintf("Restart job for %s.", stopReason))
-			err := reconciler.restartJob()
-			if err != nil {
-				log.Info("Failed to restart job.")
+		if isUpdateTriggered(&recorded.Revision) {
+			log.Info("Preparing job update")
+			var shouldSuspend = jobSpec.TakeSavepointOnUpdate == nil || *jobSpec.TakeSavepointOnUpdate == true || isBlank(jobSpec.FromSavepoint)
+			if shouldSuspend {
+				newSavepointStatus, err = reconciler.trySuspendJob()
+			} else {
+				err = reconciler.cancelJob()
+			}
+			return requeueResult, err
+		}
+
+		// Trigger savepoint if required.
+		if len(jobID) > 0 {
+			var savepointTriggerReason = reconciler.shouldTakeSavepoint()
+			if savepointTriggerReason != "" {
+				newSavepointStatus, err = reconciler.triggerSavepoint(jobID, savepointTriggerReason, false)
+			}
+			// Get new control status when the savepoint reason matches the requested control.
+			var userControl = getNewControlRequest(observed.cluster)
+			if userControl == v1beta1.ControlNameSavepoint && savepointTriggerReason == v1beta1.SavepointTriggerReasonUserRequested {
+				newControlStatus = getControlStatus(userControl, v1beta1.ControlStateInProgress)
 			}
 			return requeueResult, err
 		}
@@ -543,33 +544,15 @@ func (reconciler *ClusterReconciler) reconcileJob() (ctrl.Result, error) {
 	// Job cancel requested. Stop Flink job.
 	if desiredJob == nil && activeFlinkJob {
 		log.Info("Stopping job", "jobID", jobID)
-		log.Info("Check savepoint status first.")
-		var savepoint *v1beta1.SavepointStatus
-		if newSavepointStatus != nil {
-			savepoint = newSavepointStatus
-		} else {
-			savepoint = observed.cluster.Status.Savepoint
+		newSavepointStatus, err = reconciler.trySuspendJob()
+		var userControl = getNewControlRequest(observed.cluster)
+		if userControl == v1beta1.ControlNameJobCancel {
+			newControlStatus = getControlStatus(userControl, v1beta1.ControlStateInProgress)
 		}
-		// If savepoint is taken, proceed to cancel job.
-		var err = reconciler.cancelFlinkJobAsync(jobID, savepoint)
-		// When there is an error, get failed status to record.
-		if err != nil {
-			log.Error(err, "Failed to cancel job", "jobID", jobID)
-			newControlStatus = getFailedCancelStatus(err)
-			return requeueResult, err
-		}
-		if userControl := getNewUserControlRequest(observed.cluster); userControl == v1beta1.ControlNameJobCancel {
-			newControlStatus = getUserControlStatus(userControl, v1beta1.ControlStateInProgress)
-		}
-		// When savepoint is in progress yet, check it in next iteration.
-		if savepoint != nil && savepoint.State == v1beta1.SavepointStateInProgress {
-			return requeueResult, nil
-		}
-		log.Info("Successfully job cancelled.")
-		return requeueResult, nil
+		return requeueResult, err
 	}
 
-	if isJobStopped(recordedJobStatus) {
+	if isJobStopped(jobStatus) {
 		log.Info("Job has finished, no action")
 	}
 
@@ -581,12 +564,12 @@ func (reconciler *ClusterReconciler) createJob(job *batchv1.Job) error {
 	var log = reconciler.log
 	var k8sClient = reconciler.k8sClient
 
-	log.Info("Submitting job", "resource", *job)
+	log.Info("Creating job submitter", "resource", *job)
 	var err = k8sClient.Create(context, job)
 	if err != nil {
-		log.Info("Failed to created job", "error", err)
+		log.Info("Failed to created job submitter", "error", err)
 	} else {
-		log.Info("Job created")
+		log.Info("Job submitter created")
 	}
 	return err
 }
@@ -599,13 +582,13 @@ func (reconciler *ClusterReconciler) deleteJob(job *batchv1.Job) error {
 	var deletePolicy = metav1.DeletePropagationBackground
 	var deleteOption = client.DeleteOptions{PropagationPolicy: &deletePolicy}
 
-	log.Info("Deleting job", "job", job)
+	log.Info("Deleting job submitter", "job", job)
 	var err = k8sClient.Delete(context, job, &deleteOption)
 	err = client.IgnoreNotFound(err)
 	if err != nil {
-		log.Error(err, "Failed to delete job")
+		log.Error(err, "Failed to delete job submitter")
 	} else {
-		log.Info("Job deleted")
+		log.Info("Job submitter deleted")
 	}
 	return err
 }
@@ -618,36 +601,55 @@ func (reconciler *ClusterReconciler) getFlinkJobID() string {
 	return ""
 }
 
-func (reconciler *ClusterReconciler) restartJob() error {
+func (reconciler *ClusterReconciler) trySuspendJob() (*v1beta1.SavepointStatus, error) {
 	var log = reconciler.log
-	var observedJob = reconciler.observed.job
-	var observedFlinkJob = reconciler.observed.flinkJobStatus.flinkJob
+	var recorded = reconciler.observed.cluster.Status
+	var jobID = reconciler.getFlinkJobID()
 
-	log.Info("Stopping Flink job to restart", "", observedFlinkJob)
+	log.Info("Checking the conditions for progressing")
+	var canSuspend = reconciler.canSuspendJob(jobID, recorded.Savepoint)
+	if canSuspend {
+		log.Info("Triggering savepoint for suspending job")
+		var newSavepointStatus, err = reconciler.triggerSavepoint(jobID, v1beta1.SavepointTriggerReasonUpdate, true)
+		if err != nil {
+			log.Info("Failed to trigger savepoint", "jobID", jobID, "triggerID", newSavepointStatus.TriggerID, "error", err)
+		} else {
+			log.Info("Successfully savepoint triggered", "jobID", jobID, "triggerID", newSavepointStatus.TriggerID)
+		}
+		return newSavepointStatus, err
+	}
+
+	return nil, nil
+}
+
+func (reconciler *ClusterReconciler) cancelJob() error {
+	var log = reconciler.log
+	var observedFlinkJob = reconciler.observed.flinkJob.status
+
+	log.Info("Stopping Flink job", "", observedFlinkJob)
 	var err = reconciler.cancelRunningJobs(false /* takeSavepoint */)
 	if err != nil {
+		log.Info("Failed to stop Flink job")
 		return err
 	}
 
-	if observedJob != nil {
-		var err = reconciler.deleteJob(observedJob)
+	// TODO: It would be nice not to delete the job submitters immediately, and retain the latest ones for debug.
+	var observedSubmitter = reconciler.observed.flinkJobSubmitter.job
+	if observedSubmitter != nil {
+		var err = reconciler.deleteJob(observedSubmitter)
 		if err != nil {
 			log.Error(
-				err, "Failed to delete job submitter", "job", observedJob)
+				err, "Failed to delete job submitter", "job", observedSubmitter)
 			return err
 		}
 	}
-
-	// Do not create new job immediately, leave it to the next reconciliation,
-	// because we still need to be able to create the new job if we encounter
-	// ephemeral error here. It is better to organize the logic in a central place.
 
 	return nil
 }
 
 func (reconciler *ClusterReconciler) cancelUnexpectedJobs(
 	takeSavepoint bool) error {
-	var unexpectedJobs = reconciler.observed.flinkJobStatus.flinkJobsUnexpected
+	var unexpectedJobs = reconciler.observed.flinkJob.unexpected
 	return reconciler.cancelJobs(takeSavepoint, unexpectedJobs)
 }
 
@@ -655,8 +657,8 @@ func (reconciler *ClusterReconciler) cancelUnexpectedJobs(
 func (reconciler *ClusterReconciler) cancelRunningJobs(
 	takeSavepoint bool) error {
 	var log = reconciler.log
-	var runningJobs = reconciler.observed.flinkJobStatus.flinkJobsUnexpected
-	var flinkJob = reconciler.observed.flinkJobStatus.flinkJob
+	var runningJobs = reconciler.observed.flinkJob.unexpected
+	var flinkJob = reconciler.observed.flinkJob.status
 	if flinkJob != nil && flinkJob.ID != "" &&
 		getFlinkJobDeploymentState(flinkJob.Status) == v1beta1.JobStateRunning {
 		runningJobs = append(runningJobs, flinkJob.ID)
@@ -688,12 +690,11 @@ func (reconciler *ClusterReconciler) cancelJobs(
 func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint bool) error {
 	var log = reconciler.log
 	if takeSavepoint && canTakeSavepoint(*reconciler.observed.cluster) {
+		log.Info("Taking savepoint before stopping job", "jobID", jobID)
 		var err = reconciler.takeSavepoint(jobID)
 		if err != nil {
 			return err
 		}
-	} else {
-		log.Info("Skip taking savepoint before stopping job", "jobID", jobID)
 	}
 
 	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
@@ -701,123 +702,103 @@ func (reconciler *ClusterReconciler) cancelFlinkJob(jobID string, takeSavepoint 
 	return reconciler.flinkClient.StopJob(apiBaseURL, jobID)
 }
 
-// Trigger savepoint if it is possible, then return the savepoint status to update.
-// When savepoint was already triggered, return the current observed status.
-// If savepoint cannot be triggered, taking savepoint is skipped, or the triggered savepoint is completed, proceed to stop the job.
-func (reconciler *ClusterReconciler) cancelFlinkJobAsync(jobID string, savepoint *v1beta1.SavepointStatus) error {
+// canSuspendJob
+func (reconciler *ClusterReconciler) canSuspendJob(jobID string, s *v1beta1.SavepointStatus) bool {
 	var log = reconciler.log
-	var cluster = reconciler.observed.cluster
-	var err error
+	var firstTry = !finalSavepointRequested(jobID, s)
+	if firstTry {
+		return true
+	}
 
-	switch savepoint.State {
+	switch s.State {
 	case v1beta1.SavepointStateSucceeded:
-		log.Info("Successfully savepoint created. Proceed to stop job.")
+		log.Info("Successfully savepoint completed, wait until the job stops")
+		return false
 	case v1beta1.SavepointStateInProgress:
-		log.Info("Triggered savepoint already, wait until it is completed.")
-		return nil
+		log.Info("Savepoint is in progress, wait until it is completed")
+		return false
 	case v1beta1.SavepointStateTriggerFailed:
-		log.Info("Failed to trigger savepoint.")
-		return fmt.Errorf("failed to trigger savepoint: %v", *savepoint)
-	// Cannot be reached here with these states, because job-cancel control should be finished with failed savepoint states in updater.
+		log.Info("Savepoint trigger failed in previous request")
 	case v1beta1.SavepointStateFailed:
-		fallthrough
-	default:
-		return fmt.Errorf("unexpected savepoint status: %v", *savepoint)
+		log.Info("Savepoint failed on previous request")
 	}
 
-	var apiBaseURL = getFlinkAPIBaseURL(cluster)
-	log.Info("Stopping job", "jobID", jobID)
-	err = reconciler.flinkClient.StopJob(apiBaseURL, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to stop job: %v", err)
+	var retryTimeArrived = hasTimeElapsed(s.UpdateTime, time.Now(), SavepointRequestRetryIntervalSec)
+	if !retryTimeArrived {
+		log.Info("Wait until next retry time arrived")
 	}
-	return nil
+	return retryTimeArrived
 }
 
 func (reconciler *ClusterReconciler) shouldTakeSavepoint() string {
-	var log = reconciler.log
 	var observed = reconciler.observed
 	var cluster = observed.cluster
 	var jobSpec = observed.cluster.Spec.Job
 	var jobStatus = observed.cluster.Status.Components.Job
-	var savepointStatus = observed.cluster.Status.Savepoint
-	var userControl = getNewUserControlRequest(cluster)
+	var newRequestedControl = getNewControlRequest(cluster)
 
 	if !canTakeSavepoint(*reconciler.observed.cluster) {
 		return ""
 	}
 
+	// Savepoint trigger priority is user request including update and job stop.
 	switch {
-	// Triggered by user requested savepoint
-	case userControl == v1beta1.ControlNameSavepoint:
-		return v1beta1.SavepointTriggerReasonUserRequested
-	// Triggered by user requested job cancel
-	case userControl == v1beta1.ControlNameJobCancel:
+	// TODO: spec.job.cancelRequested will be deprecated
+	// Should stop job with savepoint by user requested control
+	case newRequestedControl == v1beta1.ControlNameJobCancel || (jobSpec.CancelRequested != nil && *jobSpec.CancelRequested):
 		return v1beta1.SavepointTriggerReasonJobCancel
-	// Triggered by update
-	case getUpdateState(observed) == UpdateStatePreparing:
-		// TODO: apply exponential backoff retry
-		// If failed to take savepoint, retry after SavepointRequestRetryIntervalSec.
-		var takeSavepointOnUpdate = jobSpec.TakeSavepointOnUpdate == nil || *jobSpec.TakeSavepointOnUpdate == true
-		if takeSavepointOnUpdate &&
-			!isSavepointUpToDate(observed.observeTime, jobSpec, jobStatus) && // savepoint up to date
-			(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress) && // no savepoint in progress
-			hasTimeElapsed(savepointStatus.UpdateTime, time.Now(), SavepointRequestRetryIntervalSec) { // retry interval arrived
-			return v1beta1.SavepointTriggerReasonUpdate
-		}
-	// Triggered by schedule (auto savepoint)
+	// TODO: spec.job.savepointGeneration will be deprecated
+	// Take savepoint by user request
+	case newRequestedControl == v1beta1.ControlNameSavepoint:
+		fallthrough
+	case jobSpec.SavepointGeneration > jobStatus.SavepointGeneration:
+		// Triggered by savepointGeneration increased.
+		// When previous savepoint is failed, savepoint trigger by spec.job.savepointGeneration is not possible
+		// because the field cannot be increased more.
+		// Note: checkSavepointGeneration in flinkcluster_validate.go
+		return v1beta1.SavepointTriggerReasonUserRequested
+	// Scheduled auto savepoint
 	case jobSpec.AutoSavepointSeconds != nil:
 		// Check if next trigger time arrived.
 		var compareTime string
-		if len(jobStatus.LastSavepointTime) == 0 {
+		if len(jobStatus.SavepointTime) == 0 {
 			compareTime = jobStatus.StartTime
 		} else {
-			compareTime = jobStatus.LastSavepointTime
+			compareTime = jobStatus.SavepointTime
 		}
 		var nextTime = getTimeAfterAddedSeconds(compareTime, int64(*jobSpec.AutoSavepointSeconds))
 		if time.Now().After(nextTime) {
 			return v1beta1.SavepointTriggerReasonScheduled
 		}
-	// TODO: spec.job.savepointGeneration will be deprecated
-	// Triggered by savepointGeneration increased
-	// When previous savepoint is failed, savepoint trigger by spec.job.savepointGeneration is not possible
-	// because the field cannot be increased more by validator.
-	// Note: checkSavepointGeneration in flinkcluster_validate.go
-	case jobSpec.SavepointGeneration > jobStatus.SavepointGeneration:
-		log.Info(
-			"Savepoint is requested",
-			"statusGen", jobStatus.SavepointGeneration,
-			"specGen", jobSpec.SavepointGeneration)
-		return v1beta1.SavepointTriggerReasonUserRequested
 	}
 
 	return ""
 }
 
 // Trigger savepoint for a job then return savepoint status to update.
-func (reconciler *ClusterReconciler) takeSavepointAsync(jobID string, triggerReason string) (*v1beta1.SavepointStatus, error) {
+func (reconciler *ClusterReconciler) triggerSavepoint(jobID string, triggerReason string, cancel bool) (*v1beta1.SavepointStatus, error) {
 	var log = reconciler.log
 	var cluster = reconciler.observed.cluster
 	var apiBaseURL = getFlinkAPIBaseURL(reconciler.observed.cluster)
 	var triggerSuccess bool
-	var triggerID string
+	var triggerID flinkclient.SavepointTriggerID
 	var message string
 	var err error
 
 	log.Info(fmt.Sprintf("Trigger savepoint for %s", triggerReason), "jobID", jobID)
-	triggerID, err = reconciler.flinkClient.TakeSavepointAsync(apiBaseURL, jobID, *cluster.Spec.Job.SavepointsDir)
+	triggerID, err = reconciler.flinkClient.TriggerSavepoint(apiBaseURL, jobID, *cluster.Spec.Job.SavepointsDir, cancel)
 	if err != nil {
 		// limit message size to 1KiB
 		if message = err.Error(); len(message) > 1024 {
 			message = message[:1024] + "..."
 		}
 		triggerSuccess = false
-		log.Info("Savepoint trigger is failed.", "jobID", jobID, "triggerID", triggerID, "error", err)
+		log.Info("Failed to trigger savepoint", "jobID", jobID, "triggerID", triggerID, "error", err)
 	} else {
 		triggerSuccess = true
-		log.Info("Savepoint is triggered successfully.", "jobID", jobID, "triggerID", triggerID)
+		log.Info("Successfully savepoint triggered", "jobID", jobID, "triggerID", triggerID)
 	}
-	newSavepointStatus := getNewSavepointStatus(jobID, triggerID, triggerReason, message, triggerSuccess)
+	newSavepointStatus := reconciler.getNewSavepointStatus(triggerID.RequestID, triggerReason, message, triggerSuccess)
 
 	return newSavepointStatus, err
 }
@@ -895,73 +876,56 @@ func (reconciler *ClusterReconciler) updateStatus(ss **v1beta1.SavepointStatus, 
 	}
 }
 
-func (reconciler *ClusterReconciler) updateStatusForNewJob() error {
+func (reconciler *ClusterReconciler) updateJobDeployStatus() error {
 	var log = reconciler.log
-	var newJobStatus *v1beta1.JobStatus
-	var desiredJob = reconciler.desired.Job
-	var clusterClone = reconciler.observed.cluster.DeepCopy()
+	var observedCluster = reconciler.observed.cluster
+	var desiredJobSubmitter = reconciler.desired.Job
 	var err error
 
-	if clusterClone.Status.Components.Job != nil {
-		newJobStatus = clusterClone.Status.Components.Job
-		switch previousJobState := newJobStatus.State; previousJobState {
-		case v1beta1.JobStateFailed:
-			newJobStatus.RestartCount++
-		case v1beta1.JobStateUpdating:
-			newJobStatus.RestartCount = 0
-		}
-	} else {
-		newJobStatus = &v1beta1.JobStatus{}
-		clusterClone.Status.Components.Job = newJobStatus
+	var clusterClone = observedCluster.DeepCopy()
+	var newJob = clusterClone.Status.Components.Job
+
+	// Latest savepoint location should be fromSavepoint.
+	var fromSavepoint = getFromSavepoint(desiredJobSubmitter.Spec)
+	newJob.FromSavepoint = fromSavepoint
+	if newJob.SavepointLocation != "" {
+		newJob.SavepointLocation = fromSavepoint
 	}
-	var fromSavepoint = getFromSavepoint(desiredJob.Spec)
-	newJobStatus.ID = ""
-	newJobStatus.State = v1beta1.JobStatePending
-	newJobStatus.FromSavepoint = fromSavepoint
-	if newJobStatus.SavepointLocation != "" {
-		// Latest savepoint should be "fromSavepoint"
-		newJobStatus.SavepointLocation = fromSavepoint
-	}
+	setTimestamp(&newJob.DeployTime) // Mark as job submitter is deployed.
 	setTimestamp(&clusterClone.Status.LastUpdateTime)
 	err = reconciler.k8sClient.Status().Update(reconciler.context, clusterClone)
 
 	if err != nil {
 		log.Error(
-			err, "Failed to update job status for new job submission", "error", err)
+			err, "Failed to update job status for new job submitter", "error", err)
 	} else {
-		log.Info("Succeeded to update job status for new job submission.", "job status", newJobStatus)
+		log.Info("Succeeded to update job status for new job submitter.", "job status", newJob)
 	}
 	return err
 }
 
-func (reconciler *ClusterReconciler) changeJobStateToUpdating() error {
-	var clusterClone = reconciler.observed.cluster.DeepCopy()
-	var newJobStatus = clusterClone.Status.Components.Job
-	newJobStatus.ID = ""
-	newJobStatus.State = v1beta1.JobStateUpdating
-	setTimestamp(&clusterClone.Status.LastUpdateTime)
-	err := reconciler.k8sClient.Status().Update(reconciler.context, clusterClone)
-	return err
-}
-
-// If job cancellation is failed, fill the status message with error message.
-// Then, the state will be transited to the failed by the updater.
-func getFailedCancelStatus(cancelErr error) *v1beta1.FlinkClusterControlStatus {
-	var state string
-	var message string
+// getNewSavepointStatus returns newly triggered savepoint status.
+func (reconciler *ClusterReconciler) getNewSavepointStatus(triggerID string, triggerReason string, message string, triggerSuccess bool) *v1beta1.SavepointStatus {
+	var jobID = reconciler.getFlinkJobID()
+	var savepointState string
 	var now string
 	setTimestamp(&now)
-	state = v1beta1.ControlStateInProgress
-	// limit message size to 1KiB
-	if message = cancelErr.Error(); len(message) > 1024 {
-		message = message[:1024] + "..."
+
+	if triggerSuccess {
+		savepointState = v1beta1.SavepointStateInProgress
+	} else {
+		savepointState = v1beta1.SavepointStateTriggerFailed
 	}
-	return &v1beta1.FlinkClusterControlStatus{
-		Name:       v1beta1.ControlNameJobCancel,
-		State:      state,
-		UpdateTime: now,
-		Message:    message,
+	var savepointStatus = &v1beta1.SavepointStatus{
+		JobID:         jobID,
+		TriggerID:     triggerID,
+		TriggerReason: triggerReason,
+		TriggerTime:   now,
+		UpdateTime:    now,
+		Message:       message,
+		State:         savepointState,
 	}
+	return savepointStatus
 }
 
 // Convert raw time to object and add `addedSeconds` to it,

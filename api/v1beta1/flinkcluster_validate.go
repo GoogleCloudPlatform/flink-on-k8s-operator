@@ -132,7 +132,7 @@ func (v *Validator) checkControlAnnotations(old *FlinkCluster, new *FlinkCluster
 				return fmt.Errorf(SessionClusterWarnMsg, ControlNameSavepoint, ControlAnnotation)
 			} else if old.Spec.Job.SavepointsDir == nil || *old.Spec.Job.SavepointsDir == "" {
 				return fmt.Errorf(InvalidSavepointDirMsg, ControlAnnotation)
-			} else if jobStatus == nil || isJobStopped(old.Status.Components.Job) {
+			} else if jobStatus == nil || jobStatus.isJobStopped() {
 				return fmt.Errorf(InvalidJobStateForSavepointMsg, ControlAnnotation)
 			}
 		default:
@@ -207,6 +207,7 @@ func (v *Validator) checkSavepointGeneration(
 
 // Validate job update.
 func (v *Validator) validateJobUpdate(old *FlinkCluster, new *FlinkCluster) error {
+	var jobStatus = old.Status.Components.Job
 	switch {
 	case old.Spec.Job == nil && new.Spec.Job == nil:
 		return nil
@@ -219,6 +220,16 @@ func (v *Validator) validateJobUpdate(old *FlinkCluster, new *FlinkCluster) erro
 	case old.Spec.Job.SavepointsDir != nil && *old.Spec.Job.SavepointsDir != "" &&
 		(new.Spec.Job.SavepointsDir == nil || *new.Spec.Job.SavepointsDir == ""):
 		return fmt.Errorf("removing savepointsDir is not allowed")
+	case jobStatus != nil && jobStatus.isJobStopped():
+		if jobStatus.FinalSavepoint {
+			return nil
+		}
+		var shouldTakeSavepoint = (new.Spec.Job.TakeSavepointOnUpdate == nil || *new.Spec.Job.TakeSavepointOnUpdate) &&
+			(new.Spec.Job.FromSavepoint == nil || *new.Spec.Job.FromSavepoint == "")
+		if shouldTakeSavepoint {
+			return fmt.Errorf("cannot update because job is stoppped without final savepoint," +
+				"to proceed update, you need to set takeSavepointOnUpdate false or provide fromSavepoint")
+		}
 	}
 	return nil
 }
@@ -520,13 +531,6 @@ func shouldRestartJob(
 		len(jobStatus.SavepointLocation) > 0
 }
 
-func isJobStopped(status *JobStatus) bool {
-	return status != nil &&
-		(status.State == JobStateSucceeded ||
-			status.State == JobStateFailed ||
-			status.State == JobStateCancelled)
-}
-
 func isJobTerminated(restartPolicy *JobRestartPolicy, jobStatus *JobStatus) bool {
-	return isJobStopped(jobStatus) && !shouldRestartJob(restartPolicy, jobStatus)
+	return jobStatus.isJobStopped() && !shouldRestartJob(restartPolicy, jobStatus)
 }
