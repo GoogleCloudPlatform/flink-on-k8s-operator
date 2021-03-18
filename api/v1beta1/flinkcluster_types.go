@@ -681,7 +681,7 @@ type FlinkClusterStatus struct {
 	Savepoint *SavepointStatus `json:"savepoint,omitempty"`
 
 	// The status of revision.
-	Revision RevisionStatus `json:"revision"`
+	Revision RevisionStatus `json:"revision,omitempty"`
 
 	// Last update timestamp for this status.
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
