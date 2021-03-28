@@ -23,6 +23,8 @@ build: generate fmt vet
 
 # Run tests.
 test: generate fmt vet manifests
+	mkdir -p config/crd/test
+	kubectl kustomize config/crd > config/crd/test/crd.yaml
 	go test ./... -coverprofile cover.out
 	go mod tidy
 	echo $(FLINK_OPERATOR_NAMESPACE)
@@ -62,7 +64,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.5.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(shell go env GOPATH)/bin/controller-gen
@@ -91,7 +93,7 @@ push-operator-image:
 
 # Install CRDs into a cluster
 install: manifests
-	kubectl apply -f config/crd/bases
+	kubectl apply -k config/crd
 
 # Deploy cert-manager which is required by webhooks of the operator.
 webhook-cert:
@@ -135,7 +137,7 @@ endif
 	@printf "$(GREEN)Flink Operator deployed, image=$(IMG), operator_namespace=$(FLINK_OPERATOR_NAMESPACE), watch_namespace=$(WATCH_NAMESPACE)$(RESET)\n"
 
 undeploy-crd:
-	kubectl delete -f config/crd/bases
+	kubectl delete -k config/crd
 
 undeploy-controller: build-overlay
 	kubectl kustomize config/deploy \

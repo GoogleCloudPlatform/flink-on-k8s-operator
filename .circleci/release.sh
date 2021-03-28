@@ -54,7 +54,7 @@ main() {
     sed -i 's/replicas: 1/replicas: {{ .Values.replicas }}/g' flink-operator.yaml
     sed -i "s/$IMG/{{ .Values.operatorImage.name }}/g" flink-operator.yaml
     mv flink-operator.yaml helm-chart/flink-operator/templates/flink-operator.yaml
-    cp flink-on-k8s-operator/config/crd/bases/flinkoperator.k8s.io_flinkclusters.yaml helm-chart/flink-operator/templates/flink-cluster-crd.yaml
+    kustomize build flink-on-k8s-operator/config/crd > helm-chart/flink-operator/templates/flink-cluster-crd.yaml
     sed -i '1s/^/{{ if .Values.rbac.create }}\n/' helm-chart/flink-operator/templates/flink-cluster-crd.yaml
     sed -i -e "\$a{{ end }}\n" helm-chart/flink-operator/templates/flink-cluster-crd.yaml
     awk '{sub(/\{\{\$clusterName\}\}\.example\.com/, "clusterName.example.com")}1' helm-chart/flink-operator/templates/flink-cluster-crd.yaml > temp.yaml && mv temp.yaml helm-chart/flink-operator/templates/flink-cluster-crd.yaml

@@ -41,7 +41,7 @@ This marker is responsible for generating a mutating webhook manifest.
 The meaning of each marker can be found [here](/reference/markers/webhook.md).
 */
 
-// +kubebuilder:webhook:path=/mutate-flinkoperator-k8s-io-v1beta1-flinkcluster,mutating=true,failurePolicy=fail,groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=create;update,versions=v1beta1,name=mflinkcluster.flinkoperator.k8s.io
+// +kubebuilder:webhook:webhookVersions=v1beta1,path=/mutate-flinkoperator-k8s-io-v1beta1-flinkcluster,mutating=true,failurePolicy=fail,groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=create;update,versions=v1beta1,name=mflinkcluster.flinkoperator.k8s.io
 
 /*
 We use the `webhook.Defaulter` interface to set defaults to our CRD.
@@ -63,7 +63,7 @@ func (cluster *FlinkCluster) Default() {
 This marker is responsible for generating a validating webhook manifest.
 */
 
-// +kubebuilder:webhook:path=/validate-flinkoperator-k8s-io-v1beta1-flinkcluster,mutating=false,failurePolicy=fail,groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=create;update,versions=v1beta1,name=vflinkcluster.flinkoperator.k8s.io
+// +kubebuilder:webhook:webhookVersions=v1beta1,path=/validate-flinkoperator-k8s-io-v1beta1-flinkcluster,mutating=false,failurePolicy=fail,groups=flinkoperator.k8s.io,resources=flinkclusters,verbs=create;update,versions=v1beta1,name=vflinkcluster.flinkoperator.k8s.io
 
 var _ webhook.Validator = &FlinkCluster{}
 var validator = Validator{}
