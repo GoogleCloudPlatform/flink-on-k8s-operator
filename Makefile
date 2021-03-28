@@ -2,7 +2,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= gcr.io/flink-operator/flink-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:maxDescLen=0,trivialVersions=true"
+CRD_OPTIONS ?= "crd:maxDescLen=0,trivialVersions=true,preserveUnknownFields=false"
 # The Kubernetes namespace in which the operator will be deployed.
 FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
 # Prefix for Kubernetes resource names. When deploying multiple operators, make sure that the names of cluster-scoped resources are not duplicated.
@@ -91,7 +91,7 @@ push-operator-image:
 
 # Install CRDs into a cluster
 install: manifests
-	kubectl apply -f config/crd/bases
+	kubectl apply -k config/crd
 
 # Deploy cert-manager which is required by webhooks of the operator.
 webhook-cert:
@@ -135,7 +135,7 @@ endif
 	@printf "$(GREEN)Flink Operator deployed, image=$(IMG), operator_namespace=$(FLINK_OPERATOR_NAMESPACE), watch_namespace=$(WATCH_NAMESPACE)$(RESET)\n"
 
 undeploy-crd:
-	kubectl delete -f config/crd/bases
+	kubectl delete -k config/crd
 
 undeploy-controller: build-overlay
 	kubectl kustomize config/deploy \
