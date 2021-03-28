@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: This is workaround for controller-tools issue #476 and kubernetes issue #79992.
-# issue link:
-# https://github.com/kubernetes-sigs/controller-tools/issues/476
-# https://github.com/kubernetes/kubernetes/pull/79992
+# TODO: This is a workaround for kubernetes issue #79992.
+# issue link: https://github.com/kubernetes/kubernetes/pull/79992
 #
-# The following patch adds fields for controller-tools bug and kubernetes issue.
+# The following patch adds an annotation for the kubernetes issue.
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: flinkclusters.flinkoperator.k8s.io
   annotations:
-    api-approved.kubernetes.io: "unapproved.*"
-spec:
-  preserveUnknownFields: false
+    api-approved.kubernetes.io: unapproved
