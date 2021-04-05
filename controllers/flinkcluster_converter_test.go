@@ -273,7 +273,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 				},
 			},
 			Status: v1beta1.FlinkClusterStatus{
-				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+				Revision: v1beta1.RevisionStatus{NextRevision: "flinkjobcluster-sample-85dc8f749-1"},
 			},
 		},
 	}
@@ -574,8 +574,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			ServiceName: "flinkjobcluster-sample-taskmanager",
+			Replicas:            &replicas,
+			ServiceName:         "flinkjobcluster-sample-taskmanager",
 			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -984,7 +984,7 @@ func TestSecurityContext(t *testing.T) {
 				},
 			},
 			Status: v1beta1.FlinkClusterStatus{
-				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+				Revision: v1beta1.RevisionStatus{NextRevision: "flinkjobcluster-sample-85dc8f749-1"},
 			},
 		},
 	}
@@ -1022,7 +1022,7 @@ func TestSecurityContext(t *testing.T) {
 				},
 			},
 			Status: v1beta1.FlinkClusterStatus{
-				NextRevision: "flinkjobcluster-sample-85dc8f749-1",
+				Revision: v1beta1.RevisionStatus{NextRevision: "flinkjobcluster-sample-85dc8f749-1"},
 			},
 		},
 	}
