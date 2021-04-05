@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	"github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
 	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,7 +42,7 @@ const (
 
 	RevisionNameLabel = "flinkoperator.k8s.io/revision-name"
 
-	SavepointRequestRetryIntervalSec = 10
+	SavepointRetryIntervalSeconds = 10
 )
 
 type UpdateState string
@@ -137,17 +137,22 @@ func setTimestamp(target *string) {
 	*target = tc.ToString(now)
 }
 
+func getTime(timeStr string) time.Time {
+	var tc TimeConverter
+	return tc.FromString(timeStr)
+}
+
 func isBlank(s *string) bool {
-	return s == nil || *s == "" || strings.TrimSpace(*s) == ""
+	return s == nil || strings.TrimSpace(*s) == ""
 }
 
 // Checks whether it is possible to take savepoint.
 func canTakeSavepoint(cluster v1beta1.FlinkCluster) bool {
 	var jobSpec = cluster.Spec.Job
 	var savepointStatus = cluster.Status.Savepoint
-	var jobStatus = cluster.Status.Components.Job
+	var job = cluster.Status.Components.Job
 	return jobSpec != nil && jobSpec.SavepointsDir != nil &&
-		!isJobStopped(jobStatus) &&
+		!job.IsStopped() &&
 		(savepointStatus == nil || savepointStatus.State != v1beta1.SavepointStateInProgress)
 }
 
@@ -156,18 +161,6 @@ func shouldStopJob(cluster *v1beta1.FlinkCluster) bool {
 	var cancelRequested = cluster.Spec.Job.CancelRequested
 	return userControl == v1beta1.ControlNameJobCancel ||
 		(cancelRequested != nil && *cancelRequested)
-}
-
-// shouldRestartJob returns true if the controller should restart failed or lost job.
-// The controller can restart the job only if there is a fresh savepoint to restore, recorded in status field.
-func shouldRestartJob(
-	jobSpec *v1beta1.JobSpec,
-	jobStatus *v1beta1.JobStatus) bool {
-	var restartEnabled = jobSpec.RestartPolicy != nil && *jobSpec.RestartPolicy == v1beta1.JobRestartPolicyFromSavepointOnFailure
-	if restartEnabled && isJobFailed(jobStatus) && isSavepointUpToDate(jobSpec, jobStatus) {
-		return true
-	}
-	return false
 }
 
 func getFromSavepoint(jobSpec batchv1.JobSpec) string {
@@ -346,61 +339,9 @@ func getSavepointEvent(status v1beta1.SavepointStatus) (eventType string, eventR
 	return
 }
 
-func isJobActive(j *v1beta1.JobStatus) bool {
-	return j != nil &&
-		(j.State == v1beta1.JobStateRunning || j.State == v1beta1.JobStateDeploying)
-}
-
-func isJobPending(j *v1beta1.JobStatus) bool {
-	return j != nil &&
-		(j.State == v1beta1.JobStatePending ||
-			j.State == v1beta1.JobStateUpdating ||
-			j.State == v1beta1.JobStateRestarting)
-}
-
-func isJobFailed(j *v1beta1.JobStatus) bool {
-	return j != nil &&
-		(j.State == v1beta1.JobStateFailed ||
-			j.State == v1beta1.JobStateLost ||
-			j.State == v1beta1.JobStateDeployFailed)
-}
-
-func isJobStopped(j *v1beta1.JobStatus) bool {
-	return j != nil &&
-		(j.State == v1beta1.JobStateSucceeded ||
-			j.State == v1beta1.JobStateCancelled ||
-			j.State == v1beta1.JobStateFailed ||
-			j.State == v1beta1.JobStateLost ||
-			j.State == v1beta1.JobStateDeployFailed)
-}
-
-func isUpdateTriggered(r *v1beta1.RevisionStatus) bool {
-	return r.CurrentRevision != r.NextRevision
-}
-
 func isUserControlFinished(controlStatus *v1beta1.FlinkClusterControlStatus) bool {
 	return controlStatus.State == v1beta1.ControlStateSucceeded ||
 		controlStatus.State == v1beta1.ControlStateFailed
-}
-
-// Check if the savepoint is up to date.
-func isSavepointUpToDate(jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) bool {
-	if jobStatus.FinalSavepoint {
-		return true
-	}
-	if jobSpec.MaxStateAgeToRestoreSeconds == nil ||
-		jobStatus.SavepointLocation == "" ||
-		jobStatus.SavepointTime == "" ||
-		jobStatus.EndTime == "" {
-		return false
-	}
-	var tc = &TimeConverter{}
-	var jobEndTime = tc.FromString(jobStatus.EndTime)
-	var stateMaxAge = int(*jobSpec.MaxStateAgeToRestoreSeconds)
-	if !hasTimeElapsed(jobStatus.SavepointTime, jobEndTime, stateMaxAge) {
-		return true
-	}
-	return false
 }
 
 // Check time has passed
@@ -419,7 +360,7 @@ func hasTimeElapsed(timeToCheckStr string, now time.Time, intervalSec int) bool 
 // If the component is not observed and it is required, then it is not updated yet.
 // If the component is not observed and it is optional, but it is specified in the spec, then it is not updated yet.
 func isComponentUpdated(component runtime.Object, cluster *v1beta1.FlinkCluster) bool {
-	if !isUpdateTriggered(&cluster.Status.Revision) {
+	if !cluster.Status.Revision.IsUpdateTriggered() {
 		return true
 	}
 	switch o := component.(type) {
@@ -486,7 +427,7 @@ func isUpdatedAll(observed ObservedClusterState) bool {
 
 // isClusterUpdateToDate checks whether all cluster components are replaced to next revision.
 func isClusterUpdateToDate(observed *ObservedClusterState) bool {
-	if !isUpdateTriggered(&observed.cluster.Status.Revision) {
+	if !observed.cluster.Status.Revision.IsUpdateTriggered() {
 		return true
 	}
 	components := []runtime.Object{
@@ -513,18 +454,6 @@ func finalSavepointRequested(jobID string, s *v1beta1.SavepointStatus) bool {
 			s.TriggerReason == v1beta1.SavepointTriggerReasonJobCancel)
 }
 
-func updateReady(jobSpec *v1beta1.JobSpec, job *v1beta1.JobStatus) bool {
-	var takeSavepoint bool
-	if jobSpec != nil {
-		takeSavepoint = jobSpec.TakeSavepointOnUpdate == nil || *jobSpec.TakeSavepointOnUpdate
-	}
-	return job == nil ||
-		!isBlank(jobSpec.FromSavepoint) ||
-		!takeSavepoint ||
-		(isJobActive(job) && job.FinalSavepoint) ||
-		(!isJobActive(job) && isSavepointUpToDate(jobSpec, job))
-}
-
 func getUpdateState(observed *ObservedClusterState) UpdateState {
 	if observed.cluster == nil {
 		return ""
@@ -534,16 +463,25 @@ func getUpdateState(observed *ObservedClusterState) UpdateState {
 	var job = recorded.Components.Job
 	var jobSpec = observed.cluster.Spec.Job
 
-	if !isUpdateTriggered(&revision) {
+	if !revision.IsUpdateTriggered() {
 		return ""
 	}
 	switch {
-	case isJobActive(job) || !updateReady(jobSpec, job):
+	case !job.UpdateReady(jobSpec, observed.observeTime):
 		return UpdateStatePreparing
 	case !isClusterUpdateToDate(observed):
 		return UpdateStateInProgress
 	}
 	return UpdateStateFinished
+}
+
+func shouldUpdateJob(observed *ObservedClusterState) bool {
+	return observed.updateState == UpdateStateInProgress
+}
+
+func shouldUpdateCluster(observed *ObservedClusterState) bool {
+	var job = observed.cluster.Status.Components.Job
+	return !job.IsActive() && observed.updateState == UpdateStateInProgress
 }
 
 func getNonLiveHistory(revisions []*appsv1.ControllerRevision, historyLimit int) []*appsv1.ControllerRevision {

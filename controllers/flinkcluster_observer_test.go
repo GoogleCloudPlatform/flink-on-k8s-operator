@@ -25,8 +25,8 @@ import (
 func TestGetFlinkJobDeploymentState(t *testing.T) {
 	var pod corev1.Pod
 	var submitterLog, expected *SubmitterLog
-	var err error
 	var termMsg string
+	var observer = ClusterStateObserver{}
 
 	// success
 	termMsg = `
@@ -55,17 +55,6 @@ Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
 						Message: termMsg,
 					}}}}}}
 	submitterLog = new(SubmitterLog)
-	_ = observeFlinkJobSubmitterLog(&pod, submitterLog)
+	_ = observer.observeFlinkJobSubmitterLog(&pod, submitterLog)
 	assert.DeepEqual(t, *submitterLog, *expected)
-
-	// failed: message not found
-	pod = corev1.Pod{
-		Status: corev1.PodStatus{
-			ContainerStatuses: []corev1.ContainerStatus{{
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Message: "",
-					}}}}}}
-	err = observeFlinkJobSubmitterLog(&pod, submitterLog)
-	assert.Error(t, err, "job pod found, but no termination log")
 }

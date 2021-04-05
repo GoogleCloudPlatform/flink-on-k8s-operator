@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
@@ -94,10 +93,6 @@ type Revision struct {
 
 func (o *ObservedClusterState) isClusterUpdating() bool {
 	return o.updateState == UpdateStateInProgress
-}
-
-func (r *Revision) isUpdateTriggered() bool {
-	return getRevisionWithNameNumber(r.currentRevision) != getRevisionWithNameNumber(r.nextRevision)
 }
 
 // Job submitter status.
@@ -334,17 +329,19 @@ func (observer *ClusterStateObserver) observeSubmitter(submitter *FlinkJobSubmit
 	}
 	submitter.pod = pod
 
-	// Extract submit result.
+	// Extract submission result.
 	var jobSubmissionCompleted = job.Status.Succeeded > 0 || job.Status.Failed > 0
 	if !jobSubmissionCompleted {
 		return nil
 	}
 	log.Info("Extracting the result of job submission because it is completed")
 	podLog = new(SubmitterLog)
-	err = observeFlinkJobSubmitterLog(pod, podLog)
+	err = observer.observeFlinkJobSubmitterLog(pod, podLog)
 	if err != nil {
 		log.Error(err, "Failed to extract the job submission result")
 		podLog = nil
+	} else if podLog == nil {
+		log.Info("Observed submitter log", "state", "nil")
 	} else {
 		log.Info("Observed submitter log", "state", *podLog)
 	}
@@ -389,10 +386,7 @@ func (observer *ClusterStateObserver) observeFlinkJobStatus(
 	}
 	flinkJob.list = flinkJobList
 
-	// Extract the current job status and unexpected jobs, if submitted job ID is provided.
-	if flinkJobID == "" {
-		return
-	}
+	// Extract the current job status and unexpected jobs.
 	for _, job := range flinkJobList.Jobs {
 		if flinkJobID == job.ID {
 			flinkJobStatus = &job
@@ -402,19 +396,12 @@ func (observer *ClusterStateObserver) observeFlinkJobStatus(
 	}
 	flinkJob.status = flinkJobStatus
 	flinkJob.unexpected = flinkJobsUnexpected
-
-	// It is okay if there are multiple jobs, but at most one of them is
-	// expected to be running. This is typically caused by job client
-	// timed out and exited but the job submission was actually
-	// successfully. When retrying, it first cancels the existing running
-	// job which it has lost track of, then submit the job again.
-	if len(flinkJobsUnexpected) > 1 {
-		log.Error(
-			errors.New("more than one unexpected Flink job were found"),
-			"", "unexpected jobs", flinkJobsUnexpected)
-	}
-	if flinkJob != nil {
-		log.Info("Observed Flink job", "flink job", flinkJob)
+	log.Info("Observed Flink job",
+		"submitted job status", flinkJob.status,
+		"all job list", flinkJob.list,
+		"unexpected job list", flinkJob.unexpected)
+	if len(flinkJobsUnexpected) > 0 {
+		log.Info("More than one unexpected Flink job were found!")
 	}
 
 	return
@@ -695,12 +682,15 @@ func (observer *ClusterStateObserver) truncateHistory(observed *ObservedClusterS
 }
 
 // observeFlinkJobSubmit extract submit result from the pod termination log.
-func observeFlinkJobSubmitterLog(observedPod *corev1.Pod, submitterLog *SubmitterLog) error {
+func (observer *ClusterStateObserver) observeFlinkJobSubmitterLog(observedPod *corev1.Pod, submitterLog *SubmitterLog) error {
+	var log = observer.log
 	var containerStatuses = observedPod.Status.ContainerStatuses
 	if len(containerStatuses) == 0 ||
 		containerStatuses[0].State.Terminated == nil ||
 		containerStatuses[0].State.Terminated.Message == "" {
-		return fmt.Errorf("job pod found, but no termination log")
+		submitterLog = nil
+		log.Info("job pod found, but no termination log")
+		return nil
 	}
 
 	// The job submission script writes the submission log to the pod termination log at the end of execution.

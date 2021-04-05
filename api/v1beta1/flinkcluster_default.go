@@ -128,10 +128,6 @@ func _SetJobDefault(jobSpec *JobSpec) {
 			AfterJobCancelled: CleanupActionDeleteCluster,
 		}
 	}
-	if jobSpec.MaxStateAgeToRestoreSeconds == nil {
-		jobSpec.MaxStateAgeToRestoreSeconds = new(int32)
-		*jobSpec.MaxStateAgeToRestoreSeconds = 300
-	}
 }
 
 func _SetHadoopConfigDefault(hadoopConfig *HadoopConfig) {

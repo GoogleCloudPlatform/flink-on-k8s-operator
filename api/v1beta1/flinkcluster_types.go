@@ -353,9 +353,14 @@ type JobSpec struct {
 	SavepointsDir *string `json:"savepointsDir,omitempty"`
 
 	// Should take savepoint before updating job, default: true.
+	// If this is set as false, maxStateAgeToRestoreSeconds must be provided to limit the savepoint age to restore.
 	TakeSavepointOnUpdate *bool `json:"takeSavepointOnUpdate,omitempty"`
 
-	// Maximum age of the savepoint that a job can be restored when the job is restarted or updated from stopped state, default: 300
+	// Maximum age of the savepoint that allowed to restore state..
+	// This is applied to auto restart on failure, update from stopped state and update without taking savepoint.
+	// If nil, job can be restarted only when the latest savepoint is the final job state (created by "stop with savepoint")
+	// - that is, only when job can be resumed from the suspended state.
+	// +kubebuilder:validation:Minimum=0
 	MaxStateAgeToRestoreSeconds *int32 `json:"maxStateAgeToRestoreSeconds,omitempty"`
 
 	// Automatically take a savepoint to the `savepointsDir` every n seconds.
@@ -578,7 +583,7 @@ type JobStatus struct {
 	// Last successful savepoint completed timestamp.
 	SavepointTime string `json:"savepointTime,omitempty"`
 
-	// The savepoint is the final state of the job.
+	// The savepoint recorded in savepointLocation is the final state of the job.
 	FinalSavepoint bool `json:"finalSavepoint,omitempty"`
 
 	// The timestamp of the Flink job deployment that creating job submitter.
@@ -710,13 +715,4 @@ type FlinkClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&FlinkCluster{}, &FlinkClusterList{})
-}
-
-func (j *JobStatus) isJobStopped() bool {
-	return j != nil &&
-		(j.State == JobStateSucceeded ||
-			j.State == JobStateCancelled ||
-			j.State == JobStateFailed ||
-			j.State == JobStateLost ||
-			j.State == JobStateDeployFailed)
 }

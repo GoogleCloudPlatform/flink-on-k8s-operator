@@ -716,6 +716,7 @@ spec:
                   type: string
                 maxStateAgeToRestoreSeconds:
                   format: int32
+                  minimum: 0
                   type: integer
                 noLoggingToStdout:
                   type: boolean

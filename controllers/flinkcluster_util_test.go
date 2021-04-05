@@ -17,6 +17,8 @@ limitations under the License.
 package controllers
 
 import (
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,10 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"testing"
-	"time"
-
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
-	"gotest.tools/assert"
 )
 
 func TestTimeConverter(t *testing.T) {
@@ -44,71 +42,6 @@ func TestTimeConverter(t *testing.T) {
 	var tm2 = tc.FromString(str3)
 	var str4 = tc.ToString(tm2)
 	assert.Assert(t, str3 == str4)
-}
-
-func TestShouldRestartJob(t *testing.T) {
-	var tc = &TimeConverter{}
-	var restartOnFailure = v1beta1.JobRestartPolicyFromSavepointOnFailure
-	var neverRestart = v1beta1.JobRestartPolicyNever
-	var maxStateAgeToRestoreSeconds = int32(300) // 5 min
-
-	// Restart with savepoint up to date
-	var savepointTime = tc.ToString(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
-	var endTime = tc.ToString(time.Date(2020, 1, 1, 0, 1, 0, 0, time.UTC))
-	var jobSpec = v1beta1.JobSpec{
-		RestartPolicy:               &restartOnFailure,
-		MaxStateAgeToRestoreSeconds: &maxStateAgeToRestoreSeconds,
-	}
-	var jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-		SavepointTime:     savepointTime,
-		EndTime:           endTime,
-	}
-	var restart = shouldRestartJob(&jobSpec, &jobStatus)
-	assert.Equal(t, restart, true)
-
-	// Not restart without savepoint
-	jobSpec = v1beta1.JobSpec{
-		RestartPolicy:               &restartOnFailure,
-		MaxStateAgeToRestoreSeconds: &maxStateAgeToRestoreSeconds,
-	}
-	jobStatus = v1beta1.JobStatus{
-		State:   v1beta1.JobStateFailed,
-		EndTime: endTime,
-	}
-	restart = shouldRestartJob(&jobSpec, &jobStatus)
-	assert.Equal(t, restart, false)
-
-	// Not restart with restartPolicy Never
-	jobSpec = v1beta1.JobSpec{
-		RestartPolicy:               &neverRestart,
-		MaxStateAgeToRestoreSeconds: &maxStateAgeToRestoreSeconds,
-	}
-	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-		SavepointTime:     savepointTime,
-		EndTime:           endTime,
-	}
-	restart = shouldRestartJob(&jobSpec, &jobStatus)
-	assert.Equal(t, restart, false)
-
-	// Not restart with old savepoint
-	savepointTime = tc.ToString(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
-	endTime = tc.ToString(time.Date(2020, 1, 1, 0, 5, 0, 0, time.UTC))
-	jobSpec = v1beta1.JobSpec{
-		RestartPolicy:               &neverRestart,
-		MaxStateAgeToRestoreSeconds: &maxStateAgeToRestoreSeconds,
-	}
-	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-		SavepointTime:     savepointTime,
-		EndTime:           endTime,
-	}
-	restart = shouldRestartJob(&jobSpec, &jobStatus)
-	assert.Equal(t, restart, false)
 }
 
 func TestGetRetryCount(t *testing.T) {
@@ -270,46 +203,6 @@ func TestGetNextRevisionNumber(t *testing.T) {
 	assert.Equal(t, nextRevision, int64(3))
 }
 
-func TestIsSavepointUpToDate(t *testing.T) {
-	var tc = &TimeConverter{}
-	var savepointTime = time.Now()
-	var jobEndTime = savepointTime.Add(time.Second * 100)
-	var maxStateAgeToRestoreSeconds = int32(300)
-	var jobSpec = v1beta1.JobSpec{
-		MaxStateAgeToRestoreSeconds: &maxStateAgeToRestoreSeconds,
-	}
-	var jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointTime:     tc.ToString(savepointTime),
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-	}
-	var update = isSavepointUpToDate(&jobSpec, &jobStatus)
-	assert.Equal(t, update, true)
-
-	// old
-	savepointTime = time.Now()
-	jobEndTime = savepointTime.Add(time.Second * 500)
-	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointTime:     tc.ToString(savepointTime),
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-		EndTime:           tc.ToString(jobEndTime),
-	}
-	update = isSavepointUpToDate(&jobSpec, &jobStatus)
-	assert.Equal(t, update, false)
-
-	// Fails without savepointLocation
-	savepointTime = time.Now()
-	jobEndTime = savepointTime.Add(time.Second * 500)
-	jobStatus = v1beta1.JobStatus{
-		State:         v1beta1.JobStateFailed,
-		SavepointTime: tc.ToString(savepointTime),
-		EndTime:       tc.ToString(jobEndTime),
-	}
-	update = isSavepointUpToDate(&jobSpec, &jobStatus)
-	assert.Equal(t, update, false)
-}
-
 func TestIsComponentUpdated(t *testing.T) {
 	var cluster = v1beta1.FlinkCluster{
 		Status: v1beta1.FlinkClusterStatus{Revision: v1beta1.RevisionStatus{NextRevision: "cluster-85dc8f749-2"}},
@@ -380,7 +273,9 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{Revision: v1beta1.RevisionStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"}},
+			Status: v1beta1.FlinkClusterStatus{
+				Revision: v1beta1.RevisionStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+			},
 		},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},

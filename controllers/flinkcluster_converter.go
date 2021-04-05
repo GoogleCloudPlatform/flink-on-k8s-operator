@@ -603,8 +603,8 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 	}
 
 	// When the job should be stopped, keep that state unless update is triggered or the job must to be restarted.
-	if (shouldStopJob(flinkCluster) || isJobStopped(jobStatus)) &&
-		!(observed.isClusterUpdating() || shouldRestartJob(jobSpec, jobStatus)) {
+	if (shouldStopJob(flinkCluster) || jobStatus.IsStopped()) &&
+		!(shouldUpdateJob(observed) || jobStatus.ShouldRestart(jobSpec)) {
 		return nil
 	}
 
@@ -779,7 +779,7 @@ func convertFromSavepoint(jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus
 		}
 		return nil
 	// Updating with FromSavepoint provided
-	case isUpdateTriggered(revision) && !isBlank(jobSpec.FromSavepoint):
+	case revision.IsUpdateTriggered() && !isBlank(jobSpec.FromSavepoint):
 		return jobSpec.FromSavepoint
 	// Latest savepoint
 	case jobStatus.SavepointLocation != "":
@@ -872,7 +872,7 @@ func shouldCleanup(
 		return false
 	}
 
-	if isUpdateTriggered(&cluster.Status.Revision) {
+	if cluster.Status.Revision.IsUpdateTriggered() {
 		return false
 	}
 
