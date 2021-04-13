@@ -57,8 +57,8 @@ function check_jm_ready() {
 
     echo_log "Checking job manager to be ready. Will check success of ${REQUIRED_SUCCESS_NUMBER} API calls for stable job submission." "job_check_log"
     for ((i = 1; i <= MAX_RETRY; i++)); do
-        echo_log "curl -sS \"http://${FLINK_JM_ADDR}/jobs\"" "job_check_log"
-        if curl -sS "http://${FLINK_JM_ADDR}/jobs" 2>&1 | tee -a job_check_log; then
+        echo_log "curl -sS --connect-timeout 5 \"http://${FLINK_JM_ADDR}/jobs\"" "job_check_log"
+        if curl -sS --connect-timeout 5 "http://${FLINK_JM_ADDR}/jobs" 2>&1 | tee -a job_check_log; then
             ((success_count++))
             echo_log "\nSuccess ${success_count}/${REQUIRED_SUCCESS_NUMBER}" "job_check_log"
             if ((success_count < REQUIRED_SUCCESS_NUMBER)); then
