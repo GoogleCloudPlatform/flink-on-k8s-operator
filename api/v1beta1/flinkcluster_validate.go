@@ -392,6 +392,7 @@ func (v *Validator) validateTaskManager(tmSpec *TaskManagerSpec) error {
 }
 
 func (v *Validator) validateJob(jobSpec *JobSpec) error {
+
 	if jobSpec == nil {
 		return nil
 	}
@@ -400,11 +401,19 @@ func (v *Validator) validateJob(jobSpec *JobSpec) error {
 		return fmt.Errorf("job jarFile is unspecified")
 	}
 
-	if jobSpec.Parallelism == nil {
-		return fmt.Errorf("job parallelism is unspecified")
-	}
-	if *jobSpec.Parallelism < 1 {
+	if jobSpec.Parallelism != nil && jobSpec.ParallelismPerTaskManager != nil {
+		return fmt.Errorf("job parallelism and parallelismPerTaskmanager are both specified: Only one must be set")
+	} else if jobSpec.Parallelism == nil && jobSpec.ParallelismPerTaskManager == nil {
+		return fmt.Errorf("job parallelism and parallelismPerTaskmanager are unspecified: One must be set")
+	} else if jobSpec.Parallelism != nil && *jobSpec.Parallelism < 1 {
 		return fmt.Errorf("job parallelism must be >= 1")
+	} else if jobSpec.ParallelismPerTaskManager != nil && *jobSpec.ParallelismPerTaskManager < 1 {
+		return fmt.Errorf("job parallelismPerTaskmanager must be >= 1")
+	}
+	if jobSpec.MaxParallelism == nil {
+		return fmt.Errorf("job maxParallelism is unspecified")
+	} else if *jobSpec.MaxParallelism > 32768 || *jobSpec.MaxParallelism < 1 {
+		return fmt.Errorf("job maxParallelism must be in range [1,2^15]")
 	}
 
 	if jobSpec.RestartPolicy == nil {
