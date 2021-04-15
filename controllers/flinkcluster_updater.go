@@ -26,6 +26,7 @@ import (
 	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/labels"
 	"reflect"
 	"time"
 
@@ -389,7 +390,13 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 			runningComponents++
 		}
 	} else if recorded.Components.TaskManagerStatefulSet.Name != "" {
-		selector, err := metav1.LabelSelectorAsSelector(observedTmStatefulSet.Spec.Selector)
+		var selector labels.Selector
+		var err error
+		if observedTmStatefulSet != nil {
+			selector, err = metav1.LabelSelectorAsSelector(observedTmStatefulSet.Spec.Selector)
+		} else {
+			selector, err = labels.Parse(recorded.Components.TaskManagerStatefulSet.Selector)
+		}
 		if err != nil {
 			updater.log.Error(errors.New("Failed to get task manager selector - status and scale subresources will not work."), "taskmanager status update")
 		}
