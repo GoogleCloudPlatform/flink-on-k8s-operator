@@ -325,7 +325,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				Spec: corev1.PodSpec{
-					InitContainers: make([]corev1.Container, 0),
+					InitContainers: nil,
 					Containers: []corev1.Container{
 						{
 							Name:  "jobmanager",
@@ -391,7 +391,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "flink-config-volume",
+									Name:      "flink-config-map-volume",
 									MountPath: "/opt/flink/conf",
 								},
 								{
@@ -415,7 +415,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					ServiceAccountName: serviceAccount,
 					Volumes: []corev1.Volume{
 						{
-							Name: "flink-config-volume",
+							Name: "flink-config-map-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -574,8 +574,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			ServiceName: "flinkjobcluster-sample-taskmanager",
+			Replicas:            &replicas,
+			ServiceName:         "flinkjobcluster-sample-taskmanager",
 			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -596,7 +596,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 					},
 				},
 				Spec: corev1.PodSpec{
-					InitContainers: make([]corev1.Container, 0),
+					InitContainers: nil,
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:  "taskmanager",
@@ -661,7 +661,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
-								{Name: "flink-config-volume", MountPath: "/opt/flink/conf"},
+								{Name: "flink-config-map-volume", MountPath: "/opt/flink/conf"},
 								{
 									Name:      "hadoop-config-volume",
 									MountPath: "/etc/hadoop/conf",
@@ -684,7 +684,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 						{
-							Name: "flink-config-volume",
+							Name: "flink-config-map-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -823,7 +823,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "cache-volume", MountPath: "/cache"},
 								{
-									Name:      "flink-config-volume",
+									Name:      "flink-config-map-volume",
 									MountPath: "/opt/flink-operator/submit-job.sh",
 									SubPath:   "submit-job.sh",
 								},
@@ -849,7 +849,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 						{
-							Name: "flink-config-volume",
+							Name: "flink-config-map-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -928,6 +928,7 @@ taskmanager.rpc.port: 6122
 			"extra-file.txt":           "hello!",
 			"log4j-console.properties": "foo",
 			"logback-console.xml":      "bar",
+			"config-init.sh":           configInitScript,
 			"submit-job.sh":            submitJobScript,
 		},
 	}
@@ -1102,6 +1103,143 @@ func TestCalFlinkHeapSize(t *testing.T) {
 
 	flinkHeapSize = calFlinkHeapSize(cluster)
 	assert.Assert(t, len(flinkHeapSize) == 0)
+}
+
+func TestConvertFlinkConfig(t *testing.T) {
+	type args struct {
+		clusterName string
+		spec        v1beta1.FlinkClusterSpec
+	}
+	tests := []struct {
+		name               string
+		args               args
+		wantInitContainers []corev1.Container
+		wantVols           []corev1.Volume
+		wantVolMount       *corev1.VolumeMount
+	}{
+		{
+			name: "no secret properties",
+			args: args{
+				clusterName: "mycluster",
+				spec: v1beta1.FlinkClusterSpec{
+					Image: v1beta1.ImageSpec{
+						Name:       "flink:1.8.1",
+						PullPolicy: corev1.PullPolicy("Always"),
+					},
+					FlinkPropertiesSecret: nil,
+				},
+			},
+			wantInitContainers: nil,
+			wantVols: []corev1.Volume{
+				{
+					Name: flinkConfigMapVolume,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: getConfigMapName("mycluster"),
+							},
+						},
+					},
+				},
+			},
+			wantVolMount: &corev1.VolumeMount{
+				Name:      flinkConfigMapVolume,
+				MountPath: flinkConfigDir,
+			},
+		},
+		{
+			name: "refers secret properties",
+			args: args{
+				clusterName: "mycluster",
+				spec: v1beta1.FlinkClusterSpec{
+					Image: v1beta1.ImageSpec{
+						Name:       "flink:1.8.1",
+						PullPolicy: corev1.PullPolicy("Always"),
+					},
+					FlinkPropertiesSecret: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "mysecret",
+						},
+					},
+				},
+			},
+			wantInitContainers: []corev1.Container{
+				{
+					Name:            "config-init",
+					Image:           "flink:1.8.1",
+					ImagePullPolicy: corev1.PullPolicy("Always"),
+					Command:         []string{"bash"},
+					Args: []string{
+						"/opt/flink-operator/config-init.sh",
+						"/tmp/flink-conf",
+						"/tmp/flink-conf-secrets",
+						"/opt/flink/conf",
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      flinkConfigMapVolume,
+							MountPath: "/opt/flink-operator/config-init.sh",
+							SubPath:   "config-init.sh",
+						},
+						{
+							Name:      flinkConfigVolume,
+							MountPath: flinkConfigDir,
+						},
+						{
+							Name:      flinkConfigMapVolume,
+							MountPath: flinkConfigMapTempDir,
+						},
+						{
+							Name:      flinkSecretVolume,
+							MountPath: flinkSecretTempDir,
+						},
+					},
+				},
+			},
+			wantVols: []corev1.Volume{
+				{
+					Name: flinkConfigMapVolume,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: getConfigMapName("mycluster"),
+							},
+						},
+					},
+				},
+				{
+					Name: flinkConfigVolume,
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+					},
+				},
+				{
+					Name: flinkSecretVolume,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{SecretName: "mysecret"},
+					},
+				},
+			},
+			wantVolMount: &corev1.VolumeMount{
+				Name:      flinkConfigVolume,
+				MountPath: flinkConfigDir,
+				ReadOnly:  true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotInitContainers, gotVols, gotVolMount := convertFlinkConfig(tt.args.clusterName, tt.args.spec)
+			switch {
+			case !reflect.DeepEqual(gotInitContainers, tt.wantInitContainers):
+				t.Errorf("convertFlinkConf() = %v, want %v", gotInitContainers, tt.wantInitContainers)
+			case !reflect.DeepEqual(gotVols, tt.wantVols):
+				t.Errorf("convertFlinkConf() = %v, want %v", gotVols, tt.wantVols)
+			case !reflect.DeepEqual(gotVolMount, tt.wantVolMount):
+				t.Errorf("convertFlinkConf() = %v, want %v", gotVolMount, tt.wantVolMount)
+			}
+		})
+	}
 }
 
 func Test_getLogConf(t *testing.T) {

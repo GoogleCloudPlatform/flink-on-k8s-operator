@@ -25,8 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/model"
 
@@ -34,6 +32,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -43,8 +42,12 @@ import (
 
 const (
 	delayDeleteClusterMinutes int32 = 5
-	flinkConfigMapPath              = "/opt/flink/conf"
-	flinkConfigMapVolume            = "flink-config-volume"
+	flinkConfigDir                  = "/opt/flink/conf"
+	flinkConfigVolume               = "flink-config-volume"
+	flinkConfigMapTempDir           = "/tmp/flink-conf"
+	flinkConfigMapVolume            = "flink-config-map-volume"
+	flinkSecretTempDir              = "/tmp/flink-conf-secrets"
+	flinkSecretVolume               = "flink-secret-volume"
 	gcpServiceAccountVolume         = "gcp-service-account-volume"
 	hadoopConfigVolume              = "hadoop-config-volume"
 )
@@ -68,12 +71,12 @@ func getDesiredClusterState(
 		return model.DesiredClusterState{}
 	}
 	return model.DesiredClusterState{
-		ConfigMap:    getDesiredConfigMap(cluster),
+		ConfigMap:     getDesiredConfigMap(cluster),
 		JmStatefulSet: getDesiredJobManagerStatefulSet(cluster),
-		JmService:    getDesiredJobManagerService(cluster),
-		JmIngress:    getDesiredJobManagerIngress(cluster),
+		JmService:     getDesiredJobManagerService(cluster),
+		JmIngress:     getDesiredJobManagerIngress(cluster),
 		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
-		Job:          getDesiredJob(observed),
+		Job:           getDesiredJob(observed),
 	}
 }
 
@@ -105,13 +108,10 @@ func getDesiredJobManagerStatefulSet(
 	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
-	var confVol *corev1.Volume
-	var confMount *corev1.VolumeMount
-	confVol, confMount = convertFlinkConfig(clusterName)
-	volumes = append(jobManagerSpec.Volumes, *confVol)
-	volumeMounts = append(jobManagerSpec.VolumeMounts, *confMount)
+	initContainers, volumes, volumeMount := convertFlinkConfig(clusterName, clusterSpec)
+	initContainers = append(initContainers, convertJobManagerInitContainers(&jobManagerSpec)...)
+	volumeMounts := append(jobManagerSpec.VolumeMounts, *volumeMount)
+
 	var envVars = []corev1.EnvVar{
 		{
 			Name: "JOB_MANAGER_CPU_LIMIT",
@@ -199,7 +199,7 @@ func getDesiredJobManagerStatefulSet(
 	containers = append(containers, jobManagerSpec.Sidecars...)
 
 	var podSpec = corev1.PodSpec{
-		InitContainers:     convertJobManagerInitContainers(&jobManagerSpec),
+		InitContainers:     initContainers,
 		Containers:         containers,
 		Volumes:            volumes,
 		NodeSelector:       jobManagerSpec.NodeSelector,
@@ -217,9 +217,9 @@ func getDesiredJobManagerStatefulSet(
 			Labels:          statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: jobManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: jobManagerStatefulSetName,
+			Replicas:             jobManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          jobManagerStatefulSetName,
 			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -405,13 +405,10 @@ func getDesiredTaskManagerStatefulSet(
 	var securityContext = taskManagerSpec.SecurityContext
 
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
-
-	// Flink config.
-	var confVol, confMount = convertFlinkConfig(clusterName)
-	volumes = append(taskManagerSpec.Volumes, *confVol)
-	volumeMounts = append(taskManagerSpec.VolumeMounts, *confMount)
+	initContainers, volumes, volumeMount := convertFlinkConfig(clusterName, clusterSpec)
+	initContainers = append(initContainers, convertTaskManagerInitContainers(&taskManagerSpec)...)
+	volumes = append(taskManagerSpec.Volumes, volumes...)
+	volumeMounts := append(taskManagerSpec.VolumeMounts, *volumeMount)
 
 	var envVars = []corev1.EnvVar{
 		{
@@ -498,7 +495,7 @@ func getDesiredTaskManagerStatefulSet(
 	}}
 	containers = append(containers, taskManagerSpec.Sidecars...)
 	var podSpec = corev1.PodSpec{
-		InitContainers:     convertTaskManagerInitContainers(&taskManagerSpec),
+		InitContainers:     initContainers,
 		Containers:         containers,
 		Volumes:            volumes,
 		NodeSelector:       taskManagerSpec.NodeSelector,
@@ -516,11 +513,11 @@ func getDesiredTaskManagerStatefulSet(
 			Labels: statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &taskManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: taskManagerStatefulSetName,
+			Replicas:             &taskManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          taskManagerStatefulSetName,
 			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
-			PodManagementPolicy: "Parallel",
+			PodManagementPolicy:  "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -576,6 +573,7 @@ func getDesiredConfigMap(
 	}
 	var configData = getLogConf(flinkCluster.Spec)
 	configData["flink-conf.yaml"] = getFlinkProperties(flinkProps)
+	configData["config-init.sh"] = configInitScript
 	configData["submit-job.sh"] = submitJobScript
 	var configMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -951,10 +949,75 @@ func calHeapSize(memSize int64, offHeapMin int64, offHeapRatio int64) int64 {
 	return heapSizeMB
 }
 
-func convertFlinkConfig(clusterName string) (*corev1.Volume, *corev1.VolumeMount) {
-	var confVol *corev1.Volume
-	var confMount *corev1.VolumeMount
-	confVol = &corev1.Volume{
+func convertFlinkConfig(
+	clusterName string,
+	clusterSpec v1beta1.FlinkClusterSpec) (
+	initContainers []corev1.Container, confVols []corev1.Volume, confMount *corev1.VolumeMount) {
+	configMapVol, configMapMount := convertFlinkConfigMap(clusterName, flinkConfigDir)
+	confVols = append(confVols, *configMapVol)
+	if clusterSpec.FlinkPropertiesSecret != nil {
+		var initConfMounts []corev1.VolumeMount
+		initScriptMount := convertFlinkConfigInitScriptMount(configMapVol)
+		inMemoryConfVol, inMemoryConfMount := getInMemoryFlinkConfig()
+		tempConfigMapMount := &corev1.VolumeMount{Name: configMapVol.Name, MountPath: flinkConfigMapTempDir}
+		secretVol, secretMount := convertFlinkConfigSecret(clusterSpec.FlinkPropertiesSecret)
+
+		confVols = append(confVols, *inMemoryConfVol, *secretVol)
+		initConfMounts = append(initConfMounts,
+			*initScriptMount, *inMemoryConfMount, *tempConfigMapMount, *secretMount)
+		initContainers = append(initContainers,
+			*convertFlinkConfigInitContainer(clusterSpec, tempConfigMapMount.MountPath, initConfMounts))
+		// Mark config as readonly for non-init containers
+		readOnlyConfMount := inMemoryConfMount.DeepCopy()
+		readOnlyConfMount.ReadOnly = true
+		return initContainers, confVols, readOnlyConfMount
+	}
+	return initContainers, confVols, configMapMount
+}
+
+func getInMemoryFlinkConfig() (*corev1.Volume, *corev1.VolumeMount) {
+	confVol := &corev1.Volume{
+		Name: flinkConfigVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+		},
+	}
+	confMount := &corev1.VolumeMount{
+		Name:      flinkConfigVolume,
+		MountPath: flinkConfigDir,
+	}
+	return confVol, confMount
+}
+
+func convertFlinkConfigInitContainer(
+	clusterSpec v1beta1.FlinkClusterSpec,
+	srcConfigDir string,
+	volumeMounts []corev1.VolumeMount) *corev1.Container {
+	return &corev1.Container{
+		Name:            "config-init",
+		Image:           clusterSpec.Image.Name,
+		ImagePullPolicy: clusterSpec.Image.PullPolicy,
+		Command:         []string{"bash"},
+		Args: []string{
+			"/opt/flink-operator/config-init.sh",
+			srcConfigDir,
+			flinkSecretTempDir,
+			flinkConfigDir,
+		},
+		VolumeMounts: volumeMounts,
+	}
+}
+
+func convertFlinkConfigInitScriptMount(scriptVolume *corev1.Volume) *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      scriptVolume.Name,
+		MountPath: "/opt/flink-operator/config-init.sh",
+		SubPath:   "config-init.sh",
+	}
+}
+
+func convertFlinkConfigMap(clusterName, mountPath string) (*corev1.Volume, *corev1.VolumeMount) {
+	confVol := &corev1.Volume{
 		Name: flinkConfigMapVolume,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -964,9 +1027,26 @@ func convertFlinkConfig(clusterName string) (*corev1.Volume, *corev1.VolumeMount
 			},
 		},
 	}
-	confMount = &corev1.VolumeMount{
+	confMount := &corev1.VolumeMount{
 		Name:      flinkConfigMapVolume,
-		MountPath: flinkConfigMapPath,
+		MountPath: mountPath,
+	}
+	return confVol, confMount
+}
+
+func convertFlinkConfigSecret(source *corev1.SecretEnvSource) (*corev1.Volume, *corev1.VolumeMount) {
+	confVol := &corev1.Volume{
+		Name: flinkSecretVolume,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: source.Name,
+				Optional:   source.Optional,
+			},
+		},
+	}
+	confMount := &corev1.VolumeMount{
+		Name:      flinkSecretVolume,
+		MountPath: flinkSecretTempDir,
 	}
 	return confVol, confMount
 }

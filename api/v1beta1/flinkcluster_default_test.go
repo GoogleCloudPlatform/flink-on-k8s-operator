@@ -110,7 +110,8 @@ func TestSetDefault(t *testing.T) {
 				},
 				SecurityContext: nil,
 			},
-			FlinkProperties: nil,
+			FlinkProperties:       nil,
+			FlinkPropertiesSecret: nil,
 			HadoopConfig: &HadoopConfig{
 				MountPath: "/etc/hadoop/conf",
 			},
@@ -204,7 +205,8 @@ func TestSetNonDefault(t *testing.T) {
 					AfterJobCancelled: "KeepCluster",
 				},
 			},
-			FlinkProperties: nil,
+			FlinkProperties:       nil,
+			FlinkPropertiesSecret: nil,
 			HadoopConfig: &HadoopConfig{
 				MountPath: "/opt/flink/hadoop/conf",
 			},
@@ -268,7 +270,8 @@ func TestSetNonDefault(t *testing.T) {
 					AfterJobCancelled: "KeepCluster",
 				},
 			},
-			FlinkProperties: nil,
+			FlinkProperties:       nil,
+			FlinkPropertiesSecret: nil,
 			HadoopConfig: &HadoopConfig{
 				MountPath: "/opt/flink/hadoop/conf",
 			},
