@@ -447,8 +447,11 @@ type FlinkClusterSpec struct {
 	// TaskManager and job containers.
 	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
 
-	// Flink properties which are appened to flink-conf.yaml.
+	// Flink properties which are appended to flink-conf.yaml.
 	FlinkProperties map[string]string `json:"flinkProperties,omitempty"`
+
+	// Secret source of Flink properties which will be appended to flink-conf.yaml.
+	FlinkPropertiesSecret *corev1.SecretEnvSource `json:"flinkPropertiesSecret,omitempty"`
 
 	// Config for Hadoop.
 	HadoopConfig *HadoopConfig `json:"hadoopConfig,omitempty"`
