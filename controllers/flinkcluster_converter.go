@@ -944,7 +944,7 @@ func calHeapSize(memSize int64, offHeapMin int64, offHeapRatio int64) int64 {
 	}
 	heapSizeCalculated := memSize - offHeapSize
 	if heapSizeCalculated > 0 {
-		divisor := resource.MustParse("1M")
+		divisor := resource.MustParse("1Mi")
 		heapSizeQuantity := resource.NewQuantity(heapSizeCalculated, resource.DecimalSI)
 		heapSizeMB = convertResourceMemoryToInt64(*heapSizeQuantity, divisor)
 	}
