@@ -18,13 +18,14 @@ package controllers
 
 import (
 	"context"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"time"
 
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
 	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"github.com/googlecloudplatform/flink-operator/controllers/model"
+	ctrlcontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -85,9 +86,10 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 // SetupWithManager registers this reconciler with the controller manager and
 // starts watching FlinkCluster, Deployment and Service resources.
 func (reconciler *FlinkClusterReconciler) SetupWithManager(
-	mgr ctrl.Manager) error {
+	mgr ctrl.Manager, maxConcurrentReconciles int) error {
 	reconciler.Mgr = mgr
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(ctrlcontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
 		For(&v1beta1.FlinkCluster{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&appsv1.StatefulSet{}).
