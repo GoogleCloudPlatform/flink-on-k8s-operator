@@ -258,18 +258,18 @@ kubectl describe flinkclusters <CLUSTER-NAME>
 
 ### Flink job
 
-To get a list of jobs
+In a job cluster, the job is automatically submitted by the operator.
+The operator creates a submitter for a Flink job.
+The job submitter itself is created as a Kubernetes job.
+
+When the job submitter starts, it first checks the status of Flink job manager.
+And it submits a Flink job when confirmed that Flink job manager is ready and then terminates.
+
+You can check the Flink job submission status and logs with
 
 ```bash
-kubectl get jobs
-```
-
-In a job cluster, the job is automatically submitted by the operator you can
-check the Flink job status and logs with
-
-```bash
-kubectl describe jobs <CLUSTER-NAME>-job
-kubectl logs jobs/<CLUSTER-NAME>-job -f --tail=1000
+kubectl describe jobs <CLUSTER-NAME>-job-submitter
+kubectl logs jobs/<CLUSTER-NAME>-job-submitter -f
 ```
 
 In a session cluster, depending on how you submit the job, you can check the
@@ -482,6 +482,12 @@ taskManager:
     runAsGroup: 1000
     fsGroup: 2000
 ```
-You can set different SecurityContexts for the TaskManager, JobManager deployments and the Job, but all TaskManager pods
+You can set different SecurityContexts for the TaskManager, JobManager StatefulSets and the Job, but all TaskManager pods
 will share the same one.
 Examples and explanations of the available options can be found [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
+
+### Mounting external volumes to the pods
+If your deployment requires larger storage captivity, or a faster access to the state backend you can use `volumeClaimTemplates` option in TaskManager config
+to create a new claim template and then mount it in `volumeMounts`  
+Check the [FlinkCluster Custom Resource Definition](./crd.md) and [StatefulSet's doc](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) for more info
+

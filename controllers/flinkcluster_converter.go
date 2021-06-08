@@ -59,27 +59,29 @@ var flinkSysProps = map[string]struct{}{
 
 // Gets the desired state of a cluster.
 func getDesiredClusterState(
-	cluster *v1beta1.FlinkCluster,
+	observed *ObservedClusterState,
 	now time.Time) model.DesiredClusterState {
+	var cluster = observed.cluster
+
 	// The cluster has been deleted, all resources should be cleaned up.
 	if cluster == nil {
 		return model.DesiredClusterState{}
 	}
 	return model.DesiredClusterState{
 		ConfigMap:    getDesiredConfigMap(cluster),
-		JmDeployment: getDesiredJobManagerDeployment(cluster),
+		JmStatefulSet: getDesiredJobManagerStatefulSet(cluster),
 		JmService:    getDesiredJobManagerService(cluster),
 		JmIngress:    getDesiredJobManagerIngress(cluster),
-		TmDeployment: getDesiredTaskManagerDeployment(cluster),
-		Job:          getDesiredJob(cluster),
+		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
+		Job:          getDesiredJob(observed),
 	}
 }
 
-// Gets the desired JobManager deployment spec from the FlinkCluster spec.
-func getDesiredJobManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+// Gets the desired JobManager StatefulSet spec from the FlinkCluster spec.
+func getDesiredJobManagerStatefulSet(
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
-	if shouldCleanup(flinkCluster, "JobManagerDeployment") {
+	if shouldCleanup(flinkCluster, "JobManagerStatefulSet") {
 		return nil
 	}
 
@@ -97,10 +99,10 @@ func getDesiredJobManagerDeployment(
 	for _, port := range jobManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
-	var jobManagerDeploymentName = getJobManagerDeploymentName(clusterName)
+	var jobManagerStatefulSetName = getJobManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
@@ -206,16 +208,19 @@ func getDesiredJobManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var jobManagerDeployment = &appsv1.Deployment{
+
+	var jobManagerStatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       clusterNamespace,
-			Name:            jobManagerDeploymentName,
+			Name:            jobManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{ToOwnerReference(flinkCluster)},
-			Labels:          deploymentLabels,
+			Labels:          statefulSetLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: jobManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: jobManagerStatefulSetName,
+			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -225,7 +230,7 @@ func getDesiredJobManagerDeployment(
 			},
 		},
 	}
-	return jobManagerDeployment
+	return jobManagerStatefulSet
 }
 
 // Gets the desired JobManager service spec from a cluster spec.
@@ -371,11 +376,11 @@ func getDesiredJobManagerIngress(
 	return jobManagerIngress
 }
 
-// Gets the desired TaskManager deployment spec from a cluster spec.
-func getDesiredTaskManagerDeployment(
-	flinkCluster *v1beta1.FlinkCluster) *appsv1.Deployment {
+// Gets the desired TaskManager StatefulSet spec from a cluster spec.
+func getDesiredTaskManagerStatefulSet(
+	flinkCluster *v1beta1.FlinkCluster) *appsv1.StatefulSet {
 
-	if shouldCleanup(flinkCluster, "TaskManagerDeployment") {
+	if shouldCleanup(flinkCluster, "TaskManagerStatefulSet") {
 		return nil
 	}
 
@@ -392,10 +397,10 @@ func getDesiredTaskManagerDeployment(
 	for _, port := range taskManagerSpec.ExtraPorts {
 		ports = append(ports, corev1.ContainerPort{Name: port.Name, ContainerPort: port.ContainerPort, Protocol: corev1.Protocol(port.Protocol)})
 	}
-	var taskManagerDeploymentName = getTaskManagerDeploymentName(clusterName)
+	var taskManagerStatefulSetName = getTaskManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
 	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
-	var deploymentLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
 
 	var securityContext = taskManagerSpec.SecurityContext
 
@@ -502,17 +507,20 @@ func getDesiredTaskManagerDeployment(
 		SecurityContext:    securityContext,
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
-	var taskManagerDeployment = &appsv1.Deployment{
+	var taskManagerStatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
-			Name:      taskManagerDeploymentName,
+			Name:      taskManagerStatefulSetName,
 			OwnerReferences: []metav1.OwnerReference{
 				ToOwnerReference(flinkCluster)},
-			Labels: deploymentLabels,
+			Labels: statefulSetLabels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: &taskManagerSpec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName: taskManagerStatefulSetName,
+			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
+			PodManagementPolicy: "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -522,7 +530,7 @@ func getDesiredTaskManagerDeployment(
 			},
 		},
 	}
-	return taskManagerDeployment
+	return taskManagerStatefulSet
 }
 
 // Gets the desired configMap.
@@ -584,18 +592,19 @@ func getDesiredConfigMap(
 }
 
 // Gets the desired job spec from a cluster spec.
-func getDesiredJob(
-	flinkCluster *v1beta1.FlinkCluster) *batchv1.Job {
+func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
+	var flinkCluster = observed.cluster
 	var jobSpec = flinkCluster.Spec.Job
+	var jobStatus = flinkCluster.Status.Components.Job
 
 	if jobSpec == nil {
 		return nil
 	}
 
-	if !isUpdateTriggered(flinkCluster.Status) {
-		// We need to watch whether job is cancelled already if jobSpec.CancelRequested is deprecated
-		var jobStatus = flinkCluster.Status.Components.Job
-		if isJobCancelRequested(*flinkCluster) || (jobStatus != nil && jobStatus.State == v1beta1.JobStateCancelled) {
+	// Unless update has been triggered or the job needs to be restarted, keep the job to be stopped in that state.
+	if !(isUpdateTriggered(flinkCluster.Status) || shouldRestartJob(jobSpec.RestartPolicy, jobStatus)) {
+		// Job cancel requested or stopped already
+		if isJobCancelRequested(*flinkCluster) || isJobStopped(jobStatus) {
 			return nil
 		}
 	}
@@ -619,8 +628,8 @@ func getDesiredJob(
 		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
 	}
 
-	var fromSavepoint = convertFromSavepoint(jobSpec, &flinkCluster.Status)
-	if fromSavepoint != nil && *fromSavepoint != "" {
+	var fromSavepoint = convertFromSavepoint(jobSpec, flinkCluster.Status.Components.Job)
+	if fromSavepoint != nil {
 		jobArgs = append(jobArgs, "--fromSavepoint", *fromSavepoint)
 	}
 
@@ -640,7 +649,7 @@ func getDesiredJob(
 
 	var securityContext = jobSpec.SecurityContext
 
-	var envVars = []corev1.EnvVar{}
+	var envVars []corev1.EnvVar
 
 	// If the JAR file is remote, put the URI in the env variable
 	// FLINK_JOB_JAR_URI and rewrite the JAR path to a local path. The entrypoint
@@ -654,6 +663,12 @@ func getDesiredJob(
 			Value: jobSpec.JarFile,
 		})
 	}
+	envVars = append(envVars,
+		corev1.EnvVar{
+			Name:  "FLINK_JM_ADDR",
+			Value: jobManagerAddress,
+		})
+
 	jobArgs = append(jobArgs, jarPath)
 	jobArgs = append(jobArgs, jobSpec.Args...)
 
@@ -716,7 +731,7 @@ func getDesiredJob(
 		ServiceAccountName: getServiceAccountName(serviceAccount),
 	}
 
-	// Disable the retry mechanism of k8s Job, all retires should be initiated
+	// Disable the retry mechanism of k8s Job, all retries should be initiated
 	// by the operator based on the job restart policy. This is because Flink
 	// jobs are stateful, if a job fails after running for 10 hours, we probably
 	// don't want to start over from the beginning, instead we want to resume
@@ -752,28 +767,28 @@ func getDesiredJob(
 // When FlinkCluster is created or updated, if spec.job.fromSavepoint is specified, Flink job will be restored from it.
 //
 // case 2) Restore Flink job from the latest savepoint.
-// When FlinkCluster is updated not specifying spec.job.fromSavepoint, or job is restarted from the failed state,
-// Flink job will be restored from the latest savepoint created by the operator or the savepoint from which current job was restored.
-func convertFromSavepoint(jobSpec *v1beta1.JobSpec, clusterStatus *v1beta1.FlinkClusterStatus) *string {
-	var jobStatus = clusterStatus.Components.Job
+// When FlinkCluster is updated with no spec.job.fromSavepoint, or job is restarted from the failed state,
+// Flink job will be restored from the latest savepoint created by the operator.
+//
+// case 3) When latest created savepoint is unavailable, use the savepoint from which current job was restored.
+func convertFromSavepoint(jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) *string {
 	switch {
-	case shouldRestartJob(jobSpec.RestartPolicy, jobStatus):
+	// Creating for the first time
+	case jobStatus == nil:
+		if jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint != "" {
+			return jobSpec.FromSavepoint
+		}
+	// Updating with FromSavepoint provided
+	case jobStatus.State == v1beta1.JobStateUpdating && jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint != "":
+		return jobSpec.FromSavepoint
+	// Latest savepoint
+	case jobStatus.SavepointLocation != "":
 		return &jobStatus.SavepointLocation
-	case isUpdateTriggered(*clusterStatus) && (jobSpec.FromSavepoint == nil || *jobSpec.FromSavepoint == ""):
-		if jobStatus == nil {
-			return nil
-		}
-		// Latest savepoint created by Flink operator
-		if jobStatus.SavepointLocation != "" {
-			return &jobStatus.SavepointLocation
-		}
-		// The savepoint from which current running job was restored
-		if jobStatus.FromSavepoint != "" {
-			return &jobStatus.FromSavepoint
-		}
-		return nil
+	// The savepoint from which current job was restored
+	case jobStatus.FromSavepoint != "":
+		return &jobStatus.FromSavepoint
 	}
-	return jobSpec.FromSavepoint
+	return nil
 }
 
 // Copy any non-duplicate volume mounts to the specified initContainers
@@ -877,7 +892,7 @@ func shouldCleanup(
 	case v1beta1.CleanupActionDeleteCluster:
 		return true
 	case v1beta1.CleanupActionDeleteTaskManager:
-		return component == "TaskManagerDeployment"
+		return component == "TaskManagerStatefulSet"
 	}
 
 	return false

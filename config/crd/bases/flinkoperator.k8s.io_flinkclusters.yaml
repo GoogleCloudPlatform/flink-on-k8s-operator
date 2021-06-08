@@ -30,8 +30,6 @@ spec:
           properties:
             batchSchedulerName:
               type: string
-            serviceAccountName:
-              type: string
             envFrom:
               items:
                 properties:
@@ -164,6 +162,8 @@ spec:
                   format: int32
                   type: integer
                 cancelRequested:
+                  type: boolean
+                takeSavepointOnUpgrade:
                   type: boolean
                 className:
                   type: string
@@ -3281,9 +3281,13 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            recreateOnUpdate:
+              type: boolean
             revisionHistoryLimit:
               format: int32
               type: integer
+            serviceAccountName:
+              type: string
             taskManager:
               properties:
                 extraPorts:
@@ -5146,6 +5150,8 @@ spec:
                       type: string
                     id:
                       type: string
+                    lastSavepointTriggerTime:
+                      type: string
                     lastSavepointTime:
                       type: string
                     lastSavepointTriggerID:
@@ -5163,11 +5169,9 @@ spec:
                     state:
                       type: string
                   required:
-                  - id
-                  - name
                   - state
                   type: object
-                jobManagerDeployment:
+                jobManagerStatefulSet:
                   properties:
                     name:
                       type: string
@@ -5204,7 +5208,7 @@ spec:
                   - name
                   - state
                   type: object
-                taskManagerDeployment:
+                taskManagerStatefulSet:
                   properties:
                     name:
                       type: string
@@ -5216,9 +5220,9 @@ spec:
                   type: object
               required:
               - configMap
-              - jobManagerDeployment
+              - jobManagerStatefulSet
               - jobManagerService
-              - taskManagerDeployment
+              - taskManagerStatefulSet
               type: object
             control:
               properties:

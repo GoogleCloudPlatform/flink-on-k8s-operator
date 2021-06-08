@@ -74,19 +74,19 @@ func (v *VolcanoBatchScheduler) Schedule(cluster *v1beta1.FlinkCluster, state *m
 
 func (v *VolcanoBatchScheduler) setSchedulerMeta(cluster *v1beta1.FlinkCluster, state *model.DesiredClusterState) {
 	podgroupName := v.getPodGroupName(cluster)
-	if state.TmDeployment != nil {
-		state.TmDeployment.Spec.Template.Spec.SchedulerName = v.Name()
-		if state.TmDeployment.Spec.Template.Annotations == nil {
-			state.TmDeployment.Spec.Template.Annotations = make(map[string]string)
+	if state.TmStatefulSet != nil {
+		state.TmStatefulSet.Spec.Template.Spec.SchedulerName = v.Name()
+		if state.TmStatefulSet.Spec.Template.Annotations == nil {
+			state.TmStatefulSet.Spec.Template.Annotations = make(map[string]string)
 		}
-		state.TmDeployment.Spec.Template.Annotations[scheduling.KubeGroupNameAnnotationKey] = podgroupName
+		state.TmStatefulSet.Spec.Template.Annotations[scheduling.KubeGroupNameAnnotationKey] = podgroupName
 	}
-	if state.JmDeployment != nil {
-		state.JmDeployment.Spec.Template.Spec.SchedulerName = v.Name()
-		if state.JmDeployment.Spec.Template.Annotations == nil {
-			state.JmDeployment.Spec.Template.Annotations = make(map[string]string)
+	if state.JmStatefulSet != nil {
+		state.JmStatefulSet.Spec.Template.Spec.SchedulerName = v.Name()
+		if state.JmStatefulSet.Spec.Template.Annotations == nil {
+			state.JmStatefulSet.Spec.Template.Annotations = make(map[string]string)
 		}
-		state.JmDeployment.Spec.Template.Annotations[scheduling.KubeGroupNameAnnotationKey] = podgroupName
+		state.JmStatefulSet.Spec.Template.Annotations[scheduling.KubeGroupNameAnnotationKey] = podgroupName
 	}
 	if state.Job != nil {
 		state.Job.Spec.Template.Spec.SchedulerName = v.Name()
@@ -145,18 +145,18 @@ func getClusterResource(state *model.DesiredClusterState) (corev1.ResourceList, 
 	resource := corev1.ResourceList{}
 	var size int32
 
-	if state.JmDeployment != nil {
-		size += *state.JmDeployment.Spec.Replicas
-		for i := int32(0); i < *state.JmDeployment.Spec.Replicas; i++ {
-			jmResource := getPodResource(&state.JmDeployment.Spec.Template.Spec)
+	if state.JmStatefulSet != nil {
+		size += *state.JmStatefulSet.Spec.Replicas
+		for i := int32(0); i < *state.JmStatefulSet.Spec.Replicas; i++ {
+			jmResource := getPodResource(&state.JmStatefulSet.Spec.Template.Spec)
 			addResourceList(resource, jmResource, nil)
 		}
 	}
 
-	if state.TmDeployment != nil {
-		size += *state.TmDeployment.Spec.Replicas
-		for i := int32(0); i < *state.TmDeployment.Spec.Replicas; i++ {
-			tmResource := getPodResource(&state.TmDeployment.Spec.Template.Spec)
+	if state.TmStatefulSet != nil {
+		size += *state.TmStatefulSet.Spec.Replicas
+		for i := int32(0); i < *state.TmStatefulSet.Spec.Replicas; i++ {
+			tmResource := getPodResource(&state.TmStatefulSet.Spec.Template.Spec)
 			addResourceList(resource, tmResource, nil)
 		}
 	}

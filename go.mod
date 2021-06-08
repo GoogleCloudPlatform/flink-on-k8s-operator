@@ -9,6 +9,7 @@ require (
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
+	gopkg.in/yaml.v2 v2.2.8
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.18.3
 	k8s.io/apiextensions-apiserver v0.18.3 // indirect
