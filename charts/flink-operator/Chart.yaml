@@ -2,7 +2,7 @@ apiVersion: v1
 name: flink-operator
 appVersion: "1.0"
 description: A Helm chart for flink on Kubernetes operator
-version: "0.2.1"
+version: "0.2.2"
 keywords:
   - flink
 home: https://github.com/GoogleCloudPlatform/flink-on-k8s-operator
