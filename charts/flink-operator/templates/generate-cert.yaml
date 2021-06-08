@@ -35,7 +35,7 @@ data:
     openssl req -nodes -new -x509 -keyout ca.key -out ca.crt -subj "/CN=Admission Controller Webhook CA"
     openssl genrsa -out ${tmpdir}/server-key.pem 2048
     openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace}.svc" -config ${tmpdir}/csr.conf \
-        | openssl x509 -days 3650 -req -CA ca.crt -CAkey ca.key -CAcreateserial -out ${tmpdir}/server-cert.pem
+        | openssl x509 -days 3650 -req -CA ca.crt -CAkey ca.key -CAcreateserial -extensions v3_req -extfile "${tmpdir}/csr.conf" -out ${tmpdir}/server-cert.pem
     serverCert="$(openssl base64 -A -in ${tmpdir}/server-cert.pem)"
     if [[ -z ${serverCert} ]]; then
         echo "ERROR: The signed certificate did not appear." >&2
@@ -114,6 +114,33 @@ data:
         - UPDATE
         resources:
         - flinkclusters
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flink-operator-cert-generator
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flink-operator-cert-generator
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-operator-cert-generator
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ .Values.flinkOperatorNamespace.name }}
 ---
 apiVersion: batch/v1
 kind: Job
