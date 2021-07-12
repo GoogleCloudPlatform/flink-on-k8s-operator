@@ -21,12 +21,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"hash"
 	"hash/fnv"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sort"
 	"strconv"
+
+	"github.com/davecgh/go-spew/spew"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apps "k8s.io/api/apps/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -320,14 +321,14 @@ func (rh *realHistory) AdoptControllerRevision(parent metav1.Object, parentKind 
 		return nil, err
 	}
 	// Use strategic merge patch to add an owner reference indicating a controller ref
-	err = rh.Patch(rh.context, revision, client.ConstantPatch(types.StrategicMergePatchType, patchBytes))
+	err = rh.Patch(rh.context, revision, client.RawPatch(types.StrategicMergePatchType, patchBytes))
 
 	return revision, err
 }
 
 func (rh *realHistory) ReleaseControllerRevision(parent metav1.Object, revision *apps.ControllerRevision) (*apps.ControllerRevision, error) {
 	// Use strategic merge patch to add an owner reference indicating a controller ref
-	err := rh.Patch(rh.context, revision, client.ConstantPatch(types.StrategicMergePatchType, []byte(fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, parent.GetUID(), revision.UID))))
+	err := rh.Patch(rh.context, revision, client.RawPatch(types.StrategicMergePatchType, []byte(fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, parent.GetUID(), revision.UID))))
 
 	if err != nil {
 		if errors.IsNotFound(err) {
