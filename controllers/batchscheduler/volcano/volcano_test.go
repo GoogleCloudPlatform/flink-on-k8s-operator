@@ -43,7 +43,7 @@ func TestGetClusterResource(t *testing.T) {
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: &jmRep,
+				Replicas:    &jmRep,
 				ServiceName: "flinkjobcluster-sample-jobmanager",
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
@@ -173,8 +173,8 @@ func TestGetClusterResource(t *testing.T) {
 				},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: &replicas,
-				ServiceName: "flinkjobcluster-sample-taskmanager",
+				Replicas:            &replicas,
+				ServiceName:         "flinkjobcluster-sample-taskmanager",
 				PodManagementPolicy: "Parallel",
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{

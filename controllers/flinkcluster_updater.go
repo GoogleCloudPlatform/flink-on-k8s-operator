@@ -24,9 +24,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"time"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
@@ -933,7 +934,7 @@ func (updater *ClusterStatusUpdater) clearControlAnnotation(newControlStatus *v1
 		if err != nil {
 			return err
 		}
-		return updater.k8sClient.Patch(updater.context, updater.observed.cluster, client.ConstantPatch(types.MergePatchType, patchBytes))
+		return updater.k8sClient.Patch(updater.context, updater.observed.cluster, client.RawPatch(types.MergePatchType, patchBytes))
 	}
 
 	return nil

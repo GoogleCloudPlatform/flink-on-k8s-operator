@@ -18,8 +18,9 @@ package controllers
 
 import (
 	"context"
-	"github.com/googlecloudplatform/flink-operator/controllers/history"
 	"time"
+
+	"github.com/googlecloudplatform/flink-operator/controllers/history"
 
 	"github.com/go-logr/logr"
 	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
@@ -64,7 +65,7 @@ type FlinkClusterReconciler struct {
 
 // Reconcile the observed state towards the desired state for a FlinkCluster custom resource.
 func (reconciler *FlinkClusterReconciler) Reconcile(
-	request ctrl.Request) (ctrl.Result, error) {
+	ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	var log = reconciler.Log.WithValues(
 		"cluster", request.NamespacedName)
 	var handler = FlinkClusterHandler{
@@ -74,7 +75,7 @@ func (reconciler *FlinkClusterReconciler) Reconcile(
 			HTTPClient: flinkclient.HTTPClient{Log: log},
 		},
 		request:  request,
-		context:  context.Background(),
+		context:  ctx,
 		log:      log,
 		recorder: reconciler.Mgr.GetEventRecorderFor("FlinkOperator"),
 		observed: ObservedClusterState{},
