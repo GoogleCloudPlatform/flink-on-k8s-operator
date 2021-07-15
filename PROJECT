@@ -1,9 +1,14 @@
-version: "2"
-layout: go.kubebuilder.io/v2
+version: "3"
+layout: 
+- go.kubebuilder.io/v2
+projectName: flink-on-k8s-operator
 domain: k8s.io
 repo: github.com/googlecloudplatform/flink-operator
 resources:
-- group: flinkoperator
+- controller: true
+  domain: k8s.io
+  path: flinkoperator.k8s.io/api/v1beta1
+  group: flinkoperator
   version: v1beta1
   kind: FlinkCluster
 plugins:
