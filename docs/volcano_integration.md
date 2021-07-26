@@ -19,7 +19,7 @@ kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/ins
 
 - Install with advanced settings
 
-Please refer to [Volcano Official Guide](https://volcano.sh/docs/getting-started/)
+Please refer to [Volcano Official Guide](https://github.com/volcano-sh/volcano/tree/master/docs/getting-started)
 
 ### Verify Volcano is up and running
 
