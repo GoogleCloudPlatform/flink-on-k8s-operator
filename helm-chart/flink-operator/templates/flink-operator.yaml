@@ -1,43 +1,14 @@
 {{- if .Values.rbac.create }}
-{{- if .Values.flinkOperatorNamespace.create }}
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: {{ .Values.flinkOperatorNamespace.name }}
-{{- end }}
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  creationTimestamp: null
-  name: flink-operator-mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace.name }}
-      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
-  failurePolicy: Fail
-  name: mflinkcluster.flinkoperator.k8s.io
-  rules:
-  - apiGroups:
-    - flinkoperator.k8s.io
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - flinkclusters
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: flink-operator-leader-election-role
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 rules:
 - apiGroups:
   - ""
@@ -65,6 +36,11 @@ kind: ClusterRole
 metadata:
   creationTimestamp: null
   name: flink-operator-manager-role
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 rules:
 - apiGroups:
   - flinkoperator.k8s.io
@@ -242,6 +218,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: flink-operator-proxy-role
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 rules:
 - apiGroups:
   - authentication.k8s.io
@@ -260,7 +241,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: flink-operator-leader-election-rolebinding
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -268,12 +254,17 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: flink-operator-manager-rolebinding
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -281,12 +272,17 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: flink-operator-proxy-rolebinding
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -294,7 +290,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
 ---
 apiVersion: v1
 kind: Service
@@ -303,10 +299,13 @@ metadata:
     prometheus.io/port: "8443"
     prometheus.io/scheme: https
     prometheus.io/scrape: "true"
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
   labels:
     control-plane: controller-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   name: flink-operator-controller-manager-metrics-service
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
 spec:
   ports:
   - name: https
@@ -319,7 +318,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: flink-operator-webhook-service
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   ports:
   - port: 443
@@ -330,11 +334,15 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
   labels:
     app: flink-operator
     control-plane: controller-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   name: flink-operator-controller-manager
-  namespace: {{ .Values.flinkOperatorNamespace.name }}
+  namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
 spec:
   replicas: {{ .Values.replicas }}
   selector:
@@ -346,6 +354,8 @@ spec:
       labels:
         app: flink-operator
         control-plane: controller-manager
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
     spec:
       containers:
       - args:
@@ -364,13 +374,18 @@ spec:
         command:
         - /flink-operator
         image: {{ .Values.operatorImage.name }}
-        imagePullPolicy: {{ .Values.operatorImage.pullPolicy }}
         name: flink-operator
         ports:
         - containerPort: 443
           name: webhook-server
           protocol: TCP
-        resources: {{ .Values.resources | toYaml | nindent 10 }}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
@@ -383,16 +398,51 @@ spec:
           secretName: webhook-server-cert
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
+kind: MutatingWebhookConfiguration
 metadata:
   creationTimestamp: null
-  name: flink-operator-validating-webhook-configuration
+  name: flink-operator-mutating-webhook-configuration
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
       name: flink-operator-webhook-service
-      namespace: {{ .Values.flinkOperatorNamespace.name }}
+      namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
+      path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
+  failurePolicy: Fail
+  name: mflinkcluster.flinkoperator.k8s.io
+  rules:
+  - apiGroups:
+    - flinkoperator.k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flinkclusters
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: flink-operator-validating-webhook-configuration
+  annotations:
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: flink-operator-webhook-service
+      namespace: {{ index .Values "flinkOperatorNamespace" "name" }}
       path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
   name: vflinkcluster.flinkoperator.k8s.io
@@ -407,4 +457,3 @@ webhooks:
     resources:
     - flinkclusters
 {{- end }}
-

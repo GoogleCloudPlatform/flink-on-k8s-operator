@@ -4,8 +4,12 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
   creationTimestamp: null
   name: flinkclusters.flinkoperator.k8s.io
 spec:
@@ -726,6 +730,10 @@ spec:
                   additionalProperties:
                     type: string
                   type: object
+                podLabels:
+                  additionalProperties:
+                    type: string
+                  type: object
                 resources:
                   properties:
                     limits:
@@ -752,6 +760,59 @@ spec:
                   type: integer
                 savepointsDir:
                   type: string
+                securityContext:
+                  properties:
+                    fsGroup:
+                      format: int64
+                      type: integer
+                    fsGroupChangePolicy:
+                      type: string
+                    runAsGroup:
+                      format: int64
+                      type: integer
+                    runAsNonRoot:
+                      type: boolean
+                    runAsUser:
+                      format: int64
+                      type: integer
+                    seLinuxOptions:
+                      properties:
+                        level:
+                          type: string
+                        role:
+                          type: string
+                        type:
+                          type: string
+                        user:
+                          type: string
+                      type: object
+                    supplementalGroups:
+                      items:
+                        format: int64
+                        type: integer
+                      type: array
+                    sysctls:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    windowsOptions:
+                      properties:
+                        gmsaCredentialSpec:
+                          type: string
+                        gmsaCredentialSpecName:
+                          type: string
+                        runAsUserName:
+                          type: string
+                      type: object
+                  type: object
                 volumeMounts:
                   items:
                     properties:
@@ -1959,6 +2020,10 @@ spec:
                   additionalProperties:
                     type: string
                   type: object
+                podLabels:
+                  additionalProperties:
+                    type: string
+                  type: object
                 ports:
                   properties:
                     blob:
@@ -1994,6 +2059,59 @@ spec:
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                      type: object
+                  type: object
+                securityContext:
+                  properties:
+                    fsGroup:
+                      format: int64
+                      type: integer
+                    fsGroupChangePolicy:
+                      type: string
+                    runAsGroup:
+                      format: int64
+                      type: integer
+                    runAsNonRoot:
+                      type: boolean
+                    runAsUser:
+                      format: int64
+                      type: integer
+                    seLinuxOptions:
+                      properties:
+                        level:
+                          type: string
+                        role:
+                          type: string
+                        type:
+                          type: string
+                        user:
+                          type: string
+                      type: object
+                    supplementalGroups:
+                      items:
+                        format: int64
+                        type: integer
+                      type: array
+                    sysctls:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    windowsOptions:
+                      properties:
+                        gmsaCredentialSpec:
+                          type: string
+                        gmsaCredentialSpecName:
+                          type: string
+                        runAsUserName:
+                          type: string
                       type: object
                   type: object
                 sidecars:
@@ -3168,9 +3286,13 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            recreateOnUpdate:
+              type: boolean
             revisionHistoryLimit:
               format: int32
               type: integer
+            serviceAccountName:
+              type: string
             taskManager:
               properties:
                 extraPorts:
@@ -3746,6 +3868,10 @@ spec:
                   additionalProperties:
                     type: string
                   type: object
+                podLabels:
+                  additionalProperties:
+                    type: string
+                  type: object
                 ports:
                   properties:
                     data:
@@ -3778,6 +3904,59 @@ spec:
                         - type: string
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                      type: object
+                  type: object
+                securityContext:
+                  properties:
+                    fsGroup:
+                      format: int64
+                      type: integer
+                    fsGroupChangePolicy:
+                      type: string
+                    runAsGroup:
+                      format: int64
+                      type: integer
+                    runAsNonRoot:
+                      type: boolean
+                    runAsUser:
+                      format: int64
+                      type: integer
+                    seLinuxOptions:
+                      properties:
+                        level:
+                          type: string
+                        role:
+                          type: string
+                        type:
+                          type: string
+                        user:
+                          type: string
+                      type: object
+                    supplementalGroups:
+                      items:
+                        format: int64
+                        type: integer
+                      type: array
+                    sysctls:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    windowsOptions:
+                      properties:
+                        gmsaCredentialSpec:
+                          type: string
+                        gmsaCredentialSpecName:
+                          type: string
+                        runAsUserName:
+                          type: string
                       type: object
                   type: object
                 sidecars:
@@ -4976,9 +5155,9 @@ spec:
                       type: string
                     id:
                       type: string
-                    lastSavepointTime:
-                      type: string
                     lastSavepointTriggerTime:
+                      type: string
+                    lastSavepointTime:
                       type: string
                     lastSavepointTriggerID:
                       type: string
@@ -5115,4 +5294,3 @@ status:
   conditions: []
   storedVersions: []
 {{ end }}
-
