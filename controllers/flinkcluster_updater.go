@@ -259,7 +259,7 @@ func (updater *ClusterStatusUpdater) deriveClusterStatus(
 				state = v1beta1.ComponentStateReady
 				runningComponents++
 				for _, port := range observedJmService.Spec.Ports {
-					if port.Name == "ui" {
+					if port.Name == "http-ui" {
 						nodePort = port.NodePort
 					}
 				}

@@ -487,10 +487,10 @@ func TestGetDesiredClusterState(t *testing.T) {
 				"component": "jobmanager",
 			},
 			Ports: []v1.ServicePort{
-				{Name: "rpc", Port: 6123, TargetPort: intstr.FromString("rpc")},
-				{Name: "blob", Port: 6124, TargetPort: intstr.FromString("blob")},
-				{Name: "query", Port: 6125, TargetPort: intstr.FromString("query")},
-				{Name: "ui", Port: 8081, TargetPort: intstr.FromString("ui")},
+				{Name: "tcp-rpc", Port: 6123, TargetPort: intstr.FromString("rpc")},
+				{Name: "tcp-blob", Port: 6124, TargetPort: intstr.FromString("blob")},
+				{Name: "tcp-query", Port: 6125, TargetPort: intstr.FromString("query")},
+				{Name: "http-ui", Port: 8081, TargetPort: intstr.FromString("ui")},
 			},
 		},
 	}
@@ -535,7 +535,7 @@ func TestGetDesiredClusterState(t *testing.T) {
 							Path: "/",
 							Backend: extensionsv1beta1.IngressBackend{
 								ServiceName: "flinkjobcluster-sample-jobmanager",
-								ServicePort: intstr.FromString("ui"),
+								ServicePort: intstr.FromString("http-ui"),
 							}},
 						}},
 				},
