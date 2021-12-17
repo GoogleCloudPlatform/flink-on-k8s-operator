@@ -245,19 +245,19 @@ func getDesiredJobManagerService(
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobManagerSpec = flinkCluster.Spec.JobManager
 	var rpcPort = corev1.ServicePort{
-		Name:       "rpc",
+		Name:       "tcp-rpc",
 		Port:       *jobManagerSpec.Ports.RPC,
 		TargetPort: intstr.FromString("rpc")}
 	var blobPort = corev1.ServicePort{
-		Name:       "blob",
+		Name:       "tcp-blob",
 		Port:       *jobManagerSpec.Ports.Blob,
 		TargetPort: intstr.FromString("blob")}
 	var queryPort = corev1.ServicePort{
-		Name:       "query",
+		Name:       "tcp-query",
 		Port:       *jobManagerSpec.Ports.Query,
 		TargetPort: intstr.FromString("query")}
 	var uiPort = corev1.ServicePort{
-		Name:       "ui",
+		Name:       "http-ui",
 		Port:       *jobManagerSpec.Ports.UI,
 		TargetPort: intstr.FromString("ui")}
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
@@ -318,7 +318,7 @@ func getDesiredJobManagerIngress(
 	var clusterNamespace = flinkCluster.ObjectMeta.Namespace
 	var clusterName = flinkCluster.ObjectMeta.Name
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
-	var jobManagerServiceUIPort = intstr.FromString("ui")
+	var jobManagerServiceUIPort = intstr.FromString("http-ui")
 	var ingressName = getJobManagerIngressName(clusterName)
 	var ingressAnnotations = jobManagerIngressSpec.Annotations
 	var ingressHost string
