@@ -188,6 +188,8 @@ samples:
 bundle: kustomize
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image flink-operator=$(IMG)
+	cd config/manager && $(KUSTOMIZE) edit add patch --group apps --version v1 --kind Deployment --name controller-manager \
+			--patch '[{"op": "add", "path": "/spec/template/metadata/labels/service.istio.io~1canonical-revision", "value": "$(VERSION)"}]'
 	cd config/default && $(KUSTOMIZE) edit set image gcr.io/kubebuilder/kube-rbac-proxy=$(KUBE_RBAC_PROXY_IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle

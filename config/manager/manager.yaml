@@ -38,6 +38,7 @@ spec:
       labels:
         control-plane: controller-manager
         app: flink-operator
+        service.istio.io/canonical-name: flink-operator
     spec:
       containers:
       - name: flink-operator
