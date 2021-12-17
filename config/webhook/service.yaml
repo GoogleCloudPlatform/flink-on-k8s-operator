@@ -20,6 +20,9 @@ metadata:
 spec:
   ports:
     - port: 443
+      name: https-webhook-server
       targetPort: 443
   selector:
+    app: flink-operator
     control-plane: controller-manager
+    service.istio.io/canonical-name: flink-operator
