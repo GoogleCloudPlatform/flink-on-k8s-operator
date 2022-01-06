@@ -360,7 +360,7 @@ spec:
           defaultMode: 420
           secretName: webhook-server-cert
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   creationTimestamp: null
@@ -373,6 +373,11 @@ webhooks:
       namespace: {{ .Values.flinkOperatorNamespace.name }}
       path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
+  matchPolicy: Exact
+  sideEffects: None
+  admissionReviewVersions:
+  - v1
+  - v1beta1
   name: mflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
@@ -385,7 +390,7 @@ webhooks:
     resources:
     - flinkclusters
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   creationTimestamp: null
@@ -398,6 +403,11 @@ webhooks:
       namespace: {{ .Values.flinkOperatorNamespace.name }}
       path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
   failurePolicy: Fail
+  matchPolicy: Exact
+  sideEffects: None
+  admissionReviewVersions:
+  - v1
+  - v1beta1
   name: vflinkcluster.flinkoperator.k8s.io
   rules:
   - apiGroups:
@@ -410,4 +420,3 @@ webhooks:
     resources:
     - flinkclusters
 {{- end }}
-

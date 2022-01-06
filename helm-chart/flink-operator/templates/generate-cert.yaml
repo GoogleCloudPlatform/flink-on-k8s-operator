@@ -65,7 +65,7 @@ metadata:
     app.kubernetes.io/component: webhook-configmap
 data:
   webook.yaml: |-
-    apiVersion: admissionregistration.k8s.io/v1beta1
+    apiVersion: admissionregistration.k8s.io/v1
     kind: MutatingWebhookConfiguration
     metadata:
       creationTimestamp: null
@@ -78,6 +78,11 @@ data:
           namespace: {{ .Values.flinkOperatorNamespace.name }}
           path: /mutate-flinkoperator-k8s-io-v1beta1-flinkcluster
       failurePolicy: Fail
+      matchPolicy: Exact
+      sideEffects: None
+      admissionReviewVersions:
+      - v1
+      - v1beta1
       name: mflinkcluster.flinkoperator.k8s.io
       rules:
       - apiGroups:
@@ -90,7 +95,7 @@ data:
         resources:
         - flinkclusters
     ---
-    apiVersion: admissionregistration.k8s.io/v1beta1
+    apiVersion: admissionregistration.k8s.io/v1
     kind: ValidatingWebhookConfiguration
     metadata:
       creationTimestamp: null
@@ -103,6 +108,11 @@ data:
           namespace: {{ .Values.flinkOperatorNamespace.name }}
           path: /validate-flinkoperator-k8s-io-v1beta1-flinkcluster
       failurePolicy: Fail
+      matchPolicy: Exact
+      sideEffects: None
+      admissionReviewVersions:
+      - v1
+      - v1beta1
       name: vflinkcluster.flinkoperator.k8s.io
       rules:
       - apiGroups:
@@ -136,7 +146,7 @@ spec:
         - "/bin/bash"
         - "-ec"
         - |
-          ls /cert_to_create  
+          ls /cert_to_create
           for cert in /cert_to_create/*;
             do
               bash $cert;
