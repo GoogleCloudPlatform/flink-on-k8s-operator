@@ -20,6 +20,7 @@ spec:
   image:
     name: flink:1.8.2
   jobManager:
+    accessScope: Cluster
     ports:
       ui: 8081
     resources:
@@ -37,5 +38,6 @@ spec:
     className: org.apache.flink.streaming.examples.wordcount.WordCount
     args: ["--input", "./README.txt"]
     parallelism: 2
+    restartPolicy: Never
   flinkProperties:
     taskmanager.numberOfTaskSlots: "1"
