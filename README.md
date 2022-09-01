@@ -1,3 +1,5 @@
+# This project has been deprecated. Please use [Google Cloud Dataproc](https://cloud.google.com/dataproc) to create managed Apache Flink instances on [Google Compute Engine](https://cloud.google.com/compute) or [Apache Flink Kubernetes Operator](https://github.com/apache/flink-kubernetes-operator) to run self-managed Apache Flink on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
+
 # Kubernetes Operator for Apache Flink
 
 **This is not an officially supported Google product.**
