@@ -216,9 +216,13 @@ type JobManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Defines the node affinity of the pod
+	// Defines the taint toleration of the pod
 	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Defines the affinity of the pod
+	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// Sidecar containers running alongside with the JobManager container in the
 	// pod.
@@ -291,9 +295,13 @@ type TaskManagerSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Defines the node affinity of the pod
+	// Defines the taint toleration of the pod
 	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Defines the affinity of the pod
+	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// Sidecar containers running alongside with the TaskManager container in the
 	// pod.
