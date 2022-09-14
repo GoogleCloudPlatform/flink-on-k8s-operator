@@ -22,8 +22,8 @@ The operator is under active development, backward compatibility of the APIs is 
 
 ## Prerequisites
 
-* Version >= 1.15 of Kubernetes
-* Version >= 1.15 of kubectl (with kustomize)
+* Version >= 1.16 of Kubernetes
+* Version >= 1.16 of kubectl (with kustomize)
 * Version >= 1.7 of Apache Flink
 
 ## Overview
