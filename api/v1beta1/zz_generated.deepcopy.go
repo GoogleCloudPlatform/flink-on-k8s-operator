@@ -207,6 +207,11 @@ func (in *FlinkClusterSpec) DeepCopyInto(out *FlinkClusterSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.FlinkPropertiesSecret != nil {
+		in, out := &in.FlinkPropertiesSecret, &out.FlinkPropertiesSecret
+		*out = new(v1.SecretEnvSource)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.HadoopConfig != nil {
 		in, out := &in.HadoopConfig, &out.HadoopConfig
 		*out = new(HadoopConfig)
@@ -494,6 +499,13 @@ func (in *JobManagerSpec) DeepCopyInto(out *JobManagerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.VolumeClaimTemplates != nil {
+		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
+		*out = make([]v1.PersistentVolumeClaim, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.InitContainers != nil {
 		in, out := &in.InitContainers, &out.InitContainers
 		*out = make([]v1.Container, len(*in))
@@ -577,7 +589,7 @@ func (in *JobSpec) DeepCopyInto(out *JobSpec) {
 		**out = **in
 	}
 	if in.TakeSavepointOnUpgrade != nil {
-		in, out := &in.TakeSavepointOnUpgrade, &out.takeSavepointOnUpgrade
+		in, out := &in.TakeSavepointOnUpgrade, &out.TakeSavepointOnUpgrade
 		*out = new(bool)
 		**out = **in
 	}
@@ -770,6 +782,13 @@ func (in *TaskManagerSpec) DeepCopyInto(out *TaskManagerSpec) {
 	if in.VolumeMounts != nil {
 		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]v1.VolumeMount, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.VolumeClaimTemplates != nil {
+		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
+		*out = make([]v1.PersistentVolumeClaim, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
