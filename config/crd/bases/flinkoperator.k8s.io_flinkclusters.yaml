@@ -8,11 +8,20 @@ metadata:
   creationTimestamp: null
   name: flinkclusters.flinkoperator.k8s.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.state
+    name: status
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
   group: flinkoperator.k8s.io
   names:
     kind: FlinkCluster
     listKind: FlinkClusterList
     plural: flinkclusters
+    shortNames:
+    - fc
     singular: flinkcluster
   scope: Namespaced
   subresources:
