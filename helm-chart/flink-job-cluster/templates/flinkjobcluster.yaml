@@ -56,9 +56,20 @@ spec:
   job:
     jarFile: {{ .Values.job.jarFile }}
     className: {{ .Values.job.className }}
-    args: ["--input", "./README.txt"]
+    args: {{ .Values.job.args }}
     parallelism: {{ .Values.job.parallelism }}
     restartPolicy: {{ .Values.job.restartPolicy }}
+{{- if .Values.job.savepointsDir }}
+    savepointsDir: {{ toYaml .Values.job.savepointsDir }}
+{{- end }}
+{{- if .Values.job.hadoopConfig }}
+    hadoopConfig:
+{{ toYaml .Values.job.hadoopConfig | indent 6}}
+{{- end }}
+{{- if .Values.job.gcpConfig }}
+    gcpConfig:
+{{ toYaml .Values.job.gcpConfig | indent 6}}
+{{- end }}
 {{- if .Values.job.volumes }}
     volumes:
 {{ toYaml .Values.job.volumes | indent 6}}
