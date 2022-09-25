@@ -50,6 +50,7 @@ func TestSetDefault(t *testing.T) {
 	var defaultTmQueryPort = int32(6125)
 	var defaultJobAllowNonRestoredState = false
 	var defaultJobParallelism = int32(1)
+	var defaultMaxParallelism = int32(32768)
 	var defaultJobNoLoggingToStdout = false
 	var defaultJobRestartPolicy = JobRestartPolicyNever
 	var defatulJobManagerIngressTLSUse = false
@@ -99,10 +100,12 @@ func TestSetDefault(t *testing.T) {
 				SecurityContext:    nil,
 			},
 			Job: &JobSpec{
-				AllowNonRestoredState: &defaultJobAllowNonRestoredState,
-				Parallelism:           &defaultJobParallelism,
-				NoLoggingToStdout:     &defaultJobNoLoggingToStdout,
-				RestartPolicy:         &defaultJobRestartPolicy,
+				AllowNonRestoredState:     &defaultJobAllowNonRestoredState,
+				Parallelism:               &defaultJobParallelism,
+				MaxParallelism:            &defaultMaxParallelism,
+				ParallelismPerTaskManager: nil,
+				NoLoggingToStdout:         &defaultJobNoLoggingToStdout,
+				RestartPolicy:             &defaultJobRestartPolicy,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds:  "DeleteCluster",
 					AfterJobFails:     "KeepCluster",
@@ -139,6 +142,7 @@ func TestSetNonDefault(t *testing.T) {
 	var tmQueryPort = int32(8125)
 	var jobAllowNonRestoredState = true
 	var jobParallelism = int32(2)
+	var maxParallelism = int32(2)
 	var jobNoLoggingToStdout = true
 	var jobRestartPolicy = JobRestartPolicyFromSavepointOnFailure
 	var jobManagerIngressTLSUse = true
@@ -195,6 +199,7 @@ func TestSetNonDefault(t *testing.T) {
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
+				MaxParallelism:        &maxParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
 				SecurityContext:       &securityContext,
@@ -259,6 +264,7 @@ func TestSetNonDefault(t *testing.T) {
 			Job: &JobSpec{
 				AllowNonRestoredState: &jobAllowNonRestoredState,
 				Parallelism:           &jobParallelism,
+				MaxParallelism:        &maxParallelism,
 				NoLoggingToStdout:     &jobNoLoggingToStdout,
 				RestartPolicy:         &jobRestartPolicy,
 				SecurityContext:       &securityContext,

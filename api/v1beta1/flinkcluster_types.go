@@ -364,6 +364,12 @@ type JobSpec struct {
 	// Job parallelism, default: 1.
 	Parallelism *int32 `json:"parallelism,omitempty"`
 
+	// Parallelism per taskmanager, default: if not set parallelism will not scale.
+	ParallelismPerTaskManager *int32 `json:"parallelismPerTaskManager,omitempty"`
+
+	// MaxParallelism, default: 2^15.
+	MaxParallelism *int32 `json:"maxParallelism,omitempty"`
+
 	// No logging output to STDOUT, default: false.
 	NoLoggingToStdout *bool `json:"noLoggingToStdout,omitempty"`
 
@@ -523,10 +529,25 @@ type FlinkClusterComponentsStatus struct {
 	JobManagerIngress *JobManagerIngressStatus `json:"jobManagerIngress,omitempty"`
 
 	// The state of TaskManager StatefulSet.
-	TaskManagerStatefulSet FlinkClusterComponentState `json:"taskManagerStatefulSet"`
+	TaskManagerStatefulSet TaskManagerStatefulSetStatus `json:"taskManagerStatefulSet"`
 
 	// The status of the job, available only when JobSpec is provided.
 	Job *JobStatus `json:"job,omitempty"`
+}
+
+// TaskManagerStatefulSetStatus
+type TaskManagerStatefulSetStatus struct {
+	// The name of the Kubernetes jobManager service.
+	Name string `json:"name"`
+
+	// The state of the component.
+	State string `json:"state"`
+
+	// The number of replicas in the tasks manager.
+	Replicas int32 `json:"replicas"`
+
+	// The label for the tasks manager pods.
+	Selector string `json:"selector"`
 }
 
 // Control state
@@ -673,8 +694,11 @@ type FlinkClusterStatus struct {
 	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
 }
 
+// Below scale subresource watches taskManager.replicas. See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.taskManager.replicas,statuspath=.status.components.taskManagerStatefulSet.replicas,selectorpath=.status.components.taskManagerStatefulSet.selector
 
 // FlinkCluster is the Schema for the flinkclusters API
 type FlinkCluster struct {

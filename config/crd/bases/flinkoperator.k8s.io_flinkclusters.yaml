@@ -16,6 +16,10 @@ spec:
     singular: flinkcluster
   scope: Namespaced
   subresources:
+    scale:
+      labelSelectorPath: .status.components.taskManagerStatefulSet.selector
+      specReplicasPath: .spec.taskManager.replicas
+      statusReplicasPath: .status.components.taskManagerStatefulSet.replicas
     status: {}
   validation:
     openAPIV3Schema:
@@ -162,8 +166,6 @@ spec:
                   format: int32
                   type: integer
                 cancelRequested:
-                  type: boolean
-                takeSavepointOnUpgrade:
                   type: boolean
                 className:
                   type: string
@@ -716,9 +718,15 @@ spec:
                   type: array
                 jarFile:
                   type: string
+                maxParallelism:
+                  format: int32
+                  type: integer
                 noLoggingToStdout:
                   type: boolean
                 parallelism:
+                  format: int32
+                  type: integer
+                parallelismPerTaskManager:
                   format: int32
                   type: integer
                 podAnnotations:
@@ -808,6 +816,8 @@ spec:
                           type: string
                       type: object
                   type: object
+                takeSavepointOnUpgrade:
+                  type: boolean
                 volumeMounts:
                   items:
                     properties:
@@ -2661,6 +2671,123 @@ spec:
                         type: string
                     type: object
                   type: array
+                volumeClaimTemplates:
+                  items:
+                    properties:
+                      apiVersion:
+                        type: string
+                      kind:
+                        type: string
+                      metadata:
+                        type: object
+                      spec:
+                        properties:
+                          accessModes:
+                            items:
+                              type: string
+                            type: array
+                          dataSource:
+                            properties:
+                              apiGroup:
+                                type: string
+                              kind:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - kind
+                            - name
+                            type: object
+                          resources:
+                            properties:
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                type: object
+                            type: object
+                          selector:
+                            properties:
+                              matchExpressions:
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
+                                type: array
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            type: object
+                          storageClassName:
+                            type: string
+                          volumeMode:
+                            type: string
+                          volumeName:
+                            type: string
+                        type: object
+                      status:
+                        properties:
+                          accessModes:
+                            items:
+                              type: string
+                            type: array
+                          capacity:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            type: object
+                          conditions:
+                            items:
+                              properties:
+                                lastProbeTime:
+                                  format: date-time
+                                  type: string
+                                lastTransitionTime:
+                                  format: date-time
+                                  type: string
+                                message:
+                                  type: string
+                                reason:
+                                  type: string
+                                status:
+                                  type: string
+                                type:
+                                  type: string
+                              required:
+                              - status
+                              - type
+                              type: object
+                            type: array
+                          phase:
+                            type: string
+                        type: object
+                    type: object
+                  type: array
                 volumeMounts:
                   items:
                     properties:
@@ -4506,6 +4633,123 @@ spec:
                         type: string
                     type: object
                   type: array
+                volumeClaimTemplates:
+                  items:
+                    properties:
+                      apiVersion:
+                        type: string
+                      kind:
+                        type: string
+                      metadata:
+                        type: object
+                      spec:
+                        properties:
+                          accessModes:
+                            items:
+                              type: string
+                            type: array
+                          dataSource:
+                            properties:
+                              apiGroup:
+                                type: string
+                              kind:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - kind
+                            - name
+                            type: object
+                          resources:
+                            properties:
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                type: object
+                            type: object
+                          selector:
+                            properties:
+                              matchExpressions:
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
+                                type: array
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            type: object
+                          storageClassName:
+                            type: string
+                          volumeMode:
+                            type: string
+                          volumeName:
+                            type: string
+                        type: object
+                      status:
+                        properties:
+                          accessModes:
+                            items:
+                              type: string
+                            type: array
+                          capacity:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            type: object
+                          conditions:
+                            items:
+                              properties:
+                                lastProbeTime:
+                                  format: date-time
+                                  type: string
+                                lastTransitionTime:
+                                  format: date-time
+                                  type: string
+                                message:
+                                  type: string
+                                reason:
+                                  type: string
+                                status:
+                                  type: string
+                                type:
+                                  type: string
+                              required:
+                              - status
+                              - type
+                              type: object
+                            type: array
+                          phase:
+                            type: string
+                        type: object
+                    type: object
+                  type: array
                 volumeMounts:
                   items:
                     properties:
@@ -5150,11 +5394,11 @@ spec:
                       type: string
                     id:
                       type: string
-                    lastSavepointTriggerTime:
-                      type: string
                     lastSavepointTime:
                       type: string
                     lastSavepointTriggerID:
+                      type: string
+                    lastSavepointTriggerTime:
                       type: string
                     name:
                       type: string
@@ -5169,16 +5413,6 @@ spec:
                     state:
                       type: string
                   required:
-                  - state
-                  type: object
-                jobManagerStatefulSet:
-                  properties:
-                    name:
-                      type: string
-                    state:
-                      type: string
-                  required:
-                  - name
                   - state
                   type: object
                 jobManagerIngress:
@@ -5208,7 +5442,7 @@ spec:
                   - name
                   - state
                   type: object
-                taskManagerStatefulSet:
+                jobManagerStatefulSet:
                   properties:
                     name:
                       type: string
@@ -5218,10 +5452,27 @@ spec:
                   - name
                   - state
                   type: object
+                taskManagerStatefulSet:
+                  properties:
+                    name:
+                      type: string
+                    replicas:
+                      format: int32
+                      type: integer
+                    selector:
+                      type: string
+                    state:
+                      type: string
+                  required:
+                  - name
+                  - replicas
+                  - selector
+                  - state
+                  type: object
               required:
               - configMap
-              - jobManagerStatefulSet
               - jobManagerService
+              - jobManagerStatefulSet
               - taskManagerStatefulSet
               type: object
             control:

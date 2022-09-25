@@ -72,9 +72,10 @@ func TestValidateCreate(t *testing.T) {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			Job: &JobSpec{
-				JarFile:       "gs://my-bucket/myjob.jar",
-				Parallelism:   &parallelism,
-				RestartPolicy: &restartPolicy,
+				JarFile:        "gs://my-bucket/myjob.jar",
+				Parallelism:    &parallelism,
+				MaxParallelism: &parallelism,
+				RestartPolicy:  &restartPolicy,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds: CleanupActionKeepCluster,
 					AfterJobFails:    CleanupActionDeleteTaskManager,
@@ -357,6 +358,8 @@ func TestInvalidJobSpec(t *testing.T) {
 	var invalidRestartPolicy JobRestartPolicy = "XXX"
 	var validator = &Validator{}
 	var parallelism int32 = 2
+	var defaultMaxParallelism int32 = 32768
+	var invalidMaxParallelism int32 = 0
 	var memoryOffHeapRatio int32 = 25
 	var memoryOffHeapMin = resource.MustParse("600M")
 
@@ -435,13 +438,15 @@ func TestInvalidJobSpec(t *testing.T) {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			Job: &JobSpec{
-				JarFile:       "gs://my-bucket/myjob.jar",
-				RestartPolicy: &restartPolicy,
+				JarFile:                   "gs://my-bucket/myjob.jar",
+				RestartPolicy:             &restartPolicy,
+				Parallelism:               &parallelism,
+				ParallelismPerTaskManager: &parallelism,
 			},
 		},
 	}
 	err = validator.ValidateCreate(&cluster)
-	expectedErr = "job parallelism is unspecified"
+	expectedErr = "job parallelism and parallelismPerTaskmanager are both specified: Only one must be set"
 	assert.Equal(t, err.Error(), expectedErr)
 
 	cluster = FlinkCluster{
@@ -478,8 +483,138 @@ func TestInvalidJobSpec(t *testing.T) {
 			},
 			Job: &JobSpec{
 				JarFile:       "gs://my-bucket/myjob.jar",
+				RestartPolicy: &restartPolicy,
+			},
+		},
+	}
+	err = validator.ValidateCreate(&cluster)
+	expectedErr = "job parallelism and parallelismPerTaskmanager are unspecified: One must be set"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	cluster = FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScopeVPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 3,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			Job: &JobSpec{
+				JarFile:       "gs://my-bucket/myjob.jar",
+				RestartPolicy: &restartPolicy,
 				Parallelism:   &parallelism,
-				RestartPolicy: &invalidRestartPolicy,
+			},
+		},
+	}
+	err = validator.ValidateCreate(&cluster)
+	expectedErr = "job maxParallelism is unspecified"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	cluster = FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScopeVPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 3,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			Job: &JobSpec{
+				JarFile:        "gs://my-bucket/myjob.jar",
+				RestartPolicy:  &restartPolicy,
+				Parallelism:    &parallelism,
+				MaxParallelism: &invalidMaxParallelism,
+			},
+		},
+	}
+	err = validator.ValidateCreate(&cluster)
+	expectedErr = "job maxParallelism must be in range [1,2^15]"
+	assert.Equal(t, err.Error(), expectedErr)
+
+	cluster = FlinkCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mycluster",
+			Namespace: "default",
+		},
+		Spec: FlinkClusterSpec{
+			Image: ImageSpec{
+				Name:       "flink:1.8.1",
+				PullPolicy: corev1.PullPolicy("Always"),
+			},
+			JobManager: JobManagerSpec{
+				Replicas:    &jmReplicas,
+				AccessScope: AccessScopeVPC,
+				Ports: JobManagerPorts{
+					RPC:   &rpcPort,
+					Blob:  &blobPort,
+					Query: &queryPort,
+					UI:    &uiPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			TaskManager: TaskManagerSpec{
+				Replicas: 3,
+				Ports: TaskManagerPorts{
+					RPC:   &rpcPort,
+					Data:  &dataPort,
+					Query: &queryPort,
+				},
+				MemoryOffHeapRatio: &memoryOffHeapRatio,
+				MemoryOffHeapMin:   memoryOffHeapMin,
+			},
+			Job: &JobSpec{
+				JarFile:        "gs://my-bucket/myjob.jar",
+				Parallelism:    &parallelism,
+				MaxParallelism: &defaultMaxParallelism,
+				RestartPolicy:  &invalidRestartPolicy,
 			},
 		},
 	}
@@ -520,9 +655,10 @@ func TestInvalidJobSpec(t *testing.T) {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			Job: &JobSpec{
-				JarFile:       "gs://my-bucket/myjob.jar",
-				Parallelism:   &parallelism,
-				RestartPolicy: &restartPolicy,
+				JarFile:        "gs://my-bucket/myjob.jar",
+				Parallelism:    &parallelism,
+				MaxParallelism: &defaultMaxParallelism,
+				RestartPolicy:  &restartPolicy,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds: "XXX",
 					AfterJobFails:    CleanupActionDeleteCluster,
@@ -1000,10 +1136,11 @@ func getSimpleFlinkCluster() FlinkCluster {
 				MemoryOffHeapMin:   memoryOffHeapMin,
 			},
 			Job: &JobSpec{
-				JarFile:       "gs://my-bucket/myjob.jar",
-				Parallelism:   &parallelism,
-				RestartPolicy: &restartPolicy,
-				SavepointsDir: &savepointDir,
+				JarFile:        "gs://my-bucket/myjob.jar",
+				Parallelism:    &parallelism,
+				MaxParallelism: &parallelism,
+				RestartPolicy:  &restartPolicy,
+				SavepointsDir:  &savepointDir,
 				CleanupPolicy: &CleanupPolicy{
 					AfterJobSucceeds: CleanupActionKeepCluster,
 					AfterJobFails:    CleanupActionDeleteTaskManager,

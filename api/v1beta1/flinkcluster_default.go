@@ -109,9 +109,17 @@ func _SetJobDefault(jobSpec *JobSpec) {
 		jobSpec.AllowNonRestoredState = new(bool)
 		*jobSpec.AllowNonRestoredState = false
 	}
-	if jobSpec.Parallelism == nil {
+	// Parallelism and ParallelismPerTaskManager are mutually exclusive: If one is set do not fill the default so that
+	// cluster validator will reject the config.
+	if jobSpec.Parallelism == nil && jobSpec.ParallelismPerTaskManager == nil {
 		jobSpec.Parallelism = new(int32)
 		*jobSpec.Parallelism = 1
+	}
+	// Note that this setting may not be ideal for some jobs: It should be set explicitly if there are concerns on
+	// performance of many key partitions.
+	if jobSpec.MaxParallelism == nil {
+		jobSpec.MaxParallelism = new(int32)
+		*jobSpec.MaxParallelism = 32768
 	}
 	if jobSpec.NoLoggingToStdout == nil {
 		jobSpec.NoLoggingToStdout = new(bool)
