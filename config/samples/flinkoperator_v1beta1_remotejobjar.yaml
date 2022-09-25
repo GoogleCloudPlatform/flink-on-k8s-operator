@@ -24,6 +24,7 @@ spec:
   image:
     name: flink:1.8.2
   jobManager:
+    accessScope: Cluster
     ports:
       ui: 8081
     resources:
@@ -53,6 +54,7 @@ spec:
           - "cp"
           - "gs://my-bucket/wordcount.jar"
           - "/cache/wordcount.jar"
+    restartPolicy: Never
   gcpConfig:
     serviceAccount:
       secretName: "gcp-service-account"
