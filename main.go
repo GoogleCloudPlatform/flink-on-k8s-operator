@@ -52,7 +52,9 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var watchNamespace string
+	var maxConcurrentReconciles int
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.IntVar(&maxConcurrentReconciles, "maxConcurrentReconciles", 1, "The maximum number of concurrent Reconciles which can be run. Defaults to 1.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(
@@ -78,7 +80,7 @@ func main() {
 	err = (&controllers.FlinkClusterReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("FlinkCluster"),
-	}).SetupWithManager(mgr)
+	}).SetupWithManager(mgr, maxConcurrentReconciles)
 	if err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", "FlinkCluster")
 		os.Exit(1)

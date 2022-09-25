@@ -9,6 +9,8 @@ FLINK_OPERATOR_NAMESPACE ?= flink-operator-system
 RESOURCE_PREFIX ?= flink-operator-
 # The Kubernetes namespace to limit watching.
 WATCH_NAMESPACE ?=
+# The maximum number of concurrent Reconciles which can be run. Defaults to 1..
+MAX_CONCURRENT ?= 1
 
 GREEN=\033[1;32m
 RED=\033[1;31m
@@ -112,6 +114,7 @@ ifneq ($(WATCH_NAMESPACE),)
 			|| true
 endif
 	sed -E -i.bak "s/resources:/bases:/" config/deploy/kustomization.yaml
+	sed -E -i.bak  "s/(\-\-maxConcurrentReconciles\=)/\1$(MAX_CONCURRENT)/" config/deploy/manager_auth_proxy_patch.yaml
 	rm config/deploy/*.bak
 
 # Generate deploy template.
