@@ -52,7 +52,7 @@ function check_jm_ready() {
     # Waiting for 5 mins.
     local -r MAX_RETRY=60
     local -r RETRY_INTERVAL=5s
-    local -r REQUIRED_SUCCESS_NUMBER=2
+    local -r REQUIRED_SUCCESS_NUMBER=3
     local success_count=0
 
     echo_log "Checking job manager to be ready. Will check success of ${REQUIRED_SUCCESS_NUMBER} API calls for stable job submission." "job_check_log"

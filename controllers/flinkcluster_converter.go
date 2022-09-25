@@ -68,12 +68,12 @@ func getDesiredClusterState(
 		return model.DesiredClusterState{}
 	}
 	return model.DesiredClusterState{
-		ConfigMap:    getDesiredConfigMap(cluster),
+		ConfigMap:     getDesiredConfigMap(cluster),
 		JmStatefulSet: getDesiredJobManagerStatefulSet(cluster),
-		JmService:    getDesiredJobManagerService(cluster),
-		JmIngress:    getDesiredJobManagerIngress(cluster),
+		JmService:     getDesiredJobManagerService(cluster),
+		JmIngress:     getDesiredJobManagerIngress(cluster),
 		TmStatefulSet: getDesiredTaskManagerStatefulSet(cluster),
-		Job:          getDesiredJob(observed),
+		Job:           getDesiredJob(observed),
 	}
 }
 
@@ -102,7 +102,7 @@ func getDesiredJobManagerStatefulSet(
 	var jobManagerStatefulSetName = getJobManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(&flinkCluster.Status.Revision))
 	var securityContext = jobManagerSpec.SecurityContext
 	// Make Volume, VolumeMount to use configMap data for flink-conf.yaml, if flinkProperties is provided.
 	var volumes []corev1.Volume
@@ -217,9 +217,9 @@ func getDesiredJobManagerStatefulSet(
 			Labels:          statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: jobManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: jobManagerStatefulSetName,
+			Replicas:             jobManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          jobManagerStatefulSetName,
 			VolumeClaimTemplates: jobManagerSpec.VolumeClaimTemplates,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -263,7 +263,7 @@ func getDesiredJobManagerService(
 	var jobManagerServiceName = getJobManagerServiceName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "jobmanager")
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var serviceLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var serviceLabels = mergeLabels(podLabels, getRevisionHashLabels(&flinkCluster.Status.Revision))
 	var jobManagerService = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterNamespace,
@@ -325,7 +325,7 @@ func getDesiredJobManagerIngress(
 	var ingressTLS []extensionsv1beta1.IngressTLS
 	var labels = mergeLabels(
 		getComponentLabels(*flinkCluster, "jobmanager"),
-		getRevisionHashLabels(flinkCluster.Status))
+		getRevisionHashLabels(&flinkCluster.Status.Revision))
 	if jobManagerIngressSpec.HostFormat != nil {
 		ingressHost = getJobManagerIngressHost(*jobManagerIngressSpec.HostFormat, clusterName)
 	}
@@ -400,7 +400,7 @@ func getDesiredTaskManagerStatefulSet(
 	var taskManagerStatefulSetName = getTaskManagerStatefulSetName(clusterName)
 	var podLabels = getComponentLabels(*flinkCluster, "taskmanager")
 	podLabels = mergeLabels(podLabels, taskManagerSpec.PodLabels)
-	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var statefulSetLabels = mergeLabels(podLabels, getRevisionHashLabels(&flinkCluster.Status.Revision))
 
 	var securityContext = taskManagerSpec.SecurityContext
 
@@ -516,11 +516,11 @@ func getDesiredTaskManagerStatefulSet(
 			Labels: statefulSetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &taskManagerSpec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
-			ServiceName: taskManagerStatefulSetName,
+			Replicas:             &taskManagerSpec.Replicas,
+			Selector:             &metav1.LabelSelector{MatchLabels: podLabels},
+			ServiceName:          taskManagerStatefulSetName,
 			VolumeClaimTemplates: taskManagerSpec.VolumeClaimTemplates,
-			PodManagementPolicy: "Parallel",
+			PodManagementPolicy:  "Parallel",
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      podLabels,
@@ -549,7 +549,7 @@ func getDesiredConfigMap(
 	var configMapName = getConfigMapName(clusterName)
 	var labels = mergeLabels(
 		getClusterLabels(*flinkCluster),
-		getRevisionHashLabels(flinkCluster.Status))
+		getRevisionHashLabels(&flinkCluster.Status.Revision))
 	var flinkHeapSize = calFlinkHeapSize(flinkCluster)
 	// Properties which should be provided from real deployed environment.
 	var flinkProps = map[string]string{
@@ -594,19 +594,18 @@ func getDesiredConfigMap(
 // Gets the desired job spec from a cluster spec.
 func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 	var flinkCluster = observed.cluster
+	var recorded = flinkCluster.Status
 	var jobSpec = flinkCluster.Spec.Job
-	var jobStatus = flinkCluster.Status.Components.Job
+	var jobStatus = recorded.Components.Job
 
 	if jobSpec == nil {
 		return nil
 	}
 
-	// Unless update has been triggered or the job needs to be restarted, keep the job to be stopped in that state.
-	if !(isUpdateTriggered(flinkCluster.Status) || shouldRestartJob(jobSpec.RestartPolicy, jobStatus)) {
-		// Job cancel requested or stopped already
-		if isJobCancelRequested(*flinkCluster) || isJobStopped(jobStatus) {
-			return nil
-		}
+	// When the job should be stopped, keep that state unless update is triggered or the job must to be restarted.
+	if (shouldStopJob(flinkCluster) || jobStatus.IsStopped()) &&
+		!(shouldUpdateJob(observed) || jobStatus.ShouldRestart(jobSpec)) {
+		return nil
 	}
 
 	var clusterSpec = flinkCluster.Spec
@@ -621,14 +620,14 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 		"%s:%d", jobManagerServiceName, *jobManagerSpec.Ports.UI)
 	var podLabels = getClusterLabels(*flinkCluster)
 	podLabels = mergeLabels(podLabels, jobManagerSpec.PodLabels)
-	var jobLabels = mergeLabels(podLabels, getRevisionHashLabels(flinkCluster.Status))
+	var jobLabels = mergeLabels(podLabels, getRevisionHashLabels(&recorded.Revision))
 	var jobArgs = []string{"bash", "/opt/flink-operator/submit-job.sh"}
 	jobArgs = append(jobArgs, "--jobmanager", jobManagerAddress)
 	if jobSpec.ClassName != nil {
 		jobArgs = append(jobArgs, "--class", *jobSpec.ClassName)
 	}
 
-	var fromSavepoint = convertFromSavepoint(jobSpec, flinkCluster.Status.Components.Job)
+	var fromSavepoint = convertFromSavepoint(jobSpec, jobStatus, &recorded.Revision)
 	if fromSavepoint != nil {
 		jobArgs = append(jobArgs, "--fromSavepoint", *fromSavepoint)
 	}
@@ -771,15 +770,16 @@ func getDesiredJob(observed *ObservedClusterState) *batchv1.Job {
 // Flink job will be restored from the latest savepoint created by the operator.
 //
 // case 3) When latest created savepoint is unavailable, use the savepoint from which current job was restored.
-func convertFromSavepoint(jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus) *string {
+func convertFromSavepoint(jobSpec *v1beta1.JobSpec, jobStatus *v1beta1.JobStatus, revision *v1beta1.RevisionStatus) *string {
 	switch {
 	// Creating for the first time
 	case jobStatus == nil:
-		if jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint != "" {
+		if !isBlank(jobSpec.FromSavepoint) {
 			return jobSpec.FromSavepoint
 		}
+		return nil
 	// Updating with FromSavepoint provided
-	case jobStatus.State == v1beta1.JobStateUpdating && jobSpec.FromSavepoint != nil && *jobSpec.FromSavepoint != "":
+	case revision.IsUpdateTriggered() && !isBlank(jobSpec.FromSavepoint):
 		return jobSpec.FromSavepoint
 	// Latest savepoint
 	case jobStatus.SavepointLocation != "":
@@ -872,7 +872,7 @@ func shouldCleanup(
 		return false
 	}
 
-	if isUpdateTriggered(cluster.Status) {
+	if cluster.Status.Revision.IsUpdateTriggered() {
 		return false
 	}
 
@@ -1070,9 +1070,9 @@ func getComponentLabels(cluster v1beta1.FlinkCluster, component string) map[stri
 	})
 }
 
-func getRevisionHashLabels(status v1beta1.FlinkClusterStatus) map[string]string {
+func getRevisionHashLabels(r *v1beta1.RevisionStatus) map[string]string {
 	return map[string]string{
-		RevisionNameLabel: getNextRevisionName(status),
+		RevisionNameLabel: getNextRevisionName(r),
 	}
 }
 

@@ -17,7 +17,8 @@ limitations under the License.
 package controllers
 
 import (
-	"github.com/googlecloudplatform/flink-operator/controllers/flinkclient"
+	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
+	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,10 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"testing"
-	"time"
-
-	v1beta1 "github.com/googlecloudplatform/flink-operator/api/v1beta1"
-	"gotest.tools/assert"
 )
 
 func TestTimeConverter(t *testing.T) {
@@ -45,30 +42,6 @@ func TestTimeConverter(t *testing.T) {
 	var tm2 = tc.FromString(str3)
 	var str4 = tc.ToString(tm2)
 	assert.Assert(t, str3 == str4)
-}
-
-func TestShouldRestartJob(t *testing.T) {
-	var restartOnFailure = v1beta1.JobRestartPolicyFromSavepointOnFailure
-	var jobStatus1 = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-	}
-	var restart1 = shouldRestartJob(&restartOnFailure, &jobStatus1)
-	assert.Equal(t, restart1, true)
-
-	var jobStatus2 = v1beta1.JobStatus{
-		State: v1beta1.JobStateFailed,
-	}
-	var restart2 = shouldRestartJob(&restartOnFailure, &jobStatus2)
-	assert.Equal(t, restart2, false)
-
-	var neverRestart = v1beta1.JobRestartPolicyNever
-	var jobStatus3 = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-	}
-	var restart3 = shouldRestartJob(&neverRestart, &jobStatus3)
-	assert.Equal(t, restart3, false)
 }
 
 func TestGetRetryCount(t *testing.T) {
@@ -220,82 +193,6 @@ func TestCanTakeSavepoint(t *testing.T) {
 	assert.Equal(t, take, false)
 }
 
-func TestShouldUpdateJob(t *testing.T) {
-	// should update
-	var tc = &TimeConverter{}
-	var savepointTime = time.Now()
-	var observeTime = savepointTime.Add(time.Second * 100)
-	var observed = ObservedClusterState{
-		observeTime: observeTime,
-		cluster: &v1beta1.FlinkCluster{
-			Status: v1beta1.FlinkClusterStatus{
-				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:                    v1beta1.JobStateRunning,
-					LastSavepointTime:        tc.ToString(savepointTime),
-					LastSavepointTriggerTime: tc.ToString(savepointTime),
-					SavepointLocation:        "gs://my-bucket/savepoint-123",
-				}},
-				CurrentRevision: "1", NextRevision: "2",
-			},
-		},
-	}
-	var update = shouldUpdateJob(observed)
-	assert.Equal(t, update, true)
-
-	// should update when update triggered and job failed.
-	observed = ObservedClusterState{
-		cluster: &v1beta1.FlinkCluster{
-			Status: v1beta1.FlinkClusterStatus{
-				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State: v1beta1.JobStateFailed,
-				}},
-				CurrentRevision: "1", NextRevision: "2",
-			},
-		},
-	}
-	update = shouldUpdateJob(observed)
-	assert.Equal(t, update, true)
-
-	// cannot update with old savepoint
-	tc = &TimeConverter{}
-	savepointTime = time.Now()
-	observeTime = savepointTime.Add(time.Second * 500)
-	observed = ObservedClusterState{
-		observeTime: observeTime,
-		cluster: &v1beta1.FlinkCluster{
-			Status: v1beta1.FlinkClusterStatus{
-				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State:                    v1beta1.JobStateRunning,
-					LastSavepointTime:        tc.ToString(savepointTime),
-					LastSavepointTriggerTime: tc.ToString(savepointTime),
-					SavepointLocation:        "gs://my-bucket/savepoint-123",
-				}},
-				CurrentRevision: "1", NextRevision: "2",
-			},
-		},
-	}
-	update = shouldUpdateJob(observed)
-	assert.Equal(t, update, false)
-
-	// cannot update without savepointLocation
-	tc = &TimeConverter{}
-	savepointTime = time.Now()
-	observeTime = savepointTime.Add(time.Second * 500)
-	observed = ObservedClusterState{
-		observeTime: observeTime,
-		cluster: &v1beta1.FlinkCluster{
-			Status: v1beta1.FlinkClusterStatus{
-				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{
-					State: v1beta1.JobStateUpdating,
-				}},
-				CurrentRevision: "1", NextRevision: "2",
-			},
-		},
-	}
-	update = shouldUpdateJob(observed)
-	assert.Equal(t, update, false)
-}
-
 func TestGetNextRevisionNumber(t *testing.T) {
 	var revisions []*appsv1.ControllerRevision
 	var nextRevision = getNextRevisionNumber(revisions)
@@ -306,170 +203,48 @@ func TestGetNextRevisionNumber(t *testing.T) {
 	assert.Equal(t, nextRevision, int64(3))
 }
 
-func TestIsJobTerminated(t *testing.T) {
-	var jobStatus = v1beta1.JobStatus{
-		State: v1beta1.JobStateSucceeded,
-	}
-	var terminated = isJobTerminated(nil, &jobStatus)
-	assert.Equal(t, terminated, true)
-
-	var restartOnFailure = v1beta1.JobRestartPolicyFromSavepointOnFailure
-	jobStatus = v1beta1.JobStatus{
-		State:             v1beta1.JobStateFailed,
-		SavepointLocation: "gs://my-bucket/savepoint-123",
-	}
-	terminated = isJobTerminated(&restartOnFailure, &jobStatus)
-	assert.Equal(t, terminated, false)
-}
-
-func TestIsSavepointUpToDate(t *testing.T) {
-	var tc = &TimeConverter{}
-	var savepointTime = time.Now()
-	var observeTime = savepointTime.Add(time.Second * 100)
-	var jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
-		SavepointLocation:        "gs://my-bucket/savepoint-123",
-	}
-	var update = isSavepointUpToDate(observeTime, jobStatus)
-	assert.Equal(t, update, true)
-
-	// old
-	savepointTime = time.Now()
-	observeTime = savepointTime.Add(time.Second * 500)
-	jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
-		SavepointLocation:        "gs://my-bucket/savepoint-123",
-	}
-	update = isSavepointUpToDate(observeTime, jobStatus)
-	assert.Equal(t, update, false)
-
-	// Fails without savepointLocation
-	savepointTime = time.Now()
-	observeTime = savepointTime.Add(time.Second * 500)
-	jobStatus = v1beta1.JobStatus{
-		State:                    v1beta1.JobStateFailed,
-		LastSavepointTime:        tc.ToString(savepointTime),
-		LastSavepointTriggerTime: tc.ToString(savepointTime),
-	}
-	update = isSavepointUpToDate(observeTime, jobStatus)
-	assert.Equal(t, update, false)
-}
-
 func TestIsComponentUpdated(t *testing.T) {
 	var cluster = v1beta1.FlinkCluster{
-		Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
+		Status: v1beta1.FlinkClusterStatus{Revision: v1beta1.RevisionStatus{NextRevision: "cluster-85dc8f749-2"}},
 	}
 	var cluster2 = v1beta1.FlinkCluster{
 		Spec: v1beta1.FlinkClusterSpec{
 			JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 			Job:        &v1beta1.JobSpec{},
 		},
-		Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
+		Status: v1beta1.FlinkClusterStatus{Revision: v1beta1.RevisionStatus{NextRevision: "cluster-85dc8f749-2"}},
 	}
 	var deploy = &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 		RevisionNameLabel: "cluster-85dc8f749",
 	}}}
-	var update = isComponentUpdated(deploy, cluster)
+	var update = isComponentUpdated(deploy, &cluster)
 	assert.Equal(t, update, true)
 
 	deploy = &appsv1.Deployment{}
-	update = isComponentUpdated(deploy, cluster)
+	update = isComponentUpdated(deploy, &cluster)
 	assert.Equal(t, update, false)
 
 	deploy = nil
-	update = isComponentUpdated(deploy, cluster)
+	update = isComponentUpdated(deploy, &cluster)
 	assert.Equal(t, update, false)
 
 	var job = &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 		RevisionNameLabel: "cluster-85dc8f749",
 	}}}
-	update = isComponentUpdated(job, cluster2)
+	update = isComponentUpdated(job, &cluster2)
 	assert.Equal(t, update, true)
 
 	job = &batchv1.Job{}
-	update = isComponentUpdated(job, cluster2)
+	update = isComponentUpdated(job, &cluster2)
 	assert.Equal(t, update, false)
 
 	job = nil
-	update = isComponentUpdated(job, cluster2)
+	update = isComponentUpdated(job, &cluster2)
 	assert.Equal(t, update, false)
 
 	job = nil
-	update = isComponentUpdated(job, cluster)
+	update = isComponentUpdated(job, &cluster)
 	assert.Equal(t, update, true)
-}
-
-func TestIsFlinkAPIReady(t *testing.T) {
-	var observed = ObservedClusterState{
-		cluster: &v1beta1.FlinkCluster{
-			Spec: v1beta1.FlinkClusterSpec{
-				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
-				Job:        &v1beta1.JobSpec{},
-			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
-		},
-		configMap:      &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmStatefulSet:  &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmStatefulSet:  &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:      &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		flinkJobStatus: FlinkJobStatus{flinkJobList: &flinkclient.JobStatusList{}},
-	}
-	var ready = isFlinkAPIReady(observed)
-	assert.Equal(t, ready, true)
-
-	// flinkJobList is nil
-	observed = ObservedClusterState{
-		cluster: &v1beta1.FlinkCluster{
-			Spec: v1beta1.FlinkClusterSpec{
-				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
-				Job:        &v1beta1.JobSpec{},
-			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
-		},
-		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-	}
-	ready = isFlinkAPIReady(observed)
-	assert.Equal(t, ready, false)
-
-	// jmStatefulSet is not observed
-	observed = ObservedClusterState{
-		cluster: &v1beta1.FlinkCluster{
-			Spec: v1beta1.FlinkClusterSpec{
-				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
-				Job:        &v1beta1.JobSpec{},
-			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
-		},
-		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-	}
-	ready = isFlinkAPIReady(observed)
-	assert.Equal(t, ready, false)
-
-	// jmStatefulSet is not updated
-	observed = ObservedClusterState{
-		cluster: &v1beta1.FlinkCluster{
-			Spec: v1beta1.FlinkClusterSpec{
-				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
-				Job:        &v1beta1.JobSpec{},
-			},
-			Status: v1beta1.FlinkClusterStatus{NextRevision: "cluster-85dc8f749-2"},
-		},
-		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-	}
-	ready = isFlinkAPIReady(observed)
-	assert.Equal(t, ready, false)
 }
 
 func TestGetUpdateState(t *testing.T) {
@@ -480,16 +255,16 @@ func TestGetUpdateState(t *testing.T) {
 				Job:        &v1beta1.JobSpec{},
 			},
 			Status: v1beta1.FlinkClusterStatus{
-				Components:      v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{State: v1beta1.JobStateRunning}},
-				CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+				Components: v1beta1.FlinkClusterComponentsStatus{Job: &v1beta1.JobStatus{State: v1beta1.JobStateRunning}},
+				Revision:   v1beta1.RevisionStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"}},
 		},
-		job:           &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
-		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		flinkJobSubmitter: FlinkJobSubmitter{job: &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}}},
+		configMap:         &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmStatefulSet:     &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		tmStatefulSet:     &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
+		jmService:         &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
-	var state = getUpdateState(observed)
+	var state = getUpdateState(&observed)
 	assert.Equal(t, state, UpdateStatePreparing)
 
 	observed = ObservedClusterState{
@@ -498,13 +273,15 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+			Status: v1beta1.FlinkClusterStatus{
+				Revision: v1beta1.RevisionStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+			},
 		},
 		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-85dc8f749"}}},
 	}
-	state = getUpdateState(observed)
+	state = getUpdateState(&observed)
 	assert.Equal(t, state, UpdateStateInProgress)
 
 	observed = ObservedClusterState{
@@ -513,16 +290,16 @@ func TestGetUpdateState(t *testing.T) {
 				JobManager: v1beta1.JobManagerSpec{Ingress: &v1beta1.JobManagerIngressSpec{}},
 				Job:        &v1beta1.JobSpec{},
 			},
-			Status: v1beta1.FlinkClusterStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"},
+			Status: v1beta1.FlinkClusterStatus{Revision: v1beta1.RevisionStatus{CurrentRevision: "cluster-85dc8f749-2", NextRevision: "cluster-aa5e3a87z-3"}},
 		},
-		job:           &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		configMap:     &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		jmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		tmStatefulSet: &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		jmService:     &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
-		jmIngress:     &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		flinkJobSubmitter: FlinkJobSubmitter{job: &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}}},
+		configMap:         &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmStatefulSet:     &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		tmStatefulSet:     &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmService:         &corev1.Service{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
+		jmIngress:         &extensionsv1beta1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{RevisionNameLabel: "cluster-aa5e3a87z"}}},
 	}
-	state = getUpdateState(observed)
+	state = getUpdateState(&observed)
 	assert.Equal(t, state, UpdateStateFinished)
 }
 
@@ -574,55 +351,4 @@ func TestGetNonLiveHistory(t *testing.T) {
 	historyLimit = 3
 	nonLiveHistory = getNonLiveHistory(revisions, historyLimit)
 	assert.Equal(t, len(nonLiveHistory), 0)
-}
-
-func TestGetFlinkJobDeploymentState(t *testing.T) {
-	var pod corev1.Pod
-	var submit, expected *FlinkJobSubmitLog
-	var err error
-	var termMsg string
-
-	// success
-	termMsg = `
-jobID: ec74209eb4e3db8ae72db00bd7a830aa
-message: |
-  Successfully submitted!
-  /opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
-  Starting execution of program
-  Printing result to stdout. Use --output to specify output path.
-  Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
-`
-	expected = &FlinkJobSubmitLog{
-		JobID: "ec74209eb4e3db8ae72db00bd7a830aa",
-		Message: `Successfully submitted!
-/opt/flink/bin/flink run --jobmanager flinkjobcluster-sample-jobmanager:8081 --class org.apache.flink.streaming.examples.wordcount.WordCount --parallelism 2 --detached ./examples/streaming/WordCount.jar --input ./README.txt
-Starting execution of program
-Printing result to stdout. Use --output to specify output path.
-Job has been submitted with JobID ec74209eb4e3db8ae72db00bd7a830aa
-`,
-	}
-	pod = corev1.Pod{
-		Status: corev1.PodStatus{
-			ContainerStatuses: []corev1.ContainerStatus{{
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Message: termMsg,
-					}}}}}}
-	submit, _ = getFlinkJobSubmitLog(&pod)
-	assert.DeepEqual(t, *submit, *expected)
-
-	// failed: pod not found
-	submit, err = getFlinkJobSubmitLog(nil)
-	assert.Error(t, err, "no job pod found, even though submission completed")
-
-	// failed: message not found
-	pod = corev1.Pod{
-		Status: corev1.PodStatus{
-			ContainerStatuses: []corev1.ContainerStatus{{
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Message: "",
-					}}}}}}
-	submit, err = getFlinkJobSubmitLog(&pod)
-	assert.Error(t, err, "job pod found, but no termination log found even though submission completed")
 }
