@@ -23,9 +23,9 @@ import (
 // DesiredClusterState holds desired state of a cluster.
 type DesiredClusterState struct {
 	JmStatefulSet *appsv1.StatefulSet
-	JmService    *corev1.Service
-	JmIngress    *extensionsv1beta1.Ingress
+	JmService     *corev1.Service
+	JmIngress     *extensionsv1beta1.Ingress
 	TmStatefulSet *appsv1.StatefulSet
-	ConfigMap    *corev1.ConfigMap
-	Job          *batchv1.Job
+	ConfigMap     *corev1.ConfigMap
+	Job           *batchv1.Job
 }
