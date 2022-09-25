@@ -115,6 +115,57 @@ func TestGetDesiredClusterState(t *testing.T) {
 			Value:             "toleration-value2",
 		},
 	}
+	var jobAffinity = *&corev1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{
+					{
+						MatchExpressions: []v1.NodeSelectorRequirement{
+							{
+								Key:      "node-allow/flink-job",
+								Operator: v1.NodeSelectorOpNotIn,
+								Values:   []string{"false"},
+							},
+						},
+					},
+				},
+			},
+		},
+		PodAffinity: &v1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"kafka-click-generator"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+		PodAntiAffinity: &v1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"flink"},
+							},
+						},
+					},
+					Namespaces:  []string{"default"},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
 	var userAndGroupId int64 = 9999
 	var securityContext = corev1.PodSecurityContext{
 		RunAsUser:  &userAndGroupId,
@@ -162,6 +213,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "cache-volume", MountPath: "/cache"},
 					},
+					Tolerations: tolerations,
+					Affinity:    &jobAffinity,
 					InitContainers: []corev1.Container{
 						{
 							Name:    "gcs-downloader",
@@ -574,8 +627,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			ServiceName: "flinkjobcluster-sample-taskmanager",
+			Replicas:            &replicas,
+			ServiceName:         "flinkjobcluster-sample-taskmanager",
 			PodManagementPolicy: "Parallel",
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -877,6 +930,8 @@ func TestGetDesiredClusterState(t *testing.T) {
 							},
 						},
 					},
+					Tolerations: tolerations,
+					Affinity:    &jobAffinity,
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsUser:  &userAndGroupId,
 						RunAsGroup: &userAndGroupId,

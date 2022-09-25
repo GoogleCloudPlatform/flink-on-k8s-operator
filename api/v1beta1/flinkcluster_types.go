@@ -381,6 +381,19 @@ type JobSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
+	// Selector which must match a node's labels for the TaskManager pod to be
+	// scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Defines the taint toleration of the pod
+	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Defines the affinity of the pod
+	// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
 	// Restart policy when the job fails, "Never" or "FromSavepointOnFailure",
 	// default: "Never".
 	//
